@@ -1,0 +1,1265 @@
+{
+  "version": 1,
+  "notice": "FICTIONAL DEMO CATALOG. Identifiers are deterministic UUIDv5 values, not real people or organizations. No passwords or secrets exist in this file.",
+  "consentPurposes": [
+    "Treatment",
+    "MedicationReview",
+    "Dispensing",
+    "Research"
+  ],
+  "dataScopes": [
+    "profile",
+    "medications",
+    "prescriptions",
+    "adherence",
+    "adr",
+    "checkins",
+    "symptoms",
+    "ai_summary"
+  ],
+  "permissions": [
+    {
+      "name": "patient.profile.read",
+      "kind": "subject",
+      "description": "Read a patient's profile",
+      "dataScope": "profile"
+    },
+    {
+      "name": "patient.profile.update",
+      "kind": "subject",
+      "description": "Update a patient's profile",
+      "dataScope": "profile"
+    },
+    {
+      "name": "patient.medications.read",
+      "kind": "subject",
+      "description": "Read a patient's medications and schedule",
+      "dataScope": "medications"
+    },
+    {
+      "name": "patient.medications.update",
+      "kind": "subject",
+      "description": "Update a patient's self-reported medications",
+      "dataScope": "medications"
+    },
+    {
+      "name": "patient.prescriptions.read",
+      "kind": "subject",
+      "description": "Read a patient's prescriptions",
+      "dataScope": "prescriptions"
+    },
+    {
+      "name": "patient.adherence.read",
+      "kind": "subject",
+      "description": "Read a patient's adherence",
+      "dataScope": "adherence"
+    },
+    {
+      "name": "patient.adr.read",
+      "kind": "subject",
+      "description": "Read a patient's adverse-reaction reports",
+      "dataScope": "adr"
+    },
+    {
+      "name": "patient.adr.create",
+      "kind": "subject",
+      "description": "Report an adverse reaction for a patient",
+      "dataScope": "adr"
+    },
+    {
+      "name": "patient.checkins.read",
+      "kind": "subject",
+      "description": "Read a patient's check-ins",
+      "dataScope": "checkins"
+    },
+    {
+      "name": "patient.checkins.create",
+      "kind": "subject",
+      "description": "Submit a check-in for a patient",
+      "dataScope": "checkins"
+    },
+    {
+      "name": "patient.symptoms.read",
+      "kind": "subject",
+      "description": "Read a patient's symptoms",
+      "dataScope": "symptoms"
+    },
+    {
+      "name": "patient.ai-summary.read",
+      "kind": "subject",
+      "description": "Read the AI-generated summary of a patient",
+      "dataScope": "ai_summary"
+    },
+    {
+      "name": "prescription.create",
+      "kind": "subject",
+      "description": "Create a prescription for a patient",
+      "dataScope": "prescriptions"
+    },
+    {
+      "name": "prescription.update",
+      "kind": "subject",
+      "description": "Update a patient's prescription",
+      "dataScope": "prescriptions"
+    },
+    {
+      "name": "prescription.review",
+      "kind": "subject",
+      "description": "Review a patient's prescription (medication review)",
+      "dataScope": "prescriptions"
+    },
+    {
+      "name": "adr.review",
+      "kind": "subject",
+      "description": "Review an adverse-reaction report",
+      "dataScope": "adr"
+    },
+    {
+      "name": "pharmacy.inventory.read",
+      "kind": "organization",
+      "description": "Read the inventory of a pharmacy organization"
+    },
+    {
+      "name": "pharmacy.inventory.update",
+      "kind": "organization",
+      "description": "Update the inventory of a pharmacy organization"
+    },
+    {
+      "name": "pharmacy.prescriptions.read",
+      "kind": "organization",
+      "description": "Read prescriptions received by a pharmacy organization"
+    },
+    {
+      "name": "pharmacy.dispensing.manage",
+      "kind": "organization",
+      "description": "Manage dispensing in a pharmacy organization"
+    },
+    {
+      "name": "pharmacy.requests.manage",
+      "kind": "organization",
+      "description": "Manage patient requests in a pharmacy organization"
+    },
+    {
+      "name": "pharmacy.alerts.read",
+      "kind": "organization",
+      "description": "Read alerts of a pharmacy organization"
+    },
+    {
+      "name": "org.read",
+      "kind": "organization",
+      "description": "Read organization details"
+    },
+    {
+      "name": "org.manage",
+      "kind": "organization",
+      "description": "Manage an organization"
+    },
+    {
+      "name": "analytics.read",
+      "kind": "aggregate",
+      "description": "Read aggregate, de-identified analytics"
+    },
+    {
+      "name": "signals.read",
+      "kind": "aggregate",
+      "description": "Read aggregate safety signals"
+    },
+    {
+      "name": "research.dataset.request",
+      "kind": "aggregate",
+      "description": "Request a de-identified research dataset"
+    },
+    {
+      "name": "consent.read",
+      "kind": "own",
+      "description": "Read consents the caller has given"
+    },
+    {
+      "name": "consent.grant",
+      "kind": "own",
+      "description": "Grant a consent for the caller's own data"
+    },
+    {
+      "name": "consent.revoke",
+      "kind": "own",
+      "description": "Revoke a consent the caller has given"
+    },
+    {
+      "name": "session.read",
+      "kind": "own",
+      "description": "List the caller's own sessions"
+    },
+    {
+      "name": "session.revoke",
+      "kind": "own",
+      "description": "Revoke the caller's own sessions"
+    },
+    {
+      "name": "audit.read.own",
+      "kind": "own",
+      "description": "Read the access log of the caller's own data"
+    },
+    {
+      "name": "interaction.read",
+      "kind": "global",
+      "description": "Read the reference interaction catalog"
+    },
+    {
+      "name": "ai.use",
+      "kind": "global",
+      "description": "Use the AI assistant"
+    },
+    {
+      "name": "ai.review",
+      "kind": "global",
+      "description": "Review AI drafts before they reach a patient"
+    },
+    {
+      "name": "ai.manage",
+      "kind": "global",
+      "description": "Manage AI configuration and kill-switch"
+    },
+    {
+      "name": "ai.evaluation.read",
+      "kind": "global",
+      "description": "Read AI evaluation results"
+    },
+    {
+      "name": "knowledge.read",
+      "kind": "global",
+      "description": "Read the knowledge base"
+    },
+    {
+      "name": "knowledge.manage",
+      "kind": "global",
+      "description": "Edit knowledge base content"
+    },
+    {
+      "name": "knowledge.publish",
+      "kind": "global",
+      "description": "Publish knowledge base versions"
+    },
+    {
+      "name": "user.read",
+      "kind": "global",
+      "description": "List users"
+    },
+    {
+      "name": "user.manage",
+      "kind": "global",
+      "description": "Manage users"
+    },
+    {
+      "name": "role.manage",
+      "kind": "global",
+      "description": "Assign and revoke roles"
+    },
+    {
+      "name": "audit.read",
+      "kind": "global",
+      "description": "Read the audit log"
+    },
+    {
+      "name": "session.revoke.any",
+      "kind": "global",
+      "description": "Revoke any user's session"
+    }
+  ],
+  "roles": [
+    {
+      "name": "Patient",
+      "description": "A person managing their own medicines and health data",
+      "permissions": [
+        "patient.profile.read",
+        "patient.profile.update",
+        "patient.medications.read",
+        "patient.medications.update",
+        "patient.prescriptions.read",
+        "patient.adherence.read",
+        "patient.adr.read",
+        "patient.adr.create",
+        "patient.checkins.read",
+        "patient.checkins.create",
+        "patient.symptoms.read",
+        "patient.ai-summary.read",
+        "interaction.read",
+        "ai.use",
+        "consent.read",
+        "consent.grant",
+        "consent.revoke",
+        "session.read",
+        "session.revoke",
+        "audit.read.own"
+      ]
+    },
+    {
+      "name": "Physician",
+      "description": "A licensed prescriber (demo)",
+      "permissions": [
+        "patient.profile.read",
+        "patient.medications.read",
+        "patient.prescriptions.read",
+        "patient.adherence.read",
+        "patient.adr.read",
+        "patient.checkins.read",
+        "patient.symptoms.read",
+        "patient.ai-summary.read",
+        "prescription.create",
+        "prescription.update",
+        "adr.review",
+        "interaction.read",
+        "ai.use",
+        "ai.review",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "Pharmacist",
+      "description": "A licensed pharmacist (demo)",
+      "permissions": [
+        "patient.profile.read",
+        "patient.medications.read",
+        "patient.prescriptions.read",
+        "patient.adherence.read",
+        "patient.adr.read",
+        "prescription.review",
+        "adr.review",
+        "interaction.read",
+        "ai.use",
+        "ai.review",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "PharmacyAdmin",
+      "description": "Administrator of a pharmacy organization",
+      "permissions": [
+        "pharmacy.inventory.read",
+        "pharmacy.inventory.update",
+        "pharmacy.prescriptions.read",
+        "pharmacy.dispensing.manage",
+        "pharmacy.requests.manage",
+        "pharmacy.alerts.read",
+        "org.read",
+        "org.manage",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "PharmaceuticalCompany",
+      "description": "Pharmaceutical industry user: aggregate data only",
+      "permissions": [
+        "analytics.read",
+        "signals.read",
+        "org.read",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "Researcher",
+      "description": "Researcher: aggregate, de-identified data only",
+      "permissions": [
+        "analytics.read",
+        "signals.read",
+        "research.dataset.request",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "ContentManager",
+      "description": "Manages knowledge content (no patient data)",
+      "permissions": [
+        "knowledge.read",
+        "knowledge.manage",
+        "knowledge.publish",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "AIManager",
+      "description": "Manages AI configuration and evaluation (no patient data)",
+      "permissions": [
+        "ai.manage",
+        "ai.evaluation.read",
+        "ai.review",
+        "knowledge.read",
+        "session.read",
+        "session.revoke"
+      ]
+    },
+    {
+      "name": "SystemAdmin",
+      "description": "Platform administrator: users, roles, audit. No patient data by default",
+      "permissions": [
+        "user.read",
+        "user.manage",
+        "role.manage",
+        "audit.read",
+        "session.revoke.any",
+        "org.read",
+        "org.manage",
+        "session.read",
+        "session.revoke"
+      ]
+    }
+  ],
+  "organizations": [
+    {
+      "id": "383c0c5b-386f-5d57-a295-3b25374d9a2d",
+      "key": "org-demo-pharmacy-a",
+      "name": "DEMO Pharmacy A",
+      "type": "Pharmacy"
+    },
+    {
+      "id": "578742b6-efd3-551a-9000-e250d815db67",
+      "key": "org-demo-pharmacy-b",
+      "name": "DEMO Pharmacy B",
+      "type": "Pharmacy"
+    },
+    {
+      "id": "d539c082-c330-529e-a921-eb18a903643c",
+      "key": "org-demo-clinic",
+      "name": "DEMO Clinic",
+      "type": "Clinic"
+    },
+    {
+      "id": "023fb39a-0093-5296-a985-9d68009a7d92",
+      "key": "org-demo-pharma",
+      "name": "DEMO Pharma Co",
+      "type": "Company"
+    }
+  ],
+  "demoAccounts": [
+    {
+      "id": "demo-patient",
+      "userId": "fa1f8b92-53cc-5ad2-a0a8-c39713c37946",
+      "displayName": {
+        "en": "DEMO Patient — Sara Ahmadi",
+        "fa": "دمو بیمار — سارا احمدی"
+      },
+      "email": "demo-patient@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Own medicines, check-in, AI assistant",
+        "fa": "داروها، چک‌این و دستیار هوشمند خودش"
+      }
+    },
+    {
+      "id": "demo-physician",
+      "userId": "e0711d57-43f2-5d81-bc7f-4b949e674978",
+      "displayName": {
+        "en": "DEMO Physician — Dr. Karimi",
+        "fa": "دمو پزشک — دکتر کریمی"
+      },
+      "email": "demo-physician@example.invalid",
+      "roles": [
+        {
+          "role": "Physician",
+          "organizationId": "d539c082-c330-529e-a921-eb18a903643c"
+        }
+      ],
+      "organizations": [
+        "d539c082-c330-529e-a921-eb18a903643c"
+      ],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Sees only patients who consented",
+        "fa": "فقط بیمارانی را می‌بیند که رضایت داده‌اند"
+      }
+    },
+    {
+      "id": "demo-pharmacist",
+      "userId": "3efb10fd-91b4-5838-a147-ee65390020cb",
+      "displayName": {
+        "en": "DEMO Pharmacist",
+        "fa": "دمو داروساز"
+      },
+      "email": "demo-pharmacist@example.invalid",
+      "roles": [
+        {
+          "role": "Pharmacist",
+          "organizationId": "383c0c5b-386f-5d57-a295-3b25374d9a2d"
+        }
+      ],
+      "organizations": [
+        "383c0c5b-386f-5d57-a295-3b25374d9a2d"
+      ],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Medication review within consent scope",
+        "fa": "بازبینی دارویی در محدودهٔ رضایت"
+      }
+    },
+    {
+      "id": "demo-pharmacy-admin",
+      "userId": "9adaf502-c054-57ac-a73e-69e2fd5b1c01",
+      "displayName": {
+        "en": "DEMO Pharmacy Admin",
+        "fa": "دمو مدیر داروخانه"
+      },
+      "email": "demo-pharmacy-admin@example.invalid",
+      "roles": [
+        {
+          "role": "PharmacyAdmin",
+          "organizationId": "383c0c5b-386f-5d57-a295-3b25374d9a2d"
+        }
+      ],
+      "organizations": [
+        "383c0c5b-386f-5d57-a295-3b25374d9a2d"
+      ],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Inventory and dispensing of Pharmacy A only",
+        "fa": "فقط موجودی و تحویل داروخانه A"
+      }
+    },
+    {
+      "id": "demo-industry",
+      "userId": "6ec2a8c0-be53-54e4-96fd-e06ac2972905",
+      "displayName": {
+        "en": "DEMO Industry User",
+        "fa": "دمو کاربر صنعت دارو"
+      },
+      "email": "demo-industry@example.invalid",
+      "roles": [
+        {
+          "role": "PharmaceuticalCompany",
+          "organizationId": "023fb39a-0093-5296-a985-9d68009a7d92"
+        }
+      ],
+      "organizations": [
+        "023fb39a-0093-5296-a985-9d68009a7d92"
+      ],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Aggregate analytics only",
+        "fa": "فقط تحلیل تجمیعی"
+      }
+    },
+    {
+      "id": "demo-researcher",
+      "userId": "88c6adfd-a6d7-5d14-96e3-f9e77b0aac86",
+      "displayName": {
+        "en": "DEMO Researcher",
+        "fa": "دمو پژوهشگر"
+      },
+      "email": "demo-researcher@example.invalid",
+      "roles": [
+        {
+          "role": "Researcher",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "De-identified aggregates only",
+        "fa": "فقط داده تجمیعی بی‌هویت"
+      }
+    },
+    {
+      "id": "demo-content-manager",
+      "userId": "8f5c617c-bf74-593a-9063-bb460fe11fbd",
+      "displayName": {
+        "en": "DEMO Content Manager",
+        "fa": "دمو مدیر محتوا"
+      },
+      "email": "demo-content-manager@example.invalid",
+      "roles": [
+        {
+          "role": "ContentManager",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Knowledge content, no patient data",
+        "fa": "محتوای دانش، بدون داده بیمار"
+      }
+    },
+    {
+      "id": "demo-ai-manager",
+      "userId": "9b709f01-3adf-5886-a6e9-532b5d32d609",
+      "displayName": {
+        "en": "DEMO AI Manager",
+        "fa": "دمو مدیر هوش مصنوعی"
+      },
+      "email": "demo-ai-manager@example.invalid",
+      "roles": [
+        {
+          "role": "AIManager",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "AI configuration, no patient data",
+        "fa": "پیکربندی هوش مصنوعی، بدون داده بیمار"
+      }
+    },
+    {
+      "id": "demo-system-admin",
+      "userId": "4c07e461-f935-5f4b-bdcc-ee1a0a0733ec",
+      "displayName": {
+        "en": "DEMO System Admin",
+        "fa": "دمو مدیر سیستم"
+      },
+      "email": "demo-system-admin@example.invalid",
+      "roles": [
+        {
+          "role": "SystemAdmin",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": true,
+      "description": {
+        "en": "Users, roles, audit. No patient data",
+        "fa": "کاربران، نقش‌ها و ممیزی؛ بدون داده بیمار"
+      }
+    },
+    {
+      "id": "demo-patient-2",
+      "userId": "64f9fd31-4b11-50de-9e63-815ae0c84a64",
+      "displayName": {
+        "en": "DEMO Patient — Ali Rezaei",
+        "fa": "دمو بیمار — علی رضایی"
+      },
+      "email": "demo-patient-2@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": false,
+      "description": {
+        "en": "Second patient (for isolation tests)",
+        "fa": "بیمار دوم (برای آزمون جداسازی)"
+      }
+    },
+    {
+      "id": "demo-physician-b",
+      "userId": "7cd5a1aa-830c-57a7-9544-a0ddb81007e0",
+      "displayName": {
+        "en": "DEMO Physician B (no patients)",
+        "fa": "دمو پزشک B (بدون بیمار)"
+      },
+      "email": "demo-physician-b@example.invalid",
+      "roles": [
+        {
+          "role": "Physician",
+          "organizationId": "d539c082-c330-529e-a921-eb18a903643c"
+        }
+      ],
+      "organizations": [
+        "d539c082-c330-529e-a921-eb18a903643c"
+      ],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": false,
+      "description": {
+        "en": "Has the role but no consented patients",
+        "fa": "نقش دارد اما بیمار رضایت‌داده ندارد"
+      }
+    },
+    {
+      "id": "demo-multirole",
+      "userId": "c332b949-5125-5c81-9780-1c680ccdbe85",
+      "displayName": {
+        "en": "DEMO Physician + Researcher",
+        "fa": "دمو پزشک + پژوهشگر"
+      },
+      "email": "demo-multirole@example.invalid",
+      "roles": [
+        {
+          "role": "Physician",
+          "organizationId": "d539c082-c330-529e-a921-eb18a903643c"
+        },
+        {
+          "role": "Researcher",
+          "organizationId": null
+        }
+      ],
+      "organizations": [
+        "d539c082-c330-529e-a921-eb18a903643c"
+      ],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": false,
+      "description": {
+        "en": "One user, multiple roles",
+        "fa": "یک کاربر با چند نقش"
+      }
+    },
+    {
+      "id": "demo-disabled",
+      "userId": "e37f4115-1733-5ae5-bfed-e101dceb5384",
+      "displayName": {
+        "en": "DEMO Disabled Account",
+        "fa": "دمو حساب غیرفعال"
+      },
+      "email": "demo-disabled@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Disabled",
+      "loginEnabled": true,
+      "primary": false,
+      "description": {
+        "en": "Account is disabled (login must fail)",
+        "fa": "حساب غیرفعال است (ورود باید رد شود)"
+      }
+    },
+    {
+      "id": "subject-pt-2",
+      "userId": "66e0c018-32a6-5a40-813c-4201e44013fc",
+      "displayName": {
+        "en": "DEMO Patient — Maryam Hosseini",
+        "fa": "دمو بیمار — مریم حسینی"
+      },
+      "email": "subject-pt-2@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": false,
+      "primary": false,
+      "description": {
+        "en": "Data subject without login",
+        "fa": "سوژهٔ داده بدون ورود"
+      }
+    },
+    {
+      "id": "subject-pt-3",
+      "userId": "aae1645c-5128-5dbc-b84f-9a50b6240217",
+      "displayName": {
+        "en": "DEMO Patient — Hamid Nouri",
+        "fa": "دمو بیمار — حمید نوری"
+      },
+      "email": "subject-pt-3@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": false,
+      "primary": false,
+      "description": {
+        "en": "Data subject without login",
+        "fa": "سوژهٔ داده بدون ورود"
+      }
+    },
+    {
+      "id": "subject-pt-4",
+      "userId": "d611ef29-d176-5b33-8667-fe8c380ea294",
+      "displayName": {
+        "en": "DEMO Patient — Neda Karimi",
+        "fa": "دمو بیمار — ندا کریمی"
+      },
+      "email": "subject-pt-4@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": false,
+      "primary": false,
+      "description": {
+        "en": "Data subject without login",
+        "fa": "سوژهٔ داده بدون ورود"
+      }
+    },
+    {
+      "id": "subject-pt-5",
+      "userId": "02aad59a-2572-5245-b827-d311935e4573",
+      "displayName": {
+        "en": "DEMO Patient — Reza Moradi",
+        "fa": "دمو بیمار — رضا مرادی"
+      },
+      "email": "subject-pt-5@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": false,
+      "primary": false,
+      "description": {
+        "en": "Data subject without login",
+        "fa": "سوژهٔ داده بدون ورود"
+      }
+    },
+    {
+      "id": "subject-pt-6",
+      "userId": "f4359eb6-6570-5719-b310-b923ae9338b2",
+      "displayName": {
+        "en": "DEMO Patient — Zahra Ebrahimi",
+        "fa": "دمو بیمار — زهرا ابراهیمی"
+      },
+      "email": "subject-pt-6@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": false,
+      "primary": false,
+      "description": {
+        "en": "Data subject without login",
+        "fa": "سوژهٔ داده بدون ورود"
+      }
+    },
+    {
+      "id": "subject-pt-7",
+      "userId": "00e2acbe-8943-5cc9-b00b-b8922dd2bb2c",
+      "displayName": {
+        "en": "DEMO Patient — Kian Tehrani",
+        "fa": "دمو بیمار — کیان تهرانی"
+      },
+      "email": "subject-pt-7@example.invalid",
+      "roles": [
+        {
+          "role": "Patient",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": false,
+      "primary": false,
+      "description": {
+        "en": "Data subject without login",
+        "fa": "سوژهٔ داده بدون ورود"
+      }
+    }
+  ],
+  "subjects": [
+    {
+      "key": "pt-sara",
+      "accountId": "demo-patient",
+      "userId": "fa1f8b92-53cc-5ad2-a0a8-c39713c37946"
+    },
+    {
+      "key": "pt-1",
+      "accountId": "demo-patient-2",
+      "userId": "64f9fd31-4b11-50de-9e63-815ae0c84a64"
+    },
+    {
+      "key": "pt-2",
+      "accountId": "subject-pt-2",
+      "userId": "66e0c018-32a6-5a40-813c-4201e44013fc"
+    },
+    {
+      "key": "pt-3",
+      "accountId": "subject-pt-3",
+      "userId": "aae1645c-5128-5dbc-b84f-9a50b6240217"
+    },
+    {
+      "key": "pt-4",
+      "accountId": "subject-pt-4",
+      "userId": "d611ef29-d176-5b33-8667-fe8c380ea294"
+    },
+    {
+      "key": "pt-5",
+      "accountId": "subject-pt-5",
+      "userId": "02aad59a-2572-5245-b827-d311935e4573"
+    },
+    {
+      "key": "pt-6",
+      "accountId": "subject-pt-6",
+      "userId": "f4359eb6-6570-5719-b310-b923ae9338b2"
+    },
+    {
+      "key": "pt-7",
+      "accountId": "subject-pt-7",
+      "userId": "00e2acbe-8943-5cc9-b00b-b8922dd2bb2c"
+    }
+  ],
+  "careRelationships": [
+    {
+      "kind": "Treating",
+      "patientAccountId": "demo-patient",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "demo-patient-2",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "subject-pt-2",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "subject-pt-3",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "subject-pt-4",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "subject-pt-5",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "subject-pt-6",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Treating",
+      "patientAccountId": "subject-pt-7",
+      "providerAccountId": "demo-physician",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Dispensing",
+      "patientAccountId": "demo-patient",
+      "providerAccountId": "demo-pharmacist",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Dispensing",
+      "patientAccountId": "demo-patient-2",
+      "providerAccountId": "demo-pharmacist",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Dispensing",
+      "patientAccountId": "subject-pt-2",
+      "providerAccountId": "demo-pharmacist",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Dispensing",
+      "patientAccountId": "subject-pt-3",
+      "providerAccountId": "demo-pharmacist",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Dispensing",
+      "patientAccountId": "subject-pt-6",
+      "providerAccountId": "demo-pharmacist",
+      "providerOrganizationKey": null
+    },
+    {
+      "kind": "Dispensing",
+      "patientAccountId": "demo-patient",
+      "providerAccountId": null,
+      "providerOrganizationKey": "org-demo-pharmacy-a"
+    }
+  ],
+  "consents": [
+    {
+      "subjectAccountId": "demo-patient",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-2",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-3",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-4",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-5",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-6",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-7",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 30,
+      "expiresInDays": 335,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "demo-patient-2",
+      "granteeAccountId": "demo-physician",
+      "granteeOrganizationKey": null,
+      "purpose": "Treatment",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr",
+        "checkins",
+        "symptoms",
+        "ai_summary"
+      ],
+      "grantedDaysAgo": 300,
+      "expiresInDays": -30,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "demo-patient",
+      "granteeAccountId": "demo-pharmacist",
+      "granteeOrganizationKey": null,
+      "purpose": "MedicationReview",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions"
+      ],
+      "grantedDaysAgo": 20,
+      "expiresInDays": 345,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "demo-patient-2",
+      "granteeAccountId": "demo-pharmacist",
+      "granteeOrganizationKey": null,
+      "purpose": "MedicationReview",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr"
+      ],
+      "grantedDaysAgo": 20,
+      "expiresInDays": 345,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-2",
+      "granteeAccountId": "demo-pharmacist",
+      "granteeOrganizationKey": null,
+      "purpose": "MedicationReview",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr"
+      ],
+      "grantedDaysAgo": 20,
+      "expiresInDays": 345,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-3",
+      "granteeAccountId": "demo-pharmacist",
+      "granteeOrganizationKey": null,
+      "purpose": "MedicationReview",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr"
+      ],
+      "grantedDaysAgo": 20,
+      "expiresInDays": 345,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "subject-pt-6",
+      "granteeAccountId": "demo-pharmacist",
+      "granteeOrganizationKey": null,
+      "purpose": "MedicationReview",
+      "scope": [
+        "profile",
+        "medications",
+        "prescriptions",
+        "adherence",
+        "adr"
+      ],
+      "grantedDaysAgo": 20,
+      "expiresInDays": 345,
+      "version": "consent-text-v1"
+    },
+    {
+      "subjectAccountId": "demo-patient",
+      "granteeAccountId": null,
+      "granteeOrganizationKey": "org-demo-pharmacy-a",
+      "purpose": "Dispensing",
+      "scope": [
+        "prescriptions"
+      ],
+      "grantedDaysAgo": 10,
+      "expiresInDays": 355,
+      "version": "consent-text-v1"
+    }
+  ]
+}

@@ -96,6 +96,8 @@ services:
     environment:
       <<: *app-env
       ASPNETCORE_URLS: http://+:8080
+      # LOCAL DEV STACK ONLY: enables the fictional DevelopmentMock login (refused by the API in any other environment).
+      ASPNETCORE_ENVIRONMENT: Development
     ports: ["127.0.0.1:5080:8080"]
     depends_on:
       migrator: { condition: service_completed_successfully }

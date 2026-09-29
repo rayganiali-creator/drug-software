@@ -3,4 +3,14 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\MedSmarter.BuildingBlocks\MedSmarter.BuildingBlocks.csproj" />
     <ProjectReference Include="..\MedSmarter.Modules.Consent.Contracts\MedSmarter.Modules.Consent.Contracts.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Audit\MedSmarter.Modules.Audit.Contracts\MedSmarter.Modules.Audit.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\MedSmarter.Modules.Identity.Contracts\MedSmarter.Modules.Identity.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MedSmarter.Security.Tests" />
+  </ItemGroup>
 </Project>

@@ -2,5 +2,18 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\MedSmarter.BuildingBlocks\MedSmarter.BuildingBlocks.csproj" />
     <ProjectReference Include="..\MedSmarter.Modules.Identity.Contracts\MedSmarter.Modules.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\Audit\MedSmarter.Modules.Audit.Contracts\MedSmarter.Modules.Audit.Contracts.csproj" />
+    <ProjectReference Include="..\..\Consent\MedSmarter.Modules.Consent.Contracts\MedSmarter.Modules.Consent.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Single source of truth for roles, permissions and FICTIONAL demo identities (see security/build.mjs). -->
+    <EmbeddedResource Include="..\..\..\..\security\access-catalog.json" LogicalName="access-catalog.json" />
+    <InternalsVisibleTo Include="MedSmarter.Security.Tests" />
   </ItemGroup>
 </Project>
