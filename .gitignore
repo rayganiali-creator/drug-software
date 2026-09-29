@@ -40,3 +40,4 @@ mobile/pubspec.lock.bak
 .vscode/*
 !.vscode/extensions.json
 .DS_Store
+*.tsbuildinfo
