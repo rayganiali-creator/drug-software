@@ -86,6 +86,26 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Install Chromium for QA
+        run: npx playwright-core install --with-deps chromium
+      - name: Accessibility, RTL and interaction QA
+        run: |
+          npm run preview &
+          curl --retry 15 --retry-connrefused --retry-delay 1 -s -o /dev/null http://127.0.0.1:4173/
+          mkdir -p /tmp/qa
+          export CHROMIUM_PATH="$(node -e "console.log(require('playwright-core').chromium.executablePath())")"
+          node scripts/qa.mjs --out /tmp/qa
+          node scripts/flow.mjs
+
+  design:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generated design artefacts are up to date and contrast rules pass
+        run: node design/build.mjs --check
 
   mobile:
     runs-on: ubuntu-latest

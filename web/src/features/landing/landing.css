@@ -1,0 +1,45 @@
+.lp { background: var(--color-background); overflow-x: clip; }
+@media (max-width: 599px) { .lp-head__actions .ms-btn { display: none; } }
+.lp-wrap { max-inline-size: 72rem; margin-inline: auto; padding-inline: var(--layout-gutter-expanded); }
+@media (max-width: 599px) { .lp-wrap { padding-inline: var(--layout-gutter-compact); } }
+.lp-head { position: sticky; inset-block-start: 0; z-index: var(--z-sticky); background: color-mix(in srgb, var(--color-background) 88%, transparent); backdrop-filter: blur(10px); border-block-end: 1px solid var(--color-border); }
+.lp-head__in { display: flex; align-items: center; gap: var(--space-3); min-block-size: var(--layout-topbar-height); }
+.lp-nav { display: none; gap: var(--space-1); margin-inline-start: var(--space-6); }
+.lp-nav a { padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); color: var(--color-text-secondary); text-decoration: none; font-weight: 500; }
+.lp-nav a:hover { background: var(--color-surface-sunken); color: var(--color-text-primary); }
+@media (min-width: 1024px) { .lp-nav { display: flex; } }
+.lp-head__actions { margin-inline-start: auto; display: flex; align-items: center; gap: var(--space-1); }
+.lp-section { padding-block: var(--space-16); }
+.lp-section--alt { background: var(--color-surface); border-block: 1px solid var(--color-border); }
+.lp-eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-label-size); font-weight: 700; color: var(--color-primary); margin-block-end: var(--space-3); }
+.lp-h2 { font-size: var(--text-h1-size); line-height: var(--text-h1-line); font-weight: 800; max-inline-size: 40rem; }
+.lp-lead { color: var(--color-text-secondary); font-size: 1.125rem; max-inline-size: 40rem; margin-block-start: var(--space-3); }
+.lp-hero { position: relative; overflow: hidden; padding-block: var(--space-16) var(--space-12); }
+.lp-hero::before { content: ""; position: absolute; inset-inline-end: -10%; inset-block-start: -30%; inline-size: 46rem; block-size: 46rem; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 70%); pointer-events: none; }
+.lp-hero::after { content: ""; position: absolute; inset-inline-start: -12%; inset-block-end: -40%; inline-size: 38rem; block-size: 38rem; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 18%, transparent), transparent 70%); pointer-events: none; }
+.lp-hero__grid { position: relative; z-index: 1; display: grid; gap: var(--space-10); align-items: center; }
+@media (min-width: 1024px) { .lp-hero__grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); } }
+.lp-hero h1 { font-size: var(--text-display-size); line-height: var(--text-display-line); font-weight: 800; }
+.lp-hero h1 em { font-style: normal; background: linear-gradient(100deg, var(--color-primary), var(--color-accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lp-cta { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-block-start: var(--space-6); }
+.lp-proto { display: inline-flex; align-items: center; gap: var(--space-2); margin-block-start: var(--space-5); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); background: var(--color-warning-container); color: var(--color-on-warning-container); font-size: var(--text-caption-size); font-weight: 700; }
+.lp-device { position: relative; inline-size: min(22rem, 100%); margin-inline: auto; padding: var(--space-3); border-radius: 36px; background: var(--color-surface); border: 1px solid var(--color-border); box-shadow: var(--shadow-4); }
+.lp-device__screen { border-radius: 26px; background: var(--color-background); padding: var(--space-4); display: grid; gap: var(--space-3); }
+.lp-float { position: absolute; inset-inline-start: -8%; inset-block-end: 12%; max-inline-size: 15rem; }
+@media (max-width: 599px) { .lp-float { display: none; } }
+.lp-cards { display: grid; gap: var(--space-4); margin-block-start: var(--space-8); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+.lp-icon { display: grid; place-items: center; inline-size: 48px; block-size: 48px; border-radius: var(--radius-md); background: var(--tone-bg); color: var(--tone-fg); margin-block-end: var(--space-3); }
+.lp-steps { counter-reset: step; display: grid; gap: var(--space-4); margin-block-start: var(--space-8); grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+.lp-steps li { counter-increment: step; position: relative; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--color-surface); border: 1px solid var(--color-border); }
+.lp-steps li::before { content: counter(step); display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: 50%; background: var(--color-primary); color: var(--color-on-primary); font-weight: 800; margin-block-end: var(--space-3); }
+.lp-bullets { display: grid; gap: var(--space-2); margin-block: var(--space-3) var(--space-4); }
+.lp-bullets li { display: flex; gap: var(--space-2); align-items: flex-start; }
+.lp-bullets .ms-icon { color: var(--color-primary); margin-block-start: 5px; }
+.lp-ai { display: grid; gap: var(--space-8); align-items: center; margin-block-start: var(--space-8); }
+@media (min-width: 1024px) { .lp-ai { grid-template-columns: 1fr 1fr; } }
+.lp-integrations { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block-start: var(--space-6); }
+.lp-cta-band { border-radius: var(--radius-xl); padding: var(--space-12) var(--space-8); text-align: center; color: var(--color-on-primary); background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 55%, var(--color-accent))); }
+.lp-cta-band h2 { font-size: var(--text-h1-size); line-height: var(--text-h1-line); font-weight: 800; }
+.lp-cta-band p { opacity: 0.92; margin-block: var(--space-3) var(--space-6); }
+.lp-cta-band .ms-btn--primary { background: var(--color-surface); color: var(--color-primary); }
+.lp-foot { padding-block: var(--space-10); color: var(--color-text-secondary); font-size: var(--text-body-small-size); border-block-start: 1px solid var(--color-border); }

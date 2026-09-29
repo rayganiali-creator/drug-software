@@ -1,8 +1,8 @@
 # AI MedSmarter
 
 Healthcare/pharmaceutical platform (patients, physicians, pharmacists, pharmacies, industry, AI assistant).
-Architecture and requirements: [`docs/phase0/`](docs/phase0/README.md). Current state: **Phase 1 – project foundation**
-(no product features yet).
+Architecture and requirements: [`docs/phase0/`](docs/phase0/README.md). Design system and UI/UX: [`docs/phase2/`](docs/phase2/README.md).
+Current state: **Phase 2 – design system & complete UI/UX prototype** (Mock services, fictional demo data, no real external systems).
 
 ## Layout
 | Path | What | Stack |
@@ -11,8 +11,9 @@ Architecture and requirements: [`docs/phase0/`](docs/phase0/README.md). Current 
 | `src/BuildingBlocks/*` | `IModule`, `Result`, outbox/inbox, Postgres/Redis/OpenSearch/Kafka wiring, EF migrations | C# |
 | `src/Modules/<Name>/` | 22 bounded modules from Phase 0 (`.Contracts` + implementation, both empty) | C# |
 | `ai/` | AI service (health/config/logging only; no LLM yet) | Python 3.11+, FastAPI |
-| `web/` | Dashboard shell showing API readiness | React 19, TypeScript, Vite |
-| `mobile/` | Patient app shell showing API readiness | Flutter/Dart |
+| `web/` | Web app: landing page, design-system gallery, patient / physician / pharmacist / pharmacy / industry UIs (Mock data) | React 19, TypeScript, Vite |
+| `mobile/` | Patient app for Android + iOS (one codebase, Mock data) | Flutter/Dart |
+| `design/` | Single source of truth: tokens, icons, i18n strings, demo data → generated for web and Flutter (`node design/build.mjs`) | Node |
 | `tests/` | Unit, architecture (module boundaries), API host, env-gated integration tests | xUnit |
 | `docker-compose.yml` | Postgres 16, Redis 7, OpenSearch 2.19, Kafka 3.9 (KRaft) + app containers (`--profile app`) | Docker |
 | `.github/workflows/ci.yml` | CI | GitHub Actions |
@@ -37,7 +38,9 @@ never includes exception text. Liveness (`/health/live`) has no dependencies.
 
 ## How to test
 ```bash
+node design/build.mjs --check   # generated design artefacts up to date + WCAG contrast rules
 make test                # dotnet (unit+architecture+host), pytest, vitest, flutter test — no infrastructure needed
+# web QA (needs Chromium): cd web && npm run build && npm run preview & node scripts/qa.mjs && node scripts/flow.mjs
 make infra-up migrate && make test-integration   # real Postgres/Redis (+ readiness of the whole stack)
 make lint
 ```
@@ -56,4 +59,4 @@ dotnet ef migrations add <Name> -p src/BuildingBlocks/MedSmarter.BuildingBlocks.
 ```
 
 ## Known issues / limitations
-See [`docs/phase1-notes.md`](docs/phase1-notes.md).
+See [`docs/phase1-notes.md`](docs/phase1-notes.md) and [`docs/phase2/07-decisions-and-status.md`](docs/phase2/07-decisions-and-status.md).

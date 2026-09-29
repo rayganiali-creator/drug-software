@@ -1,5 +1,5 @@
 name: medsmarter_mobile
-description: "A new Flutter project."
+description: "AI MedSmarter patient app (Phase 2 prototype: Mock services, fictional demo data)."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -9,7 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_svg: ^2.3.0
+  go_router: ^18.0.2
   http: ^1.6.0
+  intl: ^0.20.3
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +24,16 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/shared/
+  fonts:
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/Vazirmatn-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Vazirmatn-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Vazirmatn-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Vazirmatn-Bold.ttf
+          weight: 700

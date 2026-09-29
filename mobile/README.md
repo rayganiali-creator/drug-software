@@ -1,4 +1,12 @@
-# AI MedSmarter – mobile (Flutter)
+# AI MedSmarter – mobile (Flutter, Android + iOS)
 
-Phase 1 shell: shows API readiness. Run: `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5080`
-(Android emulator → host). Test: `flutter analyze && flutter test`. Cleartext HTTP is allowed in debug builds only.
+Patient app, Phase 2 prototype: **Mock services and fictional demo data only** (no network needed).
+Design tokens, icons, strings and demo data are generated from `../design` (`node ../design/build.mjs`).
+
+```bash
+flutter pub get
+flutter run                                   # device / emulator
+flutter run -d chrome --no-web-resources-cdn  # optional: needs `flutter create . --platforms web` locally
+flutter analyze && flutter test
+```
+Structure and decisions: `../docs/phase2/06-architecture.md`. Cleartext HTTP is allowed in debug builds only.

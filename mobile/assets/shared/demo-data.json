@@ -1,0 +1,2057 @@
+{
+  "meta": {
+    "version": 1,
+    "label": {
+      "en": "DEMO DATA — NOT FOR CLINICAL USE",
+      "fa": "داده نمایشی — غیرقابل استفاده بالینی"
+    },
+    "note": {
+      "en": "All names, drugs, doses, interactions and statistics are fictional.",
+      "fa": "همهٔ نام‌ها، داروها، دوزها، تداخل‌ها و آمارها ساختگی هستند."
+    }
+  },
+  "activeIngredients": [
+    {
+      "id": "ai-demoprilate",
+      "name": {
+        "en": "demoprilate (fictional)",
+        "fa": "دموپریلات (فرضی)"
+      }
+    },
+    {
+      "id": "ai-glycanorin",
+      "name": {
+        "en": "glycanorin (fictional)",
+        "fa": "گلیکانورین (فرضی)"
+      }
+    },
+    {
+      "id": "ai-respirexol",
+      "name": {
+        "en": "respirexol (fictional)",
+        "fa": "رسپیرکسول (فرضی)"
+      }
+    },
+    {
+      "id": "ai-nocturamide",
+      "name": {
+        "en": "nocturamide (fictional)",
+        "fa": "نوکتورامید (فرضی)"
+      }
+    },
+    {
+      "id": "ai-solvitol",
+      "name": {
+        "en": "solvitol (fictional)",
+        "fa": "سولویتول (فرضی)"
+      }
+    }
+  ],
+  "drugs": [
+    {
+      "id": "drug-demopril",
+      "name": {
+        "en": "Demopril",
+        "fa": "دموپریل"
+      },
+      "activeIngredientId": "ai-demoprilate",
+      "strength": "10 mg",
+      "form": {
+        "en": "Tablet",
+        "fa": "قرص"
+      },
+      "route": {
+        "en": "Oral",
+        "fa": "خوراکی"
+      },
+      "category": {
+        "en": "Demo heart-health class",
+        "fa": "گروه نمایشی سلامت قلب"
+      },
+      "instructions": {
+        "en": "Take one tablet each morning with a glass of water.",
+        "fa": "هر صبح یک قرص همراه یک لیوان آب مصرف شود."
+      },
+      "warnings": [
+        {
+          "en": "Fictional warning: may cause demo dizziness when standing up quickly.",
+          "fa": "هشدار فرضی: ممکن است هنگام برخاستن ناگهانی سرگیجهٔ نمایشی ایجاد کند."
+        }
+      ]
+    },
+    {
+      "id": "drug-glycanor",
+      "name": {
+        "en": "Glycanor",
+        "fa": "گلیکانور"
+      },
+      "activeIngredientId": "ai-glycanorin",
+      "strength": "500 mg",
+      "form": {
+        "en": "Tablet",
+        "fa": "قرص"
+      },
+      "route": {
+        "en": "Oral",
+        "fa": "خوراکی"
+      },
+      "category": {
+        "en": "Demo metabolic class",
+        "fa": "گروه نمایشی متابولیک"
+      },
+      "instructions": {
+        "en": "Take one tablet with breakfast and one with dinner.",
+        "fa": "یک قرص همراه صبحانه و یک قرص همراه شام مصرف شود."
+      },
+      "warnings": [
+        {
+          "en": "Fictional warning: take with food to reduce demo stomach upset.",
+          "fa": "هشدار فرضی: همراه غذا مصرف شود تا ناراحتی نمایشی معده کمتر شود."
+        }
+      ]
+    },
+    {
+      "id": "drug-respirex",
+      "name": {
+        "en": "Respirex",
+        "fa": "رسپیرکس"
+      },
+      "activeIngredientId": "ai-respirexol",
+      "strength": "100 mcg / puff",
+      "form": {
+        "en": "Inhaler",
+        "fa": "اسپری استنشاقی"
+      },
+      "route": {
+        "en": "Inhalation",
+        "fa": "استنشاقی"
+      },
+      "category": {
+        "en": "Demo breathing-support class",
+        "fa": "گروه نمایشی حمایت تنفسی"
+      },
+      "instructions": {
+        "en": "Two puffs in the morning. Rinse your mouth afterwards.",
+        "fa": "صبح دو پاف مصرف شود. پس از مصرف دهان شسته شود."
+      },
+      "warnings": [
+        {
+          "en": "Fictional warning: do not exceed the demo daily puffs.",
+          "fa": "هشدار فرضی: از تعداد پاف نمایشی روزانه بیشتر نشود."
+        }
+      ]
+    },
+    {
+      "id": "drug-nocturin",
+      "name": {
+        "en": "Nocturin",
+        "fa": "نوکتورین"
+      },
+      "activeIngredientId": "ai-nocturamide",
+      "strength": "5 mg",
+      "form": {
+        "en": "Tablet",
+        "fa": "قرص"
+      },
+      "route": {
+        "en": "Oral",
+        "fa": "خوراکی"
+      },
+      "category": {
+        "en": "Demo sleep-support class",
+        "fa": "گروه نمایشی حمایت خواب"
+      },
+      "instructions": {
+        "en": "Take one tablet at bedtime.",
+        "fa": "یک قرص هنگام خواب مصرف شود."
+      },
+      "warnings": [
+        {
+          "en": "Fictional warning: may cause demo drowsiness. Avoid driving after taking.",
+          "fa": "هشدار فرضی: ممکن است خواب‌آلودگی نمایشی ایجاد کند. پس از مصرف رانندگی نکنید."
+        }
+      ]
+    },
+    {
+      "id": "drug-solvita",
+      "name": {
+        "en": "Solvita",
+        "fa": "سولویتا"
+      },
+      "activeIngredientId": "ai-solvitol",
+      "strength": "1000 IU",
+      "form": {
+        "en": "Capsule",
+        "fa": "کپسول"
+      },
+      "route": {
+        "en": "Oral",
+        "fa": "خوراکی"
+      },
+      "category": {
+        "en": "Demo supplement class",
+        "fa": "گروه نمایشی مکمل"
+      },
+      "instructions": {
+        "en": "Take one capsule with lunch.",
+        "fa": "یک کپسول همراه ناهار مصرف شود."
+      },
+      "warnings": [
+        {
+          "en": "Fictional warning: demo supplement, keep out of reach of children.",
+          "fa": "هشدار فرضی: مکمل نمایشی؛ دور از دسترس کودکان نگه دارید."
+        }
+      ]
+    }
+  ],
+  "knowledgeSources": [
+    {
+      "id": "ks-1",
+      "title": {
+        "en": "Demo Formulary Monograph: Demopril",
+        "fa": "تک‌نگار نمایشی فرمولری: دموپریل"
+      },
+      "type": {
+        "en": "Monograph",
+        "fa": "تک‌نگار"
+      },
+      "version": "demo-0.1"
+    },
+    {
+      "id": "ks-2",
+      "title": {
+        "en": "Demo Patient Leaflet: Glycanor",
+        "fa": "برگهٔ نمایشی بیمار: گلیکانور"
+      },
+      "type": {
+        "en": "Patient leaflet",
+        "fa": "برگهٔ بیمار"
+      },
+      "version": "demo-0.1"
+    },
+    {
+      "id": "ks-3",
+      "title": {
+        "en": "Demo Guide: Missed Doses",
+        "fa": "راهنمای نمایشی: دوز فراموش‌شده"
+      },
+      "type": {
+        "en": "Guideline",
+        "fa": "راهنما"
+      },
+      "version": "demo-0.2"
+    },
+    {
+      "id": "ks-4",
+      "title": {
+        "en": "Demo Interaction Table (fictional)",
+        "fa": "جدول نمایشی تداخل (فرضی)"
+      },
+      "type": {
+        "en": "Interaction table",
+        "fa": "جدول تداخل"
+      },
+      "version": "demo-0.1"
+    }
+  ],
+  "interactions": [
+    {
+      "id": "ix-1",
+      "drugAId": "drug-demopril",
+      "drugBId": "drug-nocturin",
+      "severity": "moderate",
+      "summary": {
+        "en": "Fictional: taken together, dizziness may feel stronger.",
+        "fa": "فرضی: مصرف هم‌زمان ممکن است سرگیجه را بیشتر کند."
+      },
+      "management": {
+        "en": "Pharmacist review suggested. Do not change doses on your own.",
+        "fa": "بازبینی توسط داروساز توصیه می‌شود. دوزها را خودسرانه تغییر ندهید."
+      },
+      "sourceId": "ks-4"
+    },
+    {
+      "id": "ix-2",
+      "drugAId": "drug-glycanor",
+      "drugBId": "drug-solvita",
+      "severity": "minor",
+      "summary": {
+        "en": "Fictional: minor timing note, no action needed.",
+        "fa": "فرضی: نکتهٔ جزئی دربارهٔ زمان مصرف؛ اقدامی لازم نیست."
+      },
+      "management": {
+        "en": "Informational only.",
+        "fa": "صرفاً اطلاعاتی."
+      },
+      "sourceId": "ks-4"
+    }
+  ],
+  "patients": [
+    {
+      "id": "pt-sara",
+      "name": {
+        "en": "Sara Ahmadi",
+        "fa": "سارا احمدی"
+      },
+      "age": 42,
+      "sex": "F",
+      "risk": "medium",
+      "adherence": 86,
+      "lastCheckInDaysAgo": 0,
+      "conditions": [
+        {
+          "en": "Demo condition A",
+          "fa": "بیماری نمایشی الف"
+        },
+        {
+          "en": "Demo condition B",
+          "fa": "بیماری نمایشی ب"
+        }
+      ],
+      "allergies": [
+        {
+          "en": "Fictional allergen X",
+          "fa": "حساسیت فرضی X"
+        }
+      ],
+      "drugIds": [
+        "drug-demopril",
+        "drug-glycanor",
+        "drug-nocturin",
+        "drug-solvita"
+      ],
+      "adherenceSeries": [
+        92,
+        88,
+        90,
+        85,
+        80,
+        84,
+        86,
+        91,
+        89,
+        83,
+        78,
+        82,
+        88,
+        86
+      ],
+      "symptoms": [
+        {
+          "id": "sy-1",
+          "term": {
+            "en": "Mild headache",
+            "fa": "سردرد خفیف"
+          },
+          "severity": "mild",
+          "daysAgo": 1
+        },
+        {
+          "id": "sy-2",
+          "term": {
+            "en": "Dizziness in the morning",
+            "fa": "سرگیجه صبحگاهی"
+          },
+          "severity": "moderate",
+          "daysAgo": 3
+        }
+      ]
+    },
+    {
+      "id": "pt-1",
+      "name": {
+        "en": "Ali Rezaei",
+        "fa": "علی رضایی"
+      },
+      "age": 67,
+      "sex": "M",
+      "risk": "high",
+      "adherence": 61,
+      "lastCheckInDaysAgo": 4,
+      "conditions": [
+        {
+          "en": "Demo condition A",
+          "fa": "بیماری نمایشی الف"
+        }
+      ],
+      "allergies": [],
+      "drugIds": [
+        "drug-demopril",
+        "drug-nocturin",
+        "drug-glycanor"
+      ],
+      "adherenceSeries": [
+        70,
+        66,
+        64,
+        60,
+        58,
+        62,
+        61,
+        57,
+        60,
+        63,
+        59,
+        55,
+        60,
+        61
+      ],
+      "symptoms": [
+        {
+          "id": "sy-3",
+          "term": {
+            "en": "Fatigue",
+            "fa": "خستگی"
+          },
+          "severity": "moderate",
+          "daysAgo": 2
+        }
+      ]
+    },
+    {
+      "id": "pt-2",
+      "name": {
+        "en": "Maryam Hosseini",
+        "fa": "مریم حسینی"
+      },
+      "age": 55,
+      "sex": "F",
+      "risk": "medium",
+      "adherence": 78,
+      "lastCheckInDaysAgo": 1,
+      "conditions": [
+        {
+          "en": "Demo condition B",
+          "fa": "بیماری نمایشی ب"
+        }
+      ],
+      "allergies": [
+        {
+          "en": "Fictional allergen Y",
+          "fa": "حساسیت فرضی Y"
+        }
+      ],
+      "drugIds": [
+        "drug-glycanor",
+        "drug-solvita"
+      ],
+      "adherenceSeries": [
+        80,
+        78,
+        82,
+        76,
+        74,
+        79,
+        78,
+        81,
+        77,
+        75,
+        80,
+        78,
+        76,
+        78
+      ],
+      "symptoms": []
+    },
+    {
+      "id": "pt-3",
+      "name": {
+        "en": "Hamid Nouri",
+        "fa": "حمید نوری"
+      },
+      "age": 71,
+      "sex": "M",
+      "risk": "high",
+      "adherence": 54,
+      "lastCheckInDaysAgo": 6,
+      "conditions": [
+        {
+          "en": "Demo condition A",
+          "fa": "بیماری نمایشی الف"
+        },
+        {
+          "en": "Demo condition C",
+          "fa": "بیماری نمایشی ج"
+        }
+      ],
+      "allergies": [],
+      "drugIds": [
+        "drug-demopril",
+        "drug-respirex",
+        "drug-nocturin"
+      ],
+      "adherenceSeries": [
+        60,
+        58,
+        55,
+        52,
+        50,
+        56,
+        54,
+        51,
+        55,
+        53,
+        50,
+        52,
+        56,
+        54
+      ],
+      "symptoms": [
+        {
+          "id": "sy-4",
+          "term": {
+            "en": "Shortness of breath (demo)",
+            "fa": "تنگی نفس (نمایشی)"
+          },
+          "severity": "moderate",
+          "daysAgo": 1
+        }
+      ]
+    },
+    {
+      "id": "pt-4",
+      "name": {
+        "en": "Neda Karimi",
+        "fa": "ندا کریمی"
+      },
+      "age": 34,
+      "sex": "F",
+      "risk": "low",
+      "adherence": 95,
+      "lastCheckInDaysAgo": 0,
+      "conditions": [
+        {
+          "en": "Demo condition B",
+          "fa": "بیماری نمایشی ب"
+        }
+      ],
+      "allergies": [],
+      "drugIds": [
+        "drug-solvita"
+      ],
+      "adherenceSeries": [
+        96,
+        94,
+        97,
+        95,
+        93,
+        96,
+        95,
+        94,
+        97,
+        96,
+        95,
+        94,
+        96,
+        95
+      ],
+      "symptoms": []
+    },
+    {
+      "id": "pt-5",
+      "name": {
+        "en": "Reza Moradi",
+        "fa": "رضا مرادی"
+      },
+      "age": 49,
+      "sex": "M",
+      "risk": "low",
+      "adherence": 91,
+      "lastCheckInDaysAgo": 2,
+      "conditions": [
+        {
+          "en": "Demo condition A",
+          "fa": "بیماری نمایشی الف"
+        }
+      ],
+      "allergies": [],
+      "drugIds": [
+        "drug-demopril"
+      ],
+      "adherenceSeries": [
+        90,
+        92,
+        91,
+        89,
+        93,
+        90,
+        91,
+        92,
+        90,
+        91,
+        93,
+        89,
+        92,
+        91
+      ],
+      "symptoms": []
+    },
+    {
+      "id": "pt-6",
+      "name": {
+        "en": "Zahra Ebrahimi",
+        "fa": "زهرا ابراهیمی"
+      },
+      "age": 62,
+      "sex": "F",
+      "risk": "medium",
+      "adherence": 72,
+      "lastCheckInDaysAgo": 3,
+      "conditions": [
+        {
+          "en": "Demo condition C",
+          "fa": "بیماری نمایشی ج"
+        }
+      ],
+      "allergies": [
+        {
+          "en": "Fictional allergen X",
+          "fa": "حساسیت فرضی X"
+        }
+      ],
+      "drugIds": [
+        "drug-respirex",
+        "drug-glycanor"
+      ],
+      "adherenceSeries": [
+        75,
+        72,
+        70,
+        74,
+        71,
+        73,
+        72,
+        70,
+        69,
+        73,
+        74,
+        71,
+        72,
+        72
+      ],
+      "symptoms": [
+        {
+          "id": "sy-5",
+          "term": {
+            "en": "Dry cough",
+            "fa": "سرفهٔ خشک"
+          },
+          "severity": "mild",
+          "daysAgo": 4
+        }
+      ]
+    },
+    {
+      "id": "pt-7",
+      "name": {
+        "en": "Kian Tehrani",
+        "fa": "کیان تهرانی"
+      },
+      "age": 29,
+      "sex": "M",
+      "risk": "low",
+      "adherence": 88,
+      "lastCheckInDaysAgo": 1,
+      "conditions": [],
+      "allergies": [],
+      "drugIds": [
+        "drug-solvita"
+      ],
+      "adherenceSeries": [
+        88,
+        90,
+        87,
+        89,
+        86,
+        88,
+        90,
+        87,
+        88,
+        89,
+        86,
+        88,
+        90,
+        88
+      ],
+      "symptoms": []
+    }
+  ],
+  "prescriptions": [
+    {
+      "id": "rx-1001",
+      "patientId": "pt-sara",
+      "prescriber": {
+        "en": "Dr. Reza Karimi (demo)",
+        "fa": "دکتر رضا کریمی (نمایشی)"
+      },
+      "issuedDaysAgo": 18,
+      "status": "active",
+      "refillsLeft": 2,
+      "items": [
+        {
+          "drugId": "drug-demopril",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "Once daily",
+            "fa": "روزی یک بار"
+          },
+          "times": [
+            "08:00"
+          ],
+          "durationDays": 90
+        },
+        {
+          "drugId": "drug-glycanor",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "Twice daily with meals",
+            "fa": "روزی دو بار همراه غذا"
+          },
+          "times": [
+            "08:30",
+            "20:00"
+          ],
+          "durationDays": 90
+        },
+        {
+          "drugId": "drug-nocturin",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "At bedtime",
+            "fa": "هنگام خواب"
+          },
+          "times": [
+            "22:30"
+          ],
+          "durationDays": 30
+        }
+      ]
+    },
+    {
+      "id": "rx-1002",
+      "patientId": "pt-sara",
+      "prescriber": {
+        "en": "Dr. Reza Karimi (demo)",
+        "fa": "دکتر رضا کریمی (نمایشی)"
+      },
+      "issuedDaysAgo": 40,
+      "status": "active",
+      "refillsLeft": 1,
+      "items": [
+        {
+          "drugId": "drug-solvita",
+          "dose": {
+            "en": "1 capsule",
+            "fa": "۱ کپسول"
+          },
+          "frequency": {
+            "en": "Once daily with lunch",
+            "fa": "روزی یک بار همراه ناهار"
+          },
+          "times": [
+            "13:00"
+          ],
+          "durationDays": 120
+        }
+      ]
+    },
+    {
+      "id": "rx-1003",
+      "patientId": "pt-1",
+      "prescriber": {
+        "en": "Dr. Reza Karimi (demo)",
+        "fa": "دکتر رضا کریمی (نمایشی)"
+      },
+      "issuedDaysAgo": 5,
+      "status": "active",
+      "refillsLeft": 3,
+      "items": [
+        {
+          "drugId": "drug-demopril",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "Once daily",
+            "fa": "روزی یک بار"
+          },
+          "times": [
+            "08:00"
+          ],
+          "durationDays": 60
+        },
+        {
+          "drugId": "drug-nocturin",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "At bedtime",
+            "fa": "هنگام خواب"
+          },
+          "times": [
+            "22:30"
+          ],
+          "durationDays": 30
+        }
+      ]
+    },
+    {
+      "id": "rx-1004",
+      "patientId": "pt-3",
+      "prescriber": {
+        "en": "Dr. Leila Sadeghi (demo)",
+        "fa": "دکتر لیلا صادقی (نمایشی)"
+      },
+      "issuedDaysAgo": 2,
+      "status": "pending-review",
+      "refillsLeft": 0,
+      "items": [
+        {
+          "drugId": "drug-respirex",
+          "dose": {
+            "en": "2 puffs",
+            "fa": "۲ پاف"
+          },
+          "frequency": {
+            "en": "Morning",
+            "fa": "صبح"
+          },
+          "times": [
+            "09:00"
+          ],
+          "durationDays": 30
+        },
+        {
+          "drugId": "drug-nocturin",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "At bedtime",
+            "fa": "هنگام خواب"
+          },
+          "times": [
+            "22:30"
+          ],
+          "durationDays": 30
+        }
+      ]
+    },
+    {
+      "id": "rx-1005",
+      "patientId": "pt-2",
+      "prescriber": {
+        "en": "Dr. Leila Sadeghi (demo)",
+        "fa": "دکتر لیلا صادقی (نمایشی)"
+      },
+      "issuedDaysAgo": 1,
+      "status": "pending-review",
+      "refillsLeft": 1,
+      "items": [
+        {
+          "drugId": "drug-glycanor",
+          "dose": {
+            "en": "1 tablet",
+            "fa": "۱ قرص"
+          },
+          "frequency": {
+            "en": "Twice daily with meals",
+            "fa": "روزی دو بار همراه غذا"
+          },
+          "times": [
+            "08:30",
+            "20:00"
+          ],
+          "durationDays": 60
+        },
+        {
+          "drugId": "drug-solvita",
+          "dose": {
+            "en": "1 capsule",
+            "fa": "۱ کپسول"
+          },
+          "frequency": {
+            "en": "Once daily",
+            "fa": "روزی یک بار"
+          },
+          "times": [
+            "13:00"
+          ],
+          "durationDays": 60
+        }
+      ]
+    },
+    {
+      "id": "rx-1006",
+      "patientId": "pt-6",
+      "prescriber": {
+        "en": "Dr. Leila Sadeghi (demo)",
+        "fa": "دکتر لیلا صادقی (نمایشی)"
+      },
+      "issuedDaysAgo": 9,
+      "status": "dispensed",
+      "refillsLeft": 2,
+      "items": [
+        {
+          "drugId": "drug-respirex",
+          "dose": {
+            "en": "2 puffs",
+            "fa": "۲ پاف"
+          },
+          "frequency": {
+            "en": "Morning",
+            "fa": "صبح"
+          },
+          "times": [
+            "09:00"
+          ],
+          "durationDays": 30
+        }
+      ]
+    }
+  ],
+  "adrReports": [
+    {
+      "id": "adr-1",
+      "patientId": "pt-sara",
+      "drugId": "drug-demopril",
+      "event": {
+        "en": "Dizziness on standing (fictional)",
+        "fa": "سرگیجه هنگام ایستادن (فرضی)"
+      },
+      "severity": "moderate",
+      "status": "new",
+      "reportedDaysAgo": 1,
+      "causality": "unassessed"
+    },
+    {
+      "id": "adr-2",
+      "patientId": "pt-3",
+      "drugId": "drug-nocturin",
+      "event": {
+        "en": "Next-day drowsiness (fictional)",
+        "fa": "خواب‌آلودگی روز بعد (فرضی)"
+      },
+      "severity": "moderate",
+      "status": "under-review",
+      "reportedDaysAgo": 3,
+      "causality": "possible"
+    },
+    {
+      "id": "adr-3",
+      "patientId": "pt-2",
+      "drugId": "drug-glycanor",
+      "event": {
+        "en": "Mild stomach upset (fictional)",
+        "fa": "ناراحتی خفیف معده (فرضی)"
+      },
+      "severity": "mild",
+      "status": "reviewed",
+      "reportedDaysAgo": 12,
+      "causality": "possible"
+    },
+    {
+      "id": "adr-4",
+      "patientId": "pt-1",
+      "drugId": "drug-demopril",
+      "event": {
+        "en": "Persistent dry cough (fictional)",
+        "fa": "سرفهٔ خشک مداوم (فرضی)"
+      },
+      "severity": "moderate",
+      "status": "new",
+      "reportedDaysAgo": 0,
+      "causality": "unassessed"
+    }
+  ],
+  "patientHome": {
+    "patientId": "pt-sara",
+    "alerts": [
+      {
+        "id": "al-1",
+        "severity": "warning",
+        "title": {
+          "en": "Pharmacist is reviewing two of your medicines",
+          "fa": "داروساز در حال بررسی دو داروی شماست"
+        },
+        "body": {
+          "en": "Demopril and Nocturin were flagged for a routine check. Keep taking them as prescribed.",
+          "fa": "دموپریل و نوکتورین برای بررسی روتین علامت‌گذاری شده‌اند. طبق نسخه مصرف را ادامه دهید."
+        },
+        "action": "medications"
+      },
+      {
+        "id": "al-2",
+        "severity": "info",
+        "title": {
+          "en": "Refill due in 3 days",
+          "fa": "تمدید دارو تا ۳ روز دیگر"
+        },
+        "body": {
+          "en": "Glycanor supply is running low (demo).",
+          "fa": "موجودی گلیکانور رو به اتمام است (نمایشی)."
+        },
+        "action": "medications"
+      }
+    ],
+    "activity": [
+      {
+        "id": "ac-1",
+        "kind": "dose",
+        "minutesAgo": 95,
+        "text": {
+          "en": "You took Demopril 10 mg",
+          "fa": "دموپریل ۱۰ میلی‌گرم را مصرف کردید"
+        }
+      },
+      {
+        "id": "ac-2",
+        "kind": "checkin",
+        "minutesAgo": 1560,
+        "text": {
+          "en": "Daily check-in completed",
+          "fa": "چک‌این روزانه ثبت شد"
+        }
+      },
+      {
+        "id": "ac-3",
+        "kind": "ai",
+        "minutesAgo": 2900,
+        "text": {
+          "en": "You asked the assistant about missed doses",
+          "fa": "از دستیار دربارهٔ دوز فراموش‌شده پرسیدید"
+        }
+      },
+      {
+        "id": "ac-4",
+        "kind": "review",
+        "minutesAgo": 4300,
+        "text": {
+          "en": "Pharmacist reviewed your prescription",
+          "fa": "داروساز نسخهٔ شما را بازبینی کرد"
+        }
+      }
+    ],
+    "adherenceSeries30": [
+      90,
+      92,
+      88,
+      94,
+      96,
+      90,
+      84,
+      80,
+      86,
+      90,
+      92,
+      94,
+      88,
+      84,
+      82,
+      86,
+      90,
+      92,
+      94,
+      96,
+      90,
+      88,
+      84,
+      80,
+      78,
+      86,
+      90,
+      92,
+      88,
+      86
+    ],
+    "missedSeedDose": {
+      "prescriptionItemDrugId": "drug-glycanor",
+      "time": "08:30"
+    }
+  },
+  "checkIn": {
+    "moods": [
+      {
+        "value": 1,
+        "label": {
+          "en": "Very low",
+          "fa": "خیلی بد"
+        }
+      },
+      {
+        "value": 2,
+        "label": {
+          "en": "Low",
+          "fa": "بد"
+        }
+      },
+      {
+        "value": 3,
+        "label": {
+          "en": "Okay",
+          "fa": "معمولی"
+        }
+      },
+      {
+        "value": 4,
+        "label": {
+          "en": "Good",
+          "fa": "خوب"
+        }
+      },
+      {
+        "value": 5,
+        "label": {
+          "en": "Great",
+          "fa": "عالی"
+        }
+      }
+    ],
+    "symptoms": [
+      {
+        "id": "headache",
+        "label": {
+          "en": "Headache",
+          "fa": "سردرد"
+        },
+        "urgent": false
+      },
+      {
+        "id": "nausea",
+        "label": {
+          "en": "Nausea",
+          "fa": "تهوع"
+        },
+        "urgent": false
+      },
+      {
+        "id": "dizziness",
+        "label": {
+          "en": "Dizziness",
+          "fa": "سرگیجه"
+        },
+        "urgent": false
+      },
+      {
+        "id": "fatigue",
+        "label": {
+          "en": "Fatigue",
+          "fa": "خستگی"
+        },
+        "urgent": false
+      },
+      {
+        "id": "cough",
+        "label": {
+          "en": "Cough",
+          "fa": "سرفه"
+        },
+        "urgent": false
+      },
+      {
+        "id": "rash",
+        "label": {
+          "en": "Skin rash",
+          "fa": "بثورات پوستی"
+        },
+        "urgent": false
+      },
+      {
+        "id": "chest-pain",
+        "label": {
+          "en": "Chest pain",
+          "fa": "درد قفسه سینه"
+        },
+        "urgent": true
+      },
+      {
+        "id": "breathing",
+        "label": {
+          "en": "Difficulty breathing",
+          "fa": "مشکل در تنفس"
+        },
+        "urgent": true
+      }
+    ],
+    "history": [
+      {
+        "daysAgo": 1,
+        "mood": 4,
+        "symptoms": [
+          "headache"
+        ]
+      },
+      {
+        "daysAgo": 2,
+        "mood": 3,
+        "symptoms": [
+          "dizziness",
+          "fatigue"
+        ]
+      },
+      {
+        "daysAgo": 3,
+        "mood": 4,
+        "symptoms": []
+      },
+      {
+        "daysAgo": 4,
+        "mood": 5,
+        "symptoms": []
+      }
+    ]
+  },
+  "pharmacist": {
+    "reviews": [
+      {
+        "id": "rv-1",
+        "patientId": "pt-3",
+        "prescriptionId": "rx-1004",
+        "priority": "high",
+        "interactionIds": [
+          "ix-1"
+        ],
+        "status": "open",
+        "waitingMinutes": 42
+      },
+      {
+        "id": "rv-2",
+        "patientId": "pt-sara",
+        "prescriptionId": "rx-1001",
+        "priority": "high",
+        "interactionIds": [
+          "ix-1"
+        ],
+        "status": "open",
+        "waitingMinutes": 130
+      },
+      {
+        "id": "rv-3",
+        "patientId": "pt-2",
+        "prescriptionId": "rx-1005",
+        "priority": "normal",
+        "interactionIds": [
+          "ix-2"
+        ],
+        "status": "open",
+        "waitingMinutes": 260
+      }
+    ],
+    "questions": [
+      {
+        "id": "q-1",
+        "patientId": "pt-sara",
+        "askedMinutesAgo": 25,
+        "text": {
+          "en": "Can I take Demopril and Nocturin close together?",
+          "fa": "آیا می‌توانم دموپریل و نوکتورین را نزدیک هم مصرف کنم؟"
+        },
+        "aiDraft": {
+          "en": "Based on the demo interaction table, a pharmacist review is suggested before changing timing. (AI draft: needs pharmacist approval)",
+          "fa": "بر اساس جدول نمایشی تداخل، پیش از تغییر زمان مصرف بازبینی داروساز توصیه می‌شود. (پیش‌نویس هوش مصنوعی: نیازمند تأیید داروساز)"
+        },
+        "sourceIds": [
+          "ks-4"
+        ],
+        "status": "open"
+      },
+      {
+        "id": "q-2",
+        "patientId": "pt-1",
+        "askedMinutesAgo": 180,
+        "text": {
+          "en": "I forgot yesterday's dose. What should I do?",
+          "fa": "دوز دیروز را فراموش کردم. چه کنم؟"
+        },
+        "aiDraft": {
+          "en": "The demo missed-dose guide says not to double the next dose. (AI draft: needs pharmacist approval)",
+          "fa": "راهنمای نمایشی دوز فراموش‌شده می‌گوید دوز بعدی را دوبرابر نکنید. (پیش‌نویس هوش مصنوعی: نیازمند تأیید داروساز)"
+        },
+        "sourceIds": [
+          "ks-3"
+        ],
+        "status": "open"
+      },
+      {
+        "id": "q-3",
+        "patientId": "pt-6",
+        "askedMinutesAgo": 600,
+        "text": {
+          "en": "Is it normal to have a dry cough?",
+          "fa": "آیا سرفهٔ خشک طبیعی است؟"
+        },
+        "aiDraft": {
+          "en": "There is not enough information in the demo sources. Please ask the patient to describe duration and severity.",
+          "fa": "اطلاعات کافی در منابع نمایشی وجود ندارد. لطفاً از بیمار مدت و شدت را بپرسید."
+        },
+        "sourceIds": [],
+        "status": "open"
+      }
+    ],
+    "followUps": [
+      {
+        "id": "fu-1",
+        "patientId": "pt-1",
+        "dueInDays": 0,
+        "reason": {
+          "en": "Check adherence after ADR report",
+          "fa": "بررسی پایبندی پس از گزارش عارضه"
+        },
+        "done": false
+      },
+      {
+        "id": "fu-2",
+        "patientId": "pt-3",
+        "dueInDays": 1,
+        "reason": {
+          "en": "Call about drowsiness",
+          "fa": "تماس دربارهٔ خواب‌آلودگی"
+        },
+        "done": false
+      },
+      {
+        "id": "fu-3",
+        "patientId": "pt-6",
+        "dueInDays": 3,
+        "reason": {
+          "en": "Inhaler technique check",
+          "fa": "بررسی روش مصرف اسپری"
+        },
+        "done": false
+      },
+      {
+        "id": "fu-4",
+        "patientId": "pt-2",
+        "dueInDays": -1,
+        "reason": {
+          "en": "Confirm stomach upset resolved",
+          "fa": "تأیید رفع ناراحتی معده"
+        },
+        "done": true
+      }
+    ]
+  },
+  "pharmacy": {
+    "inventory": [
+      {
+        "drugId": "drug-demopril",
+        "stock": 240,
+        "reorderLevel": 100,
+        "batch": "DEMO-A17",
+        "expiresInMonths": 14
+      },
+      {
+        "drugId": "drug-glycanor",
+        "stock": 64,
+        "reorderLevel": 120,
+        "batch": "DEMO-B02",
+        "expiresInMonths": 9
+      },
+      {
+        "drugId": "drug-respirex",
+        "stock": 38,
+        "reorderLevel": 30,
+        "batch": "DEMO-C11",
+        "expiresInMonths": 5
+      },
+      {
+        "drugId": "drug-nocturin",
+        "stock": 150,
+        "reorderLevel": 80,
+        "batch": "DEMO-D05",
+        "expiresInMonths": 2
+      },
+      {
+        "drugId": "drug-solvita",
+        "stock": 320,
+        "reorderLevel": 100,
+        "batch": "DEMO-E09",
+        "expiresInMonths": 20
+      }
+    ],
+    "dispensing": [
+      {
+        "id": "dp-1",
+        "prescriptionId": "rx-1005",
+        "patientId": "pt-2",
+        "stage": "received"
+      },
+      {
+        "id": "dp-2",
+        "prescriptionId": "rx-1004",
+        "patientId": "pt-3",
+        "stage": "received"
+      },
+      {
+        "id": "dp-3",
+        "prescriptionId": "rx-1003",
+        "patientId": "pt-1",
+        "stage": "preparing"
+      },
+      {
+        "id": "dp-4",
+        "prescriptionId": "rx-1006",
+        "patientId": "pt-6",
+        "stage": "ready"
+      },
+      {
+        "id": "dp-5",
+        "prescriptionId": "rx-1002",
+        "patientId": "pt-sara",
+        "stage": "handed"
+      }
+    ],
+    "requests": [
+      {
+        "id": "rq-1",
+        "patientId": "pt-sara",
+        "kind": "refill",
+        "drugId": "drug-glycanor",
+        "note": {
+          "en": "Refill request",
+          "fa": "درخواست تمدید"
+        },
+        "agoMinutes": 35
+      },
+      {
+        "id": "rq-2",
+        "patientId": "pt-4",
+        "kind": "question",
+        "drugId": "drug-solvita",
+        "note": {
+          "en": "Question about timing",
+          "fa": "پرسش دربارهٔ زمان مصرف"
+        },
+        "agoMinutes": 120
+      },
+      {
+        "id": "rq-3",
+        "patientId": "pt-5",
+        "kind": "delivery",
+        "drugId": "drug-demopril",
+        "note": {
+          "en": "Home delivery request",
+          "fa": "درخواست ارسال به منزل"
+        },
+        "agoMinutes": 300
+      }
+    ],
+    "alerts": [
+      {
+        "id": "pa-1",
+        "kind": "low-stock",
+        "drugId": "drug-glycanor",
+        "severity": "warning",
+        "text": {
+          "en": "Stock below reorder level",
+          "fa": "موجودی کمتر از حد سفارش"
+        }
+      },
+      {
+        "id": "pa-2",
+        "kind": "expiry",
+        "drugId": "drug-nocturin",
+        "severity": "warning",
+        "text": {
+          "en": "Batch DEMO-D05 expires in 2 months",
+          "fa": "بچ DEMO-D05 تا ۲ ماه دیگر منقضی می‌شود"
+        }
+      },
+      {
+        "id": "pa-3",
+        "kind": "recall-demo",
+        "drugId": "drug-respirex",
+        "severity": "info",
+        "text": {
+          "en": "Demo notice: sample recall drill, no action",
+          "fa": "اعلان نمایشی: تمرین فراخوان، بدون اقدام"
+        }
+      }
+    ]
+  },
+  "industry": {
+    "k": 11,
+    "months": 12,
+    "adrTrend": [
+      {
+        "drugId": "drug-demopril",
+        "counts": [
+          14,
+          15,
+          13,
+          16,
+          18,
+          17,
+          21,
+          24,
+          22,
+          26,
+          29,
+          31
+        ]
+      },
+      {
+        "drugId": "drug-nocturin",
+        "counts": [
+          9,
+          8,
+          12,
+          10,
+          13,
+          15,
+          14,
+          17,
+          19,
+          18,
+          21,
+          23
+        ]
+      },
+      {
+        "drugId": "drug-glycanor",
+        "counts": [
+          22,
+          21,
+          23,
+          20,
+          22,
+          21,
+          19,
+          20,
+          18,
+          19,
+          17,
+          18
+        ]
+      },
+      {
+        "drugId": "drug-respirex",
+        "counts": [
+          4,
+          6,
+          5,
+          7,
+          6,
+          8,
+          9,
+          7,
+          8,
+          10,
+          9,
+          12
+        ]
+      }
+    ],
+    "experience": [
+      {
+        "dimension": {
+          "en": "Ease of taking doses on time",
+          "fa": "سهولت مصرف به‌موقع"
+        },
+        "score": 78,
+        "n": 1240
+      },
+      {
+        "dimension": {
+          "en": "Understanding of instructions",
+          "fa": "درک دستورهای مصرف"
+        },
+        "score": 84,
+        "n": 1240
+      },
+      {
+        "dimension": {
+          "en": "Confidence in side-effect information",
+          "fa": "اطمینان به اطلاعات عوارض"
+        },
+        "score": 69,
+        "n": 1180
+      },
+      {
+        "dimension": {
+          "en": "Access to pharmacist help",
+          "fa": "دسترسی به کمک داروساز"
+        },
+        "score": 73,
+        "n": 1102
+      }
+    ],
+    "signals": [
+      {
+        "id": "sg-1",
+        "drugId": "drug-demopril",
+        "term": {
+          "en": "Dizziness on standing (fictional)",
+          "fa": "سرگیجه هنگام ایستادن (فرضی)"
+        },
+        "strength": "moderate",
+        "reports": 31,
+        "status": "monitoring",
+        "firstSeenMonthsAgo": 5
+      },
+      {
+        "id": "sg-2",
+        "drugId": "drug-nocturin",
+        "term": {
+          "en": "Next-day drowsiness (fictional)",
+          "fa": "خواب‌آلودگی روز بعد (فرضی)"
+        },
+        "strength": "strong",
+        "reports": 23,
+        "status": "new",
+        "firstSeenMonthsAgo": 2
+      },
+      {
+        "id": "sg-3",
+        "drugId": "drug-respirex",
+        "term": {
+          "en": "Throat irritation (fictional)",
+          "fa": "تحریک گلو (فرضی)"
+        },
+        "strength": "weak",
+        "reports": 8,
+        "status": "monitoring",
+        "firstSeenMonthsAgo": 7
+      },
+      {
+        "id": "sg-4",
+        "drugId": "drug-glycanor",
+        "term": {
+          "en": "Stomach upset (fictional)",
+          "fa": "ناراحتی معده (فرضی)"
+        },
+        "strength": "weak",
+        "reports": 18,
+        "status": "closed",
+        "firstSeenMonthsAgo": 11
+      }
+    ],
+    "reports": [
+      {
+        "id": "rp-1",
+        "title": {
+          "en": "Quarterly ADR summary (demo)",
+          "fa": "خلاصهٔ فصلی عوارض (نمایشی)"
+        },
+        "period": {
+          "en": "Last quarter",
+          "fa": "فصل گذشته"
+        },
+        "kind": {
+          "en": "Aggregate PDF",
+          "fa": "PDF تجمیعی"
+        },
+        "updatedDaysAgo": 4
+      },
+      {
+        "id": "rp-2",
+        "title": {
+          "en": "Patient experience snapshot (demo)",
+          "fa": "تصویر لحظه‌ای تجربهٔ بیمار (نمایشی)"
+        },
+        "period": {
+          "en": "Last 30 days",
+          "fa": "۳۰ روز گذشته"
+        },
+        "kind": {
+          "en": "Dashboard export",
+          "fa": "خروجی داشبورد"
+        },
+        "updatedDaysAgo": 9
+      },
+      {
+        "id": "rp-3",
+        "title": {
+          "en": "Signal review log (demo)",
+          "fa": "گزارش بازبینی سیگنال (نمایشی)"
+        },
+        "period": {
+          "en": "Year to date",
+          "fa": "از ابتدای سال"
+        },
+        "kind": {
+          "en": "Aggregate CSV",
+          "fa": "CSV تجمیعی"
+        },
+        "updatedDaysAgo": 15
+      }
+    ]
+  },
+  "physician": {
+    "physicianName": {
+      "en": "Dr. Reza Karimi (demo)",
+      "fa": "دکتر رضا کریمی (نمایشی)"
+    },
+    "aiSummary": {
+      "pt-sara": {
+        "text": {
+          "en": "Adherence is 86% over 14 days, with a dip 4 to 6 days ago that overlaps with a reported morning dizziness. A pharmacist review of Demopril + Nocturin is open. (AI draft from demo data; requires physician confirmation.)",
+          "fa": "پایبندی در ۱۴ روز گذشته ۸۶٪ است و ۴ تا ۶ روز پیش افتی دیده می‌شود که با سرگیجهٔ صبحگاهی گزارش‌شده هم‌زمان است. بازبینی داروساز برای دموپریل + نوکتورین باز است. (پیش‌نویس هوش مصنوعی از داده نمایشی؛ نیازمند تأیید پزشک.)"
+        },
+        "sourceIds": [
+          "ks-4",
+          "ks-3"
+        ],
+        "confidence": "medium"
+      }
+    },
+    "defaultAiSummary": {
+      "text": {
+        "en": "Summary is generated from demo records only. Review adherence and symptoms before acting. (AI draft; requires physician confirmation.)",
+        "fa": "خلاصه فقط از سوابق نمایشی ساخته شده است. پیش از اقدام، پایبندی و علائم را بررسی کنید. (پیش‌نویس هوش مصنوعی؛ نیازمند تأیید پزشک.)"
+      },
+      "sourceIds": [
+        "ks-3"
+      ],
+      "confidence": "low"
+    },
+    "reports": [
+      {
+        "id": "pr-1",
+        "title": {
+          "en": "Panel adherence overview",
+          "fa": "نمای کلی پایبندی بیماران"
+        },
+        "kind": {
+          "en": "Table + chart",
+          "fa": "جدول و نمودار"
+        },
+        "updatedDaysAgo": 1
+      },
+      {
+        "id": "pr-2",
+        "title": {
+          "en": "ADR summary for my patients",
+          "fa": "خلاصهٔ عوارض بیماران من"
+        },
+        "kind": {
+          "en": "Summary",
+          "fa": "خلاصه"
+        },
+        "updatedDaysAgo": 3
+      },
+      {
+        "id": "pr-3",
+        "title": {
+          "en": "Prescription changes this month",
+          "fa": "تغییرات نسخه در این ماه"
+        },
+        "kind": {
+          "en": "List",
+          "fa": "فهرست"
+        },
+        "updatedDaysAgo": 6
+      }
+    ]
+  },
+  "ai": {
+    "assistantName": {
+      "en": "MedSmarter Assistant",
+      "fa": "دستیار مدسمارتر"
+    },
+    "quickQuestions": [
+      {
+        "id": "qq-1",
+        "text": {
+          "en": "What should I do if I miss a dose?",
+          "fa": "اگر یک دوز را فراموش کنم چه کنم؟"
+        }
+      },
+      {
+        "id": "qq-2",
+        "text": {
+          "en": "Should I take Glycanor with food?",
+          "fa": "آیا گلیکانور را با غذا مصرف کنم؟"
+        }
+      },
+      {
+        "id": "qq-3",
+        "text": {
+          "en": "Can Demopril and Nocturin be taken together?",
+          "fa": "آیا دموپریل و نوکتورین را می‌توان با هم مصرف کرد؟"
+        }
+      },
+      {
+        "id": "qq-4",
+        "text": {
+          "en": "What are the warnings for Nocturin?",
+          "fa": "هشدارهای نوکتورین چیست؟"
+        }
+      }
+    ],
+    "answers": [
+      {
+        "id": "ans-missed",
+        "keywords": {
+          "en": [
+            "miss",
+            "forgot",
+            "forget",
+            "skipped"
+          ],
+          "fa": [
+            "فراموش",
+            "جا انداخ",
+            "جا افتاد"
+          ]
+        },
+        "text": {
+          "en": "In the demo guide, a missed dose should be taken as soon as you remember, unless the next dose is close. Do not take a double dose. If you are unsure, ask your pharmacist.",
+          "fa": "طبق راهنمای نمایشی، دوز فراموش‌شده را به محض یادآوری مصرف کنید، مگر اینکه زمان دوز بعدی نزدیک باشد. هرگز دوز را دوبرابر نکنید. اگر مطمئن نیستید از داروساز بپرسید."
+        },
+        "confidence": "high",
+        "sourceIds": [
+          "ks-3"
+        ],
+        "evidence": [
+          {
+            "sourceId": "ks-3",
+            "section": {
+              "en": "Section 2: Missed doses",
+              "fa": "بخش ۲: دوز فراموش‌شده"
+            },
+            "excerpt": {
+              "en": "Demo text: take the missed dose when remembered unless the next dose is near; never double.",
+              "fa": "متن نمایشی: دوز فراموش‌شده هنگام یادآوری مصرف شود مگر دوز بعدی نزدیک باشد؛ هرگز دوبرابر نشود."
+            }
+          }
+        ],
+        "followUps": [
+          {
+            "en": "What if it is almost time for the next dose?",
+            "fa": "اگر تقریباً زمان دوز بعدی باشد چه؟"
+          }
+        ],
+        "escalate": false
+      },
+      {
+        "id": "ans-food",
+        "keywords": {
+          "en": [
+            "food",
+            "meal",
+            "breakfast",
+            "with meals"
+          ],
+          "fa": [
+            "غذا",
+            "صبحانه",
+            "وعده"
+          ]
+        },
+        "text": {
+          "en": "The demo leaflet for Glycanor says to take it with meals to reduce stomach upset.",
+          "fa": "برگهٔ نمایشی گلیکانور می‌گوید آن را همراه غذا مصرف کنید تا ناراحتی معده کمتر شود."
+        },
+        "confidence": "high",
+        "sourceIds": [
+          "ks-2"
+        ],
+        "evidence": [
+          {
+            "sourceId": "ks-2",
+            "section": {
+              "en": "How to take",
+              "fa": "نحوه مصرف"
+            },
+            "excerpt": {
+              "en": "Demo text: take with breakfast and dinner.",
+              "fa": "متن نمایشی: همراه صبحانه و شام مصرف شود."
+            }
+          }
+        ],
+        "followUps": [],
+        "escalate": false
+      },
+      {
+        "id": "ans-interaction",
+        "keywords": {
+          "en": [
+            "together",
+            "interaction",
+            "combine",
+            "same time"
+          ],
+          "fa": [
+            "با هم",
+            "تداخل",
+            "نزدیک هم",
+            "هم‌زمان"
+          ]
+        },
+        "text": {
+          "en": "The demo interaction table flags Demopril + Nocturin as a moderate (fictional) interaction: dizziness may feel stronger. Please do not change timing or doses yourself; a pharmacist review is recommended.",
+          "fa": "جدول نمایشی تداخل، دموپریل + نوکتورین را یک تداخل متوسط (فرضی) علامت زده است: ممکن است سرگیجه بیشتر شود. لطفاً زمان یا دوز را خودسرانه تغییر ندهید؛ بازبینی داروساز توصیه می‌شود."
+        },
+        "confidence": "medium",
+        "sourceIds": [
+          "ks-4",
+          "ks-1"
+        ],
+        "evidence": [
+          {
+            "sourceId": "ks-4",
+            "section": {
+              "en": "Row 1",
+              "fa": "ردیف ۱"
+            },
+            "excerpt": {
+              "en": "Demo text: Demopril + Nocturin, moderate, pharmacist review suggested.",
+              "fa": "متن نمایشی: دموپریل + نوکتورین، متوسط، بازبینی داروساز پیشنهاد می‌شود."
+            }
+          },
+          {
+            "sourceId": "ks-1",
+            "section": {
+              "en": "Warnings",
+              "fa": "هشدارها"
+            },
+            "excerpt": {
+              "en": "Demo text: may cause dizziness when standing quickly.",
+              "fa": "متن نمایشی: ممکن است هنگام برخاستن سریع سرگیجه ایجاد کند."
+            }
+          }
+        ],
+        "followUps": [],
+        "escalate": true
+      },
+      {
+        "id": "ans-warnings",
+        "keywords": {
+          "en": [
+            "warning",
+            "side effect",
+            "drowsy",
+            "sleep",
+            "drive"
+          ],
+          "fa": [
+            "هشدار",
+            "عارضه",
+            "خواب‌آلود",
+            "رانندگی"
+          ]
+        },
+        "text": {
+          "en": "The demo monograph for Nocturin warns about drowsiness. Avoid driving after taking it. This information is fictional.",
+          "fa": "تک‌نگار نمایشی نوکتورین دربارهٔ خواب‌آلودگی هشدار می‌دهد. پس از مصرف رانندگی نکنید. این اطلاعات فرضی است."
+        },
+        "confidence": "medium",
+        "sourceIds": [
+          "ks-1"
+        ],
+        "evidence": [
+          {
+            "sourceId": "ks-1",
+            "section": {
+              "en": "Warnings",
+              "fa": "هشدارها"
+            },
+            "excerpt": {
+              "en": "Demo text: drowsiness; avoid driving.",
+              "fa": "متن نمایشی: خواب‌آلودگی؛ از رانندگی پرهیز شود."
+            }
+          }
+        ],
+        "followUps": [],
+        "escalate": false
+      }
+    ],
+    "fallback": {
+      "text": {
+        "en": "I could not find enough information about this in the approved demo sources, so I will not guess. Would you like to send this question to a pharmacist?",
+        "fa": "درباره این موضوع در منابع نمایشی تأییدشده اطلاعات کافی پیدا نکردم و حدس نمی‌زنم. می‌خواهید این پرسش را برای داروساز بفرستم؟"
+      },
+      "confidence": "low",
+      "sourceIds": [],
+      "evidence": [],
+      "followUps": [],
+      "escalate": true
+    },
+    "redFlag": {
+      "keywords": {
+        "en": [
+          "chest pain",
+          "can't breathe",
+          "cannot breathe",
+          "overdose",
+          "unconscious",
+          "suicid"
+        ],
+        "fa": [
+          "درد قفسه",
+          "نمی‌توانم نفس",
+          "نمیتونم نفس",
+          "مصرف بیش از حد",
+          "بی‌هوش",
+          "خودکشی"
+        ]
+      },
+      "title": {
+        "en": "This may be urgent",
+        "fa": "ممکن است اورژانسی باشد"
+      },
+      "body": {
+        "en": "I cannot assess emergencies. If you or someone else may be in danger, contact your local emergency service now. (Demo screen: no real emergency number is configured.)",
+        "fa": "من نمی‌توانم شرایط اورژانسی را ارزیابی کنم. اگر خودتان یا فرد دیگری در خطر است همین حالا با اورژانس محلی تماس بگیرید. (صفحه نمایشی: هیچ شماره اورژانس واقعی تنظیم نشده است.)"
+      }
+    },
+    "conversations": [
+      {
+        "id": "conv-1",
+        "title": {
+          "en": "Missed doses",
+          "fa": "دوز فراموش‌شده"
+        },
+        "updatedMinutesAgo": 2900,
+        "messages": [
+          {
+            "role": "user",
+            "text": {
+              "en": "What should I do if I miss a dose?",
+              "fa": "اگر یک دوز را فراموش کنم چه کنم؟"
+            }
+          },
+          {
+            "role": "assistant",
+            "answerId": "ans-missed"
+          }
+        ]
+      },
+      {
+        "id": "conv-2",
+        "title": {
+          "en": "Glycanor and food",
+          "fa": "گلیکانور و غذا"
+        },
+        "updatedMinutesAgo": 8700,
+        "messages": [
+          {
+            "role": "user",
+            "text": {
+              "en": "Should I take Glycanor with food?",
+              "fa": "آیا گلیکانور را با غذا مصرف کنم؟"
+            }
+          },
+          {
+            "role": "assistant",
+            "answerId": "ans-food"
+          }
+        ]
+      }
+    ]
+  }
+}
