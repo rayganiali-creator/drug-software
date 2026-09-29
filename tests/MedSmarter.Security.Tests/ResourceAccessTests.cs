@@ -176,4 +176,35 @@ public class ResourceAccessTests
         var b = await env.ActorAsync("demo-physician-b");
         Assert.Empty(await env.Users.ListRelatedPatientsAsync(b));
     }
+
+    [Fact]
+    public async Task Pharmacy_admin_reaches_a_patients_prescriptions_only_through_the_organization_consent()
+    {
+        using var env = new Env();
+        var pharmacyA = env.OrgId("org-demo-pharmacy-a");
+        var sara = env.UserId("demo-patient");
+        var ali = env.UserId("demo-patient-2");
+        Assert.True((await env.CanAsync("demo-pharmacy-admin", Permissions.PharmacyPrescriptionsRead, AccessResource.OrgPatient(pharmacyA, sara, "prescriptions"))).Allowed);
+        var noRelationship = await env.CanAsync("demo-pharmacy-admin", Permissions.PharmacyPrescriptionsRead, AccessResource.OrgPatient(pharmacyA, ali, "prescriptions"));
+        Assert.False(noRelationship.Allowed);
+        Assert.Equal("no_care_relationship", noRelationship.ReasonCode);
+        var otherOrg = await env.CanAsync("demo-pharmacy-admin", Permissions.PharmacyPrescriptionsRead, AccessResource.OrgPatient(env.OrgId("org-demo-pharmacy-b"), sara, "prescriptions"));
+        Assert.Equal(AccessLayer.Organization, otherOrg.Layer);
+        Assert.False(otherOrg.Allowed);
+    }
+
+    [Fact]
+    public async Task Revoking_the_organization_consent_stops_pharmacy_access_immediately()
+    {
+        using var env = new Env();
+        var sara = env.UserId("demo-patient");
+        var pharmacyA = env.OrgId("org-demo-pharmacy-a");
+        var res = AccessResource.OrgPatient(pharmacyA, sara, "prescriptions");
+        Assert.True((await env.CanAsync("demo-pharmacy-admin", Permissions.PharmacyPrescriptionsRead, res)).Allowed);
+        var consent = (await env.Consents.ListGivenAsync(sara)).Single(c => c.GranteeOrganizationId == pharmacyA);
+        Assert.True((await env.Consents.RevokeAsync(sara, consent.Id, "test", null)).Succeeded);
+        var d = await env.CanAsync("demo-pharmacy-admin", Permissions.PharmacyPrescriptionsRead, res);
+        Assert.False(d.Allowed);
+        Assert.Equal("consent_revoked", d.ReasonCode);
+    }
 }

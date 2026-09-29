@@ -3,12 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import { AppProviders } from "../AppProviders";
+import { LocalMockBackend } from "../auth/localMockBackend";
 import { routes } from "../routes";
 import { createMockServices } from "../services/mock/createMockServices";
 
 afterEach(cleanup);
-const open = (path: string, locale: "fa" | "en" = "en", now = () => new Date(2026, 8, 29, 10, 0)) =>
-  render(<AppProviders locale={locale} theme="light" services={createMockServices({ latencyMs: 0, now })}><RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} /></AppProviders>);
+const accountFor: Record<string, string> = { patient: "demo-patient", physician: "demo-physician", pharmacist: "demo-pharmacist", pharmacy: "demo-pharmacy-admin", industry: "demo-industry", admin: "demo-system-admin" };
+/** Opens a route signed in as the fictional account that owns that area (or `account`), without touching browser storage. */
+const open = (path: string, locale: "fa" | "en" = "en", now = () => new Date(2026, 8, 29, 10, 0), account?: string | null) => {
+  const area = /^\/app\/(\w+)/.exec(path)?.[1] ?? "";
+  const id = account === undefined ? accountFor[area] : account ?? undefined;
+  const auth = new LocalMockBackend({ storage: null, initialAccountId: id });
+  return render(<AppProviders locale={locale} theme="light" auth={auth} services={createMockServices({ latencyMs: 0, now })}><RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} /></AppProviders>);
+};
 
 describe("every route renders without errors", () => {
   const cases: [string, RegExp][] = [

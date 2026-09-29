@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/health_client.dart';
+import '../../auth/auth_controller.dart';
 import '../../components/app_icon.dart';
 import '../../components/buttons.dart';
 import '../../components/containers.dart';
@@ -57,6 +58,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ),
+        const SizedBox(height: Space.s4),
+        ListenableBuilder(
+          listenable: app.auth,
+          builder: (context, _) => _AccountCard(),
         ),
         const SizedBox(height: Space.s4),
         AppCard(
@@ -243,6 +249,131 @@ class _ApiStatusState extends State<_ApiStatus> {
                 );
               },
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Signed-in identity, sharing consents (revocable, effective at once) and sign-out. Demo controls are labelled DEMO DEV.
+class _AccountCard extends StatelessWidget {
+  // Deliberately not const: the ListenableBuilder above must be able to rebuild it when auth state changes.
+  // ignore: prefer_const_constructors_in_immutables
+  _AccountCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.app.auth;
+    final lang = context.app.locale.languageCode;
+    final user = auth.user;
+    if (user == null) return const SizedBox.shrink();
+    final consents = auth.consents;
+    return AppCard(
+      title: context.t('acct.title'),
+      subtitle: context.t('auth.signedInAs', {
+        'name': user.displayName[lang] ?? user.displayName['en']!,
+      }),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: Space.s1,
+            children: [
+              for (final r in user.roles)
+                AppBadge(text: context.t('authRole.$r'), tone: Tone.primary),
+            ],
+          ),
+          const SizedBox(height: Space.s4),
+          Semantics(
+            header: true,
+            child: Text(context.t('acct.consents'), style: context.text.label),
+          ),
+          Text(
+            context.t('acct.consentsSub'),
+            style: context.text.bodySmall.copyWith(
+              color: context.colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: Space.s2),
+          if (consents.isEmpty)
+            Text(context.t('acct.consentNone'), style: context.text.bodySmall)
+          else
+            for (final c in consents) _ConsentRow(consent: c, lang: lang),
+          const SizedBox(height: Space.s4),
+          Wrap(
+            spacing: Space.s2,
+            runSpacing: Space.s2,
+            children: [
+              AppButton(
+                label: context.t('auth.signOut'),
+                variant: ButtonVariant.secondary,
+                iconStart: 'logout',
+                onPressed: auth.signOut,
+              ),
+              AppButton(
+                label: context.t('auth.expireSession'),
+                variant: ButtonVariant.ghost,
+                size: ButtonSize.sm,
+                onPressed: auth.simulateExpiry,
+              ),
+            ],
+          ),
+          const SizedBox(height: Space.s1),
+          Text(
+            context.t('auth.demoSwitchNote'),
+            style: context.text.caption.copyWith(
+              color: context.colors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConsentRow extends StatelessWidget {
+  const _ConsentRow({required this.consent, required this.lang});
+  final ConsentItem consent;
+  final String lang;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.app.auth;
+    final status = auth.consentStatus(consent);
+    final (label, tone) = switch (status) {
+      ConsentStatus.active => ('acct.consentActive', Tone.success),
+      ConsentStatus.expired => ('acct.consentExpired', Tone.warning),
+      ConsentStatus.revoked => ('acct.consentRevokedStatus', Tone.neutral),
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Space.s2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            consent.grantee[lang] ?? consent.grantee['en']!,
+            style: context.text.body.copyWith(fontWeight: FontWeight.w600),
+          ),
+          Text(
+            '${context.t('purpose.${consent.purpose}')} · ${consent.scope.map((s) => context.t('scope.$s')).join('، ')}',
+            style: context.text.bodySmall,
+          ),
+          const SizedBox(height: Space.s1),
+          Wrap(
+            spacing: Space.s2,
+            runSpacing: Space.s1,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              AppBadge(text: context.t(label), tone: tone),
+              if (status == ConsentStatus.active)
+                AppButton(
+                  label: context.t('acct.consentRevoke'),
+                  variant: ButtonVariant.secondary,
+                  size: ButtonSize.sm,
+                  onPressed: () => auth.revokeConsent(consent.id),
+                ),
+            ],
+          ),
         ],
       ),
     );

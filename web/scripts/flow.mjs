@@ -4,7 +4,11 @@ import { chromium } from "playwright-core";
 const base = process.env.BASE ?? "http://127.0.0.1:4173";
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox"] });
 const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
-await ctx.addInitScript(() => localStorage.setItem("ms.locale", "en"));
+await ctx.addInitScript(() => {
+  localStorage.setItem("ms.locale", "en");
+  // sign in as the fictional demo patient (same storage format the demo login writes)
+  if (!sessionStorage.getItem("flow-seeded")) { sessionStorage.setItem("flow-seeded", "1"); localStorage.setItem("ms.auth.demo-session", JSON.stringify({ accountId: "demo-patient", sessionId: "flow", expiresAt: Date.now() + 86_400_000 })); }
+});
 const p = await ctx.newPage();
 const fails = [];
 const check = (ok, msg) => { if (!ok) fails.push(msg); console.log(ok ? "ok  " : "FAIL", msg); };
@@ -48,12 +52,26 @@ if (await took.count()) {
   check(true, "undo available");
 }
 
-// 3. role switch changes information architecture
-await p.getByRole("button", { name: "Switch demo role" }).click();
-await p.getByRole("menuitemradio", { name: "Industry" }).click();
+// 3. DEMO DEV account switching changes the whole information architecture (and is labelled as DEMO DEV)
+await p.getByRole("button", { name: "Account menu" }).click();
+check((await p.getByRole("menuitem", { name: /DEMO DEV/ }).count()) > 2, "account switching is labelled DEMO DEV");
+await p.getByRole("menuitem", { name: /DEMO DEV.*Industry/ }).click();
 await p.waitForURL("**/app/industry");
+await p.getByText(/Aggregate data only/).first().waitFor({ timeout: 8000 }).catch(() => undefined);
 check(await p.getByText(/Aggregate data only/).count() > 0, "industry shows aggregate-only banner");
 check((await p.getByRole("link", { name: /Patients$/ }).count()) === 0, "industry has no patient list");
+await p.goto(base + "/app/patient", { waitUntil: "networkidle" });
+check(await p.getByTestId("unauthorized").count() > 0, "industry user opening the patient app gets the no-access page");
+
+// 3b. sign out ends the session and protected pages redirect to the login screen
+await p.getByRole("button", { name: "Account menu" }).click();
+await p.getByRole("menuitem", { name: "Sign out" }).click();
+await p.waitForURL("**/login");
+await p.goto(base + "/app/industry", { waitUntil: "networkidle" });
+check(new URL(p.url()).pathname === "/login", "after sign-out protected pages redirect to /login");
+await p.getByRole("button", { name: "Sign in as DEMO Physician — Dr. Karimi" }).click();
+await p.waitForURL("**/app/physician");
+check(true, "signing in as the physician opens the physician dashboard");
 
 // 4. keyboard: skip link + tabs
 await p.goto(base + "/app/physician/patients/pt-sara", { waitUntil: "networkidle" });

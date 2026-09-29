@@ -89,7 +89,7 @@ void main() {
       expect(find.text('Three quick steps.'), findsOneWidget);
       await tester.tap(inBottomBar('Profile'));
       await tester.pumpAndSettle();
-      expect(find.text('Appearance & language'), findsOneWidget);
+      expect(find.text('Account & security'), findsWidgets);
       await tester.tap(inBottomBar('Home'));
       await tester.pumpAndSettle();
       expect(find.text('Good morning, Sara'), findsOneWidget);

@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type DependencyList, type ReactNode } from "react";
+import { useAuthOptional } from "../auth/AuthContext";
+import { withAccessControl } from "./accessControlled";
 import { createMockServices } from "./mock/createMockServices";
 import type { Services } from "./types";
 
@@ -6,7 +8,16 @@ const Ctx = createContext<Services | null>(null);
 
 /** Phase 2 always provides Mock services. A real backend implementation can be swapped in here later. */
 export function ServicesProvider({ children, services }: { children: ReactNode; services?: Services }) {
-  const value = useMemo(() => services ?? createMockServices(), [services]);
+  const base = useMemo(() => services ?? createMockServices(), [services]);
+  const auth = useAuthOptional();
+  const backend = auth?.backend;
+  const userId = auth?.user?.id;
+  // With an auth layer present, patient-level data is filtered by the caller's relationships and consents (deny by default).
+  const value = useMemo(() => {
+    // Signed out: only public pages (landing, design-system gallery with fictional data) render, guarded routes redirect.
+    if (!backend || !userId) return base;
+    return withAccessControl(base, (k, scope) => backend.canViewPatient(k, scope));
+  }, [base, backend, userId]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

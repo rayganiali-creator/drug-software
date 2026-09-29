@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
 import { Avatar, ErrorState, LoadingState } from "../components/ui";
 import { useI18n } from "../i18n/I18nProvider";
+import { AccessDeniedError } from "../services/accessControlled";
 import type { AsyncState } from "../services/ServicesProvider";
+import { NoPatientAccess } from "./auth/AuthPages";
 import type { Patient } from "../services/types";
 
 /** Renders the right loading / error / ready UI for a service call. */
 export function Async<T>({ state, children, rows }: { state: AsyncState<T> & { reload(): void }; children(data: T): ReactNode; rows?: number }) {
   const { t } = useI18n();
   if (state.status === "loading") return <LoadingState label={t("common.loading")} rows={rows} />;
+  if (state.status === "error" && state.error instanceof AccessDeniedError) return <NoPatientAccess />;
   if (state.status === "error") return <ErrorState title={t("common.errorTitle")} body={t("common.errorBody")} retryLabel={t("common.retry")} onRetry={state.reload} />;
   return <>{children(state.data)}</>;
 }

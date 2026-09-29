@@ -50,9 +50,16 @@ public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore ident
                     : AccessDecision.Allow(AccessLayer.Ownership);
 
             case "organization":
-                return resource.OrganizationId is { } org && actor.OrganizationIds.Contains(org)
-                    ? AccessDecision.Allow(AccessLayer.Organization)
-                    : AccessDecision.Deny(AccessLayer.Organization, "not_member");
+                if (resource.OrganizationId is not { } org || !actor.OrganizationIds.Contains(org))
+                {
+                    return AccessDecision.Deny(AccessLayer.Organization, "not_member");
+                }
+
+                // Organization permissions that reach an individual patient's data (pharmacy prescriptions) also need the
+                // organization's care relationship with that patient AND the patient's consent to the organization.
+                return resource.SubjectUserId is { } patient
+                    ? await DecideThroughOrganizationAsync(actor, permission, org, patient, ct)
+                    : AccessDecision.Allow(AccessLayer.Organization);
 
             case "subject":
                 return await DecideSubjectAsync(actor, permission, resource, ct);
@@ -60,6 +67,19 @@ public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore ident
             default:
                 return AccessDecision.Deny(AccessLayer.Rbac, "unhandled_kind");
         }
+    }
+
+    private async Task<AccessDecision> DecideThroughOrganizationAsync(CurrentUser actor, string permission, Guid organizationId, Guid patient, CancellationToken ct)
+    {
+        var related = (await identity.RelationshipsForPatientAsync(patient, ct)).Any(r => r.IsActive && r.ProviderOrganizationId == organizationId);
+        if (!related)
+        {
+            return AccessDecision.Deny(AccessLayer.Relationship, "no_care_relationship");
+        }
+
+        var scope = catalog.DataScopeOf(permission) ?? string.Empty;
+        var verdict = await consent.EvaluateAsync(new ConsentCheck(patient, actor.UserId, [organizationId], scope, [ConsentPurposes.Dispensing, ConsentPurposes.MedicationReview]), ct);
+        return verdict.Allowed ? AccessDecision.Allow(AccessLayer.Consent) : AccessDecision.Deny(AccessLayer.Consent, verdict.Reason);
     }
 
     private async Task<AccessDecision> DecideSubjectAsync(CurrentUser actor, string permission, AccessResource resource, CancellationToken ct)

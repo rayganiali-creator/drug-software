@@ -263,6 +263,19 @@ public static class SecurityEndpoints
                 : Problem.ForbiddenResult();
         }).RequireAuthorization(Perm(Permissions.PharmacyInventoryRead));
 
+        app.MapGet("/organizations/{orgId:guid}/patients/{id:guid}/prescriptions", async (Guid orgId, Guid id, HttpContext ctx, IAccessAuthorizer authz, IAuditWriter audit) =>
+        {
+            var actor = Actor(ctx);
+            var decision = await authz.AuthorizeAsync(actor, Permissions.PharmacyPrescriptionsRead, AccessResource.OrgPatient(orgId, id, "prescriptions"), Ctx(ctx), ctx.RequestAborted);
+            if (!decision.Allowed)
+            {
+                return Problem.ForbiddenResult();
+            }
+
+            await audit.WriteAsync(new AuditEvent(AuditActions.PrescriptionAccessed, AuditResult.Success, actor.UserId, "prescriptions", id.ToString(), id, Ctx(ctx).Source, ctx.TraceIdentifier), ctx.RequestAborted);
+            return Results.Ok(DemoPayload("prescriptions", null));
+        }).RequireAuthorization(Perm(Permissions.PharmacyPrescriptionsRead));
+
         app.MapGet("/analytics/summary", () => Results.Ok(new
         {
             demo = true,

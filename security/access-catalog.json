@@ -127,7 +127,8 @@
     {
       "name": "pharmacy.prescriptions.read",
       "kind": "organization",
-      "description": "Read prescriptions received by a pharmacy organization"
+      "description": "Read prescriptions received by a pharmacy organization",
+      "dataScope": "prescriptions"
     },
     {
       "name": "pharmacy.dispensing.manage",

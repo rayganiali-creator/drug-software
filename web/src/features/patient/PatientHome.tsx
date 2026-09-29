@@ -1,3 +1,4 @@
+import { useSubjectKey } from "../../auth/AuthContext";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdherenceCard, CheckInCard, Ltr } from "../../components/health/cards";
@@ -45,16 +46,17 @@ export function NextDoseHero({ doses, onTake, onLater }: { doses: Dose[]; onTake
 }
 
 export function PatientHome() {
+  const subject = useSubjectKey();
   const { t, loc, fmt } = useI18n();
   const services = useServices();
   const nav = useNavigate();
   const toast = useToast();
   const patient = useAsync((s) => s.patients.currentPatient());
-  const doses = useAsync((s) => s.medications.todaysDoses("pt-sara"));
-  const alerts = useAsync((s) => s.notifications.alerts("pt-sara"));
-  const activity = useAsync((s) => s.notifications.activity("pt-sara"));
+  const doses = useAsync((s) => s.medications.todaysDoses(subject));
+  const alerts = useAsync((s) => s.notifications.alerts(subject));
+  const activity = useAsync((s) => s.notifications.activity(subject));
   const quick = useAsync((s) => s.ai.quickQuestions());
-  const series = useAsync((s) => s.analytics.adherenceSeries("pt-sara"));
+  const series = useAsync((s) => s.analytics.adherenceSeries(subject));
   const checked = useAsync((s) => s.patients.hasCheckedInToday());
   const [allAlerts, setAllAlerts] = useState(false);
   const now = useMemo(() => new Date(), []);

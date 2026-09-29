@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { AuthProvider } from "./auth/AuthContext";
+import type { AuthBackend } from "./auth/types";
 import { ToastProvider } from "./components/ui";
 import { I18nProvider, useI18n, type Locale } from "./i18n/I18nProvider";
 import { ServicesProvider } from "./services/ServicesProvider";
@@ -10,13 +12,21 @@ function Toasts({ children }: { children: ReactNode }) {
   return <ToastProvider dismissLabel={t("common.dismiss")}>{children}</ToastProvider>;
 }
 
-export function AppProviders({ children, locale, theme, services }: { children: ReactNode; locale?: Locale; theme?: ThemeMode; services?: Services }) {
+export function AppProviders({ children, locale, theme, services, auth, withAuth = true }: { children: ReactNode; locale?: Locale; theme?: ThemeMode; services?: Services; auth?: AuthBackend; withAuth?: boolean }) {
   return (
     <I18nProvider initial={locale}>
       <ThemeProvider initial={theme}>
-        <ServicesProvider services={services}>
-          <Toasts>{children}</Toasts>
-        </ServicesProvider>
+        {withAuth ? (
+          <AuthProvider backend={auth}>
+            <ServicesProvider services={services}>
+              <Toasts>{children}</Toasts>
+            </ServicesProvider>
+          </AuthProvider>
+        ) : (
+          <ServicesProvider services={services}>
+            <Toasts>{children}</Toasts>
+          </ServicesProvider>
+        )}
       </ThemeProvider>
     </I18nProvider>
   );

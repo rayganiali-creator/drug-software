@@ -2,7 +2,8 @@
 
 Healthcare/pharmaceutical platform (patients, physicians, pharmacists, pharmacies, industry, AI assistant).
 Architecture and requirements: [`docs/phase0/`](docs/phase0/README.md). Design system and UI/UX: [`docs/phase2/`](docs/phase2/README.md).
-Current state: **Phase 2 – design system & complete UI/UX prototype** (Mock services, fictional demo data, no real external systems).
+Identity, authentication, authorization, consent and audit: [`docs/phase3/`](docs/phase3/README.md).
+Current state: **Phase 3 – identity & access control** on top of the Phase 2 UI prototype (mock authentication with fictional accounts, Mock services, fictional demo data, no real external systems).
 
 ## Layout
 | Path | What | Stack |
@@ -13,6 +14,7 @@ Current state: **Phase 2 – design system & complete UI/UX prototype** (Mock se
 | `ai/` | AI service (health/config/logging only; no LLM yet) | Python 3.11+, FastAPI |
 | `web/` | Web app: landing page, design-system gallery, patient / physician / pharmacist / pharmacy / industry UIs (Mock data) | React 19, TypeScript, Vite |
 | `mobile/` | Patient app for Android + iOS (one codebase, Mock data) | Flutter/Dart |
+| `security/` | Single source of truth for roles, permissions and FICTIONAL demo identities → generated C#/TS/Dart (`node security/build.mjs`) | Node |
 | `design/` | Single source of truth: tokens, icons, i18n strings, demo data → generated for web and Flutter (`node design/build.mjs`) | Node |
 | `tests/` | Unit, architecture (module boundaries), API host, env-gated integration tests | xUnit |
 | `docker-compose.yml` | Postgres 16, Redis 7, OpenSearch 2.19, Kafka 3.9 (KRaft) + app containers (`--profile app`) | Docker |
@@ -39,10 +41,19 @@ never includes exception text. Liveness (`/health/live`) has no dependencies.
 ## How to test
 ```bash
 node design/build.mjs --check   # generated design artefacts up to date + WCAG contrast rules
+node security/build.mjs --check # access catalog rules + generated permission code up to date
 make test                # dotnet (unit+architecture+host), pytest, vitest, flutter test — no infrastructure needed
 # web QA (needs Chromium): cd web && npm run build && npm run preview & node scripts/qa.mjs && node scripts/flow.mjs
 make infra-up migrate && make test-integration   # real Postgres/Redis (+ readiness of the whole stack)
 make lint
+```
+
+## Sign-in (development only)
+The login screen offers **fictional demo accounts without passwords** (`Auth__Mode=DevelopmentMock`). The API refuses that mode unless
+`ASPNETCORE_ENVIRONMENT` is `Development`/`Testing`. Web default is in-browser demo accounts; `VITE_AUTH_MODE=api` signs in through the API.
+```bash
+make api    # runs with ASPNETCORE_ENVIRONMENT=Development (local only)
+cd web && VITE_AUTH_MODE=api VITE_API_BASE_URL=http://localhost:5080 npm run dev
 ```
 
 ## Configuration

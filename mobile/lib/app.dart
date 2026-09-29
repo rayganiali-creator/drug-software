@@ -22,6 +22,7 @@ class MedSmarterApp extends StatefulWidget {
 class _MedSmarterAppState extends State<MedSmarterApp> {
   late final GoRouter _router = buildRouter(
     initialLocation: widget.initialLocation,
+    auth: widget.controller.auth,
   );
 
   @override

@@ -12,12 +12,14 @@ Future<AppController> makeController(
   WidgetTester tester, {
   Locale locale = const Locale('en'),
   DateTime Function()? now,
+  String? account = 'demo-patient',
 }) async {
   final clock = now ?? fixedNow;
   final base = await tester.runAsync(
     () => AppController.create(
       bundle: rootBundle,
       clock: clock,
+      initialAccountId: account,
       servicesBuilder: (data) =>
           MockServices(data, latency: Duration.zero, now: clock),
     ),
@@ -36,6 +38,7 @@ Future<AppController> pumpApp(
   DateTime Function()? now,
   double textScale = 1,
   bool settle = true,
+  String? account = 'demo-patient',
 }) async {
   // Haptics go through the platform channel; there is no host in unit tests.
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -53,7 +56,12 @@ Future<AppController> pumpApp(
   addTearDown(tester.view.reset);
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-  final c = await makeController(tester, locale: locale, now: now);
+  final c = await makeController(
+    tester,
+    locale: locale,
+    now: now,
+    account: account,
+  );
   await tester.pumpWidget(
     MedSmarterApp(controller: c, initialLocation: location),
   );

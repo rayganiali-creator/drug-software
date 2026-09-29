@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 
+import 'auth/auth_controller.dart';
 import 'features/assistant/assistant_screen.dart';
+import 'features/auth/login_screen.dart';
 import 'features/checkin/checkin_screen.dart';
 import 'features/design_system/design_system_screen.dart';
 import 'features/home/home_screen.dart';
@@ -10,9 +12,24 @@ import 'features/shell/app_shell.dart';
 
 /// Patient navigation (see docs/phase2/02-navigation-and-page-map.md).
 /// Five tabs keep their own navigation stacks; detail screens push on top of a tab.
-GoRouter buildRouter({String initialLocation = '/home'}) => GoRouter(
+GoRouter buildRouter({
+  String initialLocation = '/home',
+  required AuthController auth,
+}) => GoRouter(
   initialLocation: initialLocation,
+  refreshListenable: auth,
+  // Deny by default: anonymous -> /login; signed in but not a patient -> /no-access. UX only, the API re-checks.
+  redirect: (context, state) {
+    final loc = state.matchedLocation;
+    if (!auth.isAuthenticated) return loc == '/login' ? null : '/login';
+    if (!auth.canUsePatientApp)
+      return loc == '/no-access' ? null : '/no-access';
+    if (loc == '/login' || loc == '/no-access') return '/home';
+    return null;
+  },
   routes: [
+    GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
+    GoRoute(path: '/no-access', builder: (c, s) => const NoAccessScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, shell) => AppShell(shell: shell),
       branches: [

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace MedSmarter.Security.Tests;
@@ -307,6 +308,20 @@ public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory
     }
 
     [Fact]
+    public async Task Pharmacy_admin_reads_prescriptions_of_consenting_patients_of_their_organization_only()
+    {
+        var (admin, _) = await LoginAsync("demo-pharmacy-admin");
+        var (_, sara) = await LoginAsync("demo-patient");
+        var (_, ali) = await LoginAsync("demo-patient-2");
+        const string pharmacyA = "383c0c5b-386f-5d57-a295-3b25374d9a2d";
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"/organizations/{pharmacyA}/patients/{Id(sara)}/prescriptions")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await admin.GetAsync($"/organizations/{pharmacyA}/patients/{Id(ali)}/prescriptions")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await admin.GetAsync($"/organizations/{Guid.NewGuid()}/patients/{Id(sara)}/prescriptions")).StatusCode);
+        var (physician, _) = await LoginAsync("demo-physician");
+        Assert.Equal(HttpStatusCode.Forbidden, (await physician.GetAsync($"/organizations/{pharmacyA}/patients/{Id(sara)}/prescriptions")).StatusCode);
+    }
+
+    [Fact]
     public async Task Analytics_is_aggregate_only()
     {
         var (c, _) = await LoginAsync("demo-researcher");
@@ -368,5 +383,43 @@ public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory
         evil.Headers.Add("Origin", "https://evil.example");
         evil.Headers.Add("Access-Control-Request-Method", "POST");
         Assert.False((await factory.CreateClient().SendAsync(evil)).Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [Fact]
+    public void Host_refuses_to_start_with_the_development_mock_in_production()
+    {
+        using var f = factory.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.UseSetting("Auth:Mode", "DevelopmentMock");
+            b.UseSetting("Auth:SigningKey", new string('k', 40));
+        });
+        Assert.ThrowsAny<Exception>(() => f.CreateClient());
+    }
+
+    [Fact]
+    public void Host_refuses_to_start_in_production_without_a_signing_key()
+    {
+        using var f = factory.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.UseSetting("Auth:Mode", "Disabled");
+        });
+        Assert.ThrowsAny<Exception>(() => f.CreateClient());
+    }
+
+    [Fact]
+    public async Task Production_style_host_without_the_mock_offers_no_demo_accounts_and_no_login()
+    {
+        using var f = factory.WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Production");
+            b.UseSetting("Auth:Mode", "Disabled");
+            b.UseSetting("Auth:SigningKey", new string('k', 40));
+        });
+        var c = f.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/auth/demo-accounts")).StatusCode); // not mapped: deny-by-default fallback
+        var login = await c.PostAsJsonAsync("/auth/login", new { credentials = new { accountId = "demo-patient" } });
+        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
     }
 }

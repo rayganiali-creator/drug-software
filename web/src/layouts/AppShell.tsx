@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { areasOf, homeFor } from "../auth/areas";
+import { useAuth } from "../auth/AuthContext";
 import { Logo } from "../components/brand/Logo";
 import { BadgeAnchor, Drawer, Dropdown, Icon, IconButton, SearchField, useToast } from "../components/ui";
+import { useLoad } from "../features/auth/useBackend";
+import type { DemoAccount } from "../auth/types";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { useI18n } from "../i18n/I18nProvider";
 import { useAsync } from "../services/ServicesProvider";
 import { useTheme } from "../theme/ThemeProvider";
-import { navByRole, roleIcon, roles, type Role } from "./roles";
+import { navByRole, roleIcon, type Role } from "./roles";
 import "./shell.css";
 
 const COLLAPSE_KEY = "ms.sidebar.collapsed";
@@ -21,7 +25,8 @@ export function DemoBanner() {
   );
 }
 
-export function AppShell({ role }: { role: Role }) {
+/** `content` replaces the routed page (used for the neutral "no access" page so the user keeps the menu and can sign out or go home). */
+export function AppShell({ role, content }: { role: Role; content?: ReactNode }) {
   const { t, locale, setLocale } = useI18n();
   const { mode, setMode } = useTheme();
   const bp = useBreakpoint();
@@ -32,7 +37,12 @@ export function AppShell({ role }: { role: Role }) {
   });
   const [drawer, setDrawer] = useState(false);
   const [search, setSearch] = useState("");
-  const alerts = useAsync((s) => s.notifications.alerts("pt-sara"), []);
+  const auth = useAuth();
+  const alerts = useAsync((s) => s.notifications.alerts(auth.user?.subjectKey ?? ""), []);
+  const [demoAccounts] = useLoad(() => (auth.backend.demo ? auth.backend.demoAccounts() : Promise.resolve([])), [] as DemoAccount[]);
+  const areas = areasOf(auth.user);
+  const switchTo = async (accountId: string) => { const r = await auth.signIn(accountId); if (r.ok) nav(homeFor(r.user)); };
+  const leave = async () => { await auth.signOut(); nav("/login", { replace: true }); };
   const alertCount = role === "patient" && alerts.status === "ready" ? alerts.data.length : 0;
 
   useEffect(() => { try { localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0"); } catch { /* ignore */ } }, [collapsed]);
@@ -74,12 +84,25 @@ export function AppShell({ role }: { role: Role }) {
               onKeyDown={(e) => { if (e.key === "Enter" && search) toast.show({ message: t("search.prototype"), tone: "info" }); }} />
           </div>
           <div className="shell__top-actions">
-            <Dropdown label={t("role.switch")} align="end" triggerIcon={roleIcon[role]}
-              triggerContent={<span className="navlink__label" style={{ display: compact ? "none" : "inline" }}>{t(`role.${role}`)}</span>}
-              items={roles.map((r) => ({ id: r, label: t(`role.${r}`), icon: roleIcon[r], checked: r === role, onSelect: () => nav(`/app/${r}`) }))} />
+            {areas.length > 1 ? (
+              <Dropdown label={t("auth.areas")} align="end" triggerIcon={roleIcon[role]}
+                triggerContent={<span className="navlink__label" style={{ display: compact ? "none" : "inline" }}>{t(`role.${role}`)}</span>}
+                items={areas.map((r) => ({ id: r, label: t(`role.${r}`), icon: roleIcon[r], checked: r === role, onSelect: () => nav(`/app/${r}`) }))} />
+            ) : (
+              <span className="navlink__label" style={{ display: compact ? "none" : "inline", fontWeight: 600 }} data-testid="area-label">{t(`role.${role}`)}</span>
+            )}
             <Dropdown label={t("theme.label")} align="end" triggerIcon={mode === "dark" ? "moon" : "sun"}
               items={(["system", "light", "dark"] as const).map((m) => ({ id: m, label: t(`theme.${m}`), icon: m === "dark" ? "moon" : "sun", checked: mode === m, onSelect: () => setMode(m) }))} />
             <IconButton icon="globe" label={locale === "fa" ? t("lang.switchToEn") : t("lang.switchToFa")} onClick={() => setLocale(locale === "fa" ? "en" : "fa")} />
+            <Dropdown label={t("auth.userMenu")} align="end" triggerIcon="user"
+              items={[
+                { id: "account", label: `${auth.user?.displayName ?? ""} — ${t("auth.account")}`, icon: "user", onSelect: () => nav("/app/account") },
+                ...(auth.backend.demo ? demoAccounts.filter((a) => a.primary && !a.disabled && a.displayName.en !== auth.user?.displayName).map((a) => ({
+                  id: `demo-${a.id}`, label: `${t("auth.demoTag")} · ${a.displayName[locale]}`, icon: "user" as const, onSelect: () => void switchTo(a.id),
+                })) : []),
+                ...(auth.backend.demo && auth.backend.simulateExpiry ? [{ id: "expire", label: t("auth.expireSession"), icon: "clock" as const, onSelect: () => auth.backend.simulateExpiry?.() }] : []),
+                { id: "signout", label: t("auth.signOut"), icon: "logout", onSelect: () => void leave() },
+              ]} />
             {role === "patient" && (
               <BadgeAnchor count={alertCount} label={t("notif.count", { n: alertCount })}>
                 <IconButton icon="bell" label={t("notif.label")} onClick={() => nav("/app/patient")} />
@@ -89,7 +112,7 @@ export function AppShell({ role }: { role: Role }) {
         </header>
 
         <main className="shell__main" id="main" tabIndex={-1}>
-          <div className="shell__content"><Outlet /></div>
+          <div className="shell__content">{content ?? <Outlet />}</div>
         </main>
 
         {bottomNav && (

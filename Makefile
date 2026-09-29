@@ -23,7 +23,7 @@ migrate: ## apply EF Core migrations to the local database
 	$(DOTNET_ENV) dotnet run --project src/Host/MedSmarter.Api --no-launch-profile -- --migrate-and-exit
 
 api: ## run the API on the host (http://localhost:5080)
-	$(DOTNET_ENV) ASPNETCORE_URLS=http://127.0.0.1:5080 dotnet run --project src/Host/MedSmarter.Api --no-launch-profile
+	$(DOTNET_ENV) ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5080 dotnet run --project src/Host/MedSmarter.Api --no-launch-profile
 
 ai-install:
 	cd ai && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"

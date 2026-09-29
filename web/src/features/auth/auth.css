@@ -1,0 +1,19 @@
+.auth-page { min-block-size: 100dvh; background: var(--color-background); color: var(--color-text-primary); }
+.auth-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4); max-inline-size: 1040px; margin-inline: auto; }
+.auth-head__actions { display: flex; gap: var(--space-1); }
+.auth-main { max-inline-size: 1040px; margin-inline: auto; padding: var(--space-4) var(--space-4) var(--space-12); display: flex; flex-direction: column; gap: var(--space-4); }
+.auth-main h1 { font-size: var(--text-h1-size); line-height: var(--text-h1-line); margin: 0; }
+.auth-accounts h2 { font-size: var(--text-h3-size); margin-block: 0 var(--space-3); }
+.acct-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.acct-card { inline-size: 100%; text-align: start; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); min-block-size: 44px; cursor: pointer; font: inherit; color: inherit;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.acct-card:hover:not(:disabled) { border-color: var(--color-primary); background: var(--color-surface-sunken); }
+.acct-card:disabled { opacity: .6; cursor: progress; }
+.acct-card:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.acct-card[data-primary="true"] { border-color: var(--color-primary); }
+.acct-card__name { font-weight: 600; }
+.acct-card__desc { color: var(--color-text-muted); font-size: var(--text-caption-size); }
+.acct-card__roles { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.acct-section { display: flex; flex-direction: column; gap: var(--space-3); }
+.acct-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.acct-perms { display: flex; flex-wrap: wrap; gap: var(--space-1); }

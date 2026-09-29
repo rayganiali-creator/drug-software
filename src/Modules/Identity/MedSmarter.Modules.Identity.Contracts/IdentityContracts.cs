@@ -42,6 +42,9 @@ public sealed record AccessResource(string Type, string? Id, Guid? SubjectUserId
 {
     public static AccessResource Patient(Guid patientUserId, string type = "patient") => new(type, patientUserId.ToString(), patientUserId, null);
     public static AccessResource Organization(Guid organizationId) => new("organization", organizationId.ToString(), null, organizationId);
+    /// <summary>A patient's record reached THROUGH an organization (e.g. a pharmacy handling that patient's prescription).</summary>
+    public static AccessResource OrgPatient(Guid organizationId, Guid patientUserId, string type) => new(type, patientUserId.ToString(), patientUserId, organizationId);
+
     public static AccessResource None(string type) => new(type, null, null, null);
 }
 

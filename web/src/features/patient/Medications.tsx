@@ -1,3 +1,4 @@
+import { useSubjectKey } from "../../auth/AuthContext";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { InteractionCard, MedicationCard, SourceChips } from "../../components/health/cards";
@@ -8,10 +9,11 @@ import { useAsync } from "../../services/ServicesProvider";
 import "../features.css";
 
 export function Medications() {
+  const subject = useSubjectKey();
   const { t } = useI18n();
   const [filter, setFilter] = useState<"all" | "today">("all");
-  const meds = useAsync((s) => s.medications.forPatient("pt-sara"));
-  const doses = useAsync((s) => s.medications.todaysDoses("pt-sara"));
+  const meds = useAsync((s) => s.medications.forPatient(subject));
+  const doses = useAsync((s) => s.medications.todaysDoses(subject));
   return (
     <>
       <PageHeader title={t("nav.medications")} subtitle={t("med.pageSub")}
@@ -37,12 +39,13 @@ export function Medications() {
 }
 
 export function MedicationDetail() {
+  const subject = useSubjectKey();
   const { id = "" } = useParams();
   const { t, loc } = useI18n();
   const nav = useNavigate();
-  const meds = useAsync((s) => s.medications.forPatient("pt-sara"));
-  const doses = useAsync((s) => s.medications.todaysDoses("pt-sara"));
-  const ix = useAsync((s) => s.prescriptions.list({ patientId: "pt-sara" }).then((rxs) => Promise.all(rxs.map((r) => s.prescriptions.interactionsFor(r.id)))).then((a) => a.flat()));
+  const meds = useAsync((s) => s.medications.forPatient(subject));
+  const doses = useAsync((s) => s.medications.todaysDoses(subject));
+  const ix = useAsync((s) => s.prescriptions.list({ patientId: subject }).then((rxs) => Promise.all(rxs.map((r) => s.prescriptions.interactionsFor(r.id)))).then((a) => a.flat()));
   if (meds.status === "loading" || doses.status === "loading") return <LoadingState label={t("common.loading")} />;
   if (meds.status === "error" || doses.status === "error") return <ErrorState title={t("common.errorTitle")} retryLabel={t("common.retry")} onRetry={meds.reload} />;
   if (meds.status !== "ready" || doses.status !== "ready") return null;

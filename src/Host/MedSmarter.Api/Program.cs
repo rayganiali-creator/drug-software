@@ -24,6 +24,7 @@ try
         .WriteTo.Console(new Serilog.Formatting.Compact.RenderedCompactJsonFormatter()));
 
     builder.Services.AddProblemDetails();
+    builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
     // CORS is deny-all unless origins are configured (Cors__AllowedOrigins__0=...). Read-only for now.
     var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -40,7 +41,11 @@ try
 
     // ---- Phase 3: authentication / authorization ----
     var authOptions = builder.Configuration.GetSection(AuthOptions.Section).Get<AuthOptions>() ?? new AuthOptions();
-    AuthGuard.EnsureSafe(builder.Environment.EnvironmentName, authOptions); // DevelopmentMock can never start in production
+    if (!args.Contains("--migrate-and-exit"))
+    {
+        AuthGuard.EnsureSafe(builder.Environment.EnvironmentName, authOptions); // DevelopmentMock can never start in production
+    }
+
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddAuthentication(BearerDefaults.Scheme).AddScheme<AuthenticationSchemeOptions, BearerAuthenticationHandler>(BearerDefaults.Scheme, null);
     builder.Services.AddAuthorizationBuilder()

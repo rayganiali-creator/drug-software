@@ -106,6 +106,8 @@ jobs:
           node-version: 22
       - name: Generated design artefacts are up to date and contrast rules pass
         run: node design/build.mjs --check
+      - name: Access catalog is consistent and generated permission code is up to date
+        run: node security/build.mjs --check
 
   mobile:
     runs-on: ubuntu-latest

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../auth/auth_controller.dart';
 import 'formatters.dart';
 import 'l10n.dart';
 import 'models.dart';
@@ -17,6 +18,7 @@ class AppController extends ChangeNotifier {
     required this.strings,
     required this.data,
     required this.services,
+    required this.auth,
     Locale? locale,
     ThemeMode? themeMode,
     SharedPreferences? prefs,
@@ -29,6 +31,9 @@ class AppController extends ChangeNotifier {
   final AppStrings strings;
   final DemoData data;
   final AppServices services;
+
+  /// Demo sign-in state (see AuthController). The router redirects on its changes.
+  final AuthController auth;
   final SharedPreferences? _prefs;
 
   /// Injectable clock so "next dose" and greetings are testable.
@@ -63,6 +68,7 @@ class AppController extends ChangeNotifier {
     SharedPreferences? prefs,
     AppServices Function(DemoData)? servicesBuilder,
     DateTime Function()? clock,
+    String? initialAccountId,
   }) async {
     final b = bundle ?? rootBundle;
     final strings = await AppStrings.load(b);
@@ -75,6 +81,12 @@ class AppController extends ChangeNotifier {
       data: data,
       services: servicesBuilder?.call(data) ?? MockServices(data, now: clock),
       clock: clock,
+      auth: await AuthController.create(
+        bundle: b,
+        prefs: prefs,
+        clock: clock,
+        initialAccountId: initialAccountId,
+      ),
       locale: lang == 'en' ? const Locale('en') : const Locale('fa'),
       themeMode:
           ThemeMode.values.where((m) => m.name == theme).firstOrNull ??

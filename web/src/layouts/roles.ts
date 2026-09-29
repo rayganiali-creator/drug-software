@@ -1,8 +1,8 @@
 import type { IconName } from "../components/ui";
 
-export type Role = "patient" | "physician" | "pharmacist" | "pharmacy" | "industry";
-export const roles: Role[] = ["patient", "physician", "pharmacist", "pharmacy", "industry"];
-export const roleIcon: Record<Role, IconName> = { patient: "heart", physician: "stethoscope", pharmacist: "pill", pharmacy: "store", industry: "building" };
+export type Role = "patient" | "physician" | "pharmacist" | "pharmacy" | "industry" | "admin" | "workspace";
+export const roles: Role[] = ["patient", "physician", "pharmacist", "pharmacy", "industry", "admin", "workspace"];
+export const roleIcon: Record<Role, IconName> = { patient: "heart", physician: "stethoscope", pharmacist: "pill", pharmacy: "store", industry: "building", admin: "shield", workspace: "grid" };
 
 export interface NavItem { id: string; path: string; icon: IconName; labelKey: string; end?: boolean }
 
@@ -41,6 +41,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("requests", "inbox"),
     n("alerts", "bell"),
   ],
+  admin: [{ ...n("home", "shield", true), labelKey: "role.admin" }],
+  workspace: [{ ...n("home", "grid", true), labelKey: "role.workspace" }],
   industry: [
     { ...n("home", "chartBar", true), labelKey: "nav.analytics" },
     n("adr-trends", "trendUp"),
