@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>MedSmarter.Api</RootNamespace>
+    <UserSecretsId>medsmarter-api-dev</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design"><PrivateAssets>all</PrivateAssets></PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\MedSmarter.BuildingBlocks.Infrastructure\MedSmarter.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\ADR\MedSmarter.Modules.ADR\MedSmarter.Modules.ADR.csproj" />
+    <ProjectReference Include="..\..\Modules\AI\MedSmarter.Modules.AI\MedSmarter.Modules.AI.csproj" />
+    <ProjectReference Include="..\..\Modules\ActiveIngredients\MedSmarter.Modules.ActiveIngredients\MedSmarter.Modules.ActiveIngredients.csproj" />
+    <ProjectReference Include="..\..\Modules\Adherence\MedSmarter.Modules.Adherence\MedSmarter.Modules.Adherence.csproj" />
+    <ProjectReference Include="..\..\Modules\Analytics\MedSmarter.Modules.Analytics\MedSmarter.Modules.Analytics.csproj" />
+    <ProjectReference Include="..\..\Modules\Audit\MedSmarter.Modules.Audit\MedSmarter.Modules.Audit.csproj" />
+    <ProjectReference Include="..\..\Modules\ClinicalRules\MedSmarter.Modules.ClinicalRules\MedSmarter.Modules.ClinicalRules.csproj" />
+    <ProjectReference Include="..\..\Modules\Consent\MedSmarter.Modules.Consent\MedSmarter.Modules.Consent.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\MedSmarter.Modules.Identity\MedSmarter.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Integrations\MedSmarter.Modules.Integrations\MedSmarter.Modules.Integrations.csproj" />
+    <ProjectReference Include="..\..\Modules\KnowledgeBase\MedSmarter.Modules.KnowledgeBase\MedSmarter.Modules.KnowledgeBase.csproj" />
+    <ProjectReference Include="..\..\Modules\MedicationIntake\MedSmarter.Modules.MedicationIntake\MedSmarter.Modules.MedicationIntake.csproj" />
+    <ProjectReference Include="..\..\Modules\MedicationSchedule\MedSmarter.Modules.MedicationSchedule\MedSmarter.Modules.MedicationSchedule.csproj" />
+    <ProjectReference Include="..\..\Modules\Medications\MedSmarter.Modules.Medications\MedSmarter.Modules.Medications.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\MedSmarter.Modules.Notifications\MedSmarter.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\Modules\Patients\MedSmarter.Modules.Patients\MedSmarter.Modules.Patients.csproj" />
+    <ProjectReference Include="..\..\Modules\Pharmacies\MedSmarter.Modules.Pharmacies\MedSmarter.Modules.Pharmacies.csproj" />
+    <ProjectReference Include="..\..\Modules\Pharmacists\MedSmarter.Modules.Pharmacists\MedSmarter.Modules.Pharmacists.csproj" />
+    <ProjectReference Include="..\..\Modules\Physicians\MedSmarter.Modules.Physicians\MedSmarter.Modules.Physicians.csproj" />
+    <ProjectReference Include="..\..\Modules\Prescriptions\MedSmarter.Modules.Prescriptions\MedSmarter.Modules.Prescriptions.csproj" />
+    <ProjectReference Include="..\..\Modules\Symptoms\MedSmarter.Modules.Symptoms\MedSmarter.Modules.Symptoms.csproj" />
+    <ProjectReference Include="..\..\Modules\Users\MedSmarter.Modules.Users\MedSmarter.Modules.Users.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MedSmarter.Api.Tests" />
+  </ItemGroup>
+</Project>

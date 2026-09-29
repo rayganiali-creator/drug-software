@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\MedSmarter.BuildingBlocks\MedSmarter.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\MedSmarter.Modules.ClinicalRules.Contracts\MedSmarter.Modules.ClinicalRules.Contracts.csproj" />
+  </ItemGroup>
+</Project>

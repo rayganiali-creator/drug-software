@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.venv/
+**/__pycache__/
+**/.dart_tool/
+.git/
+.env
+.env.*
+!.env.example
+tests/
+docs/
+mobile/

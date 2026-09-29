@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Public surface of the module: DTOs, service interfaces, integration events. No references allowed. -->
+</Project>
