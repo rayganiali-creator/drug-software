@@ -47,10 +47,10 @@ Six-part patient message, professional view, four levels, lifecycle `Sent→Seen
 | Knowledge.Tests (**scratch PostgreSQL**) | **180 / 180 passed** |
 | Patients.Tests (in-memory) | 205 passed, 3 skipped (PostgreSQL-only) — repeated 40× with no failure |
 | Patients.Tests (**scratch PostgreSQL**) | **208 / 208 passed** |
-| Web vitest | 199 passed (incl. 19 new Phase 5 tests) |
+| Web vitest | 199 passed (incl. 21 new Phase 5 tests) |
 | Web eslint / `tsc` / `vite build` | clean / clean / OK |
 | Web browser QA against real API (`records-qa.mjs`) | 360 checks, **0 failures**, axe WCAG 2.2 AA clean on 72 page×locale×theme×viewport combinations; screenshots in `screenshots/` |
-| Flutter `analyze` / `test` | no issues / **109 passed** (13 new) |
+| Flutter `analyze` / `test` | no issues / **109 passed** (17 new) |
 | `flutter build linux --debug` | built |
 | `dotnet build -c Release -warnaserror` | 0 warnings, 0 errors |
 | `design/build.mjs --check`, `security/build.mjs --check` | up to date |
