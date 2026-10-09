@@ -7,6 +7,9 @@ namespace MedSmarter.Modules.Medications;
 /// Persistence port of the medication knowledge core. The in-memory implementation serves local development and tests;
 /// a PostgreSQL implementation over <c>MedicationsDbContext</c> is the next step (model and migration are ready).
 /// </summary>
+/// <summary>A unique rule (source name+version, revision label, manufacturer code, term code) was violated. Services turn it into a 409.</summary>
+public sealed class DuplicateRecordException() : Exception("duplicate");
+
 public interface IMedicationRepository
 {
     // medications
@@ -131,14 +134,32 @@ public sealed class InMemoryMedicationRepository : IMedicationRepository
     public Task<ReferenceTerm?> FindTermByIdAsync(Guid id, CancellationToken ct) => Run(() => _refTerms.GetValueOrDefault(id));
     public Task<IReadOnlyList<ReferenceTerm>> GetTermsAsync(IEnumerable<Guid> ids, CancellationToken ct) =>
         Run<IReadOnlyList<ReferenceTerm>>(() => [.. ids.Distinct().Select(i => _refTerms.GetValueOrDefault(i)).Where(t => t is not null).Select(t => t!)]);
-    public Task AddTermAsync(ReferenceTerm term, CancellationToken ct) => Run(() => { _refTerms[term.Id] = term; return true; });
+    public Task AddTermAsync(ReferenceTerm term, CancellationToken ct) => Run(() =>
+    {
+        if (_refTerms.Values.Any(t => t.Id != term.Id && t.Kind == term.Kind && string.Equals(t.Code, term.Code, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new DuplicateRecordException();
+        }
+
+        _refTerms[term.Id] = term;
+        return true;
+    });
 
     public Task<ActiveIngredient?> FindIngredientAsync(Guid id, CancellationToken ct) => Run(() => _ingredients.GetValueOrDefault(id));
     public Task<IReadOnlyList<ActiveIngredient>> GetIngredientsAsync(IEnumerable<Guid> ids, CancellationToken ct) =>
         Run<IReadOnlyList<ActiveIngredient>>(() => [.. ids.Distinct().Select(i => _ingredients.GetValueOrDefault(i)).Where(x => x is not null).Select(x => x!)]);
     public Task AddIngredientAsync(ActiveIngredient ingredient, CancellationToken ct) => Run(() => { _ingredients[ingredient.Id] = ingredient; return true; });
     public Task<Manufacturer?> FindManufacturerAsync(Guid id, CancellationToken ct) => Run(() => _manufacturers.GetValueOrDefault(id));
-    public Task AddManufacturerAsync(Manufacturer value, CancellationToken ct) => Run(() => { _manufacturers[value.Id] = value; return true; });
+    public Task AddManufacturerAsync(Manufacturer value, CancellationToken ct) => Run(() =>
+    {
+        if (value.ManufacturerCode is not null && _manufacturers.Values.Any(m => m.Id != value.Id && m.ManufacturerCode == value.ManufacturerCode))
+        {
+            throw new DuplicateRecordException();
+        }
+
+        _manufacturers[value.Id] = value;
+        return true;
+    });
     public Task<Brand?> FindBrandAsync(Guid id, CancellationToken ct) => Run(() => _brands.GetValueOrDefault(id));
     public Task AddBrandAsync(Brand value, CancellationToken ct) => Run(() => { _brands[value.Id] = value; return true; });
 
@@ -163,13 +184,31 @@ public sealed class InMemoryMedicationRepository : IMedicationRepository
 
     public Task<KnowledgeSource?> FindSourceAsync(Guid id, CancellationToken ct) => Run(() => _sources.GetValueOrDefault(id));
     public Task<IReadOnlyList<KnowledgeSource>> ListSourcesAsync(CancellationToken ct) => Run<IReadOnlyList<KnowledgeSource>>(() => [.. _sources.Values.OrderBy(s => s.Name, StringComparer.Ordinal)]);
-    public Task AddSourceAsync(KnowledgeSource source, CancellationToken ct) => Run(() => { _sources[source.Id] = source; return true; });
+    public Task AddSourceAsync(KnowledgeSource source, CancellationToken ct) => Run(() =>
+    {
+        if (_sources.Values.Any(x => x.Id != source.Id && x.Name == source.Name && x.Version == source.Version))
+        {
+            throw new DuplicateRecordException();
+        }
+
+        _sources[source.Id] = source;
+        return true;
+    });
     public Task<KnowledgeRevision?> FindRevisionAsync(Guid id, CancellationToken ct) => Run(() => _revisions.GetValueOrDefault(id));
     public Task<IReadOnlyList<KnowledgeRevision>> GetRevisionsAsync(IEnumerable<Guid> ids, CancellationToken ct) =>
         Run<IReadOnlyList<KnowledgeRevision>>(() => [.. ids.Distinct().Select(i => _revisions.GetValueOrDefault(i)).Where(r => r is not null).Select(r => r!)]);
     public Task<IReadOnlyList<KnowledgeRevision>> ListRevisionsAsync(Guid sourceId, CancellationToken ct) =>
         Run<IReadOnlyList<KnowledgeRevision>>(() => [.. _revisions.Values.Where(r => r.SourceId == sourceId).OrderBy(r => r.ReceivedAt)]);
-    public Task AddRevisionAsync(KnowledgeRevision revision, CancellationToken ct) => Run(() => { _revisions[revision.Id] = revision; return true; });
+    public Task AddRevisionAsync(KnowledgeRevision revision, CancellationToken ct) => Run(() =>
+    {
+        if (_revisions.Values.Any(x => x.Id != revision.Id && x.SourceId == revision.SourceId && x.Label == revision.Label))
+        {
+            throw new DuplicateRecordException();
+        }
+
+        _revisions[revision.Id] = revision;
+        return true;
+    });
     public Task UpdateRevisionAsync(KnowledgeRevision revision, CancellationToken ct) => Run(() => { _revisions[revision.Id] = revision; return true; });
 
     // Callers get copies, so a failed validation can never leave a half-edited object in the store.

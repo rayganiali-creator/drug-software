@@ -13,6 +13,12 @@ public interface IAuditStore
     /// <summary>Appends atomically; <paramref name="build"/> receives the previous hash and the next sequence number.</summary>
     Task<AuditEntry> AppendAsync(Func<long, string, AuditEntry> build, CancellationToken ct);
     Task<IReadOnlyList<AuditEntry>> SnapshotAsync(CancellationToken ct);
+
+    /// <summary>Newest first. The store applies the filters so a durable store never loads the whole log.</summary>
+    Task<IReadOnlyList<AuditEntry>> QueryAsync(AuditQuery query, CancellationToken ct);
+
+    /// <summary>Every entry in sequence order, streamed (used to verify the hash chain).</summary>
+    IAsyncEnumerable<AuditEntry> StreamAsync(CancellationToken ct);
 }
 
 public sealed class InMemoryAuditStore : IAuditStore
@@ -36,6 +42,27 @@ public sealed class InMemoryAuditStore : IAuditStore
         lock (_gate)
         {
             return Task.FromResult<IReadOnlyList<AuditEntry>>([.. _entries]);
+        }
+    }
+
+    public Task<IReadOnlyList<AuditEntry>> QueryAsync(AuditQuery query, CancellationToken ct)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult<IReadOnlyList<AuditEntry>>([.. _entries
+                .Where(x => (query.ActorUserId is null || x.ActorUserId == query.ActorUserId)
+                         && (query.SubjectUserId is null || x.SubjectUserId == query.SubjectUserId)
+                         && (query.Action is null || x.Action == query.Action))
+                .OrderByDescending(x => x.Sequence)
+                .Take(Math.Clamp(query.Take, 1, 500))]);
+        }
+    }
+
+    public async IAsyncEnumerable<AuditEntry> StreamAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        foreach (var e in await SnapshotAsync(ct))
+        {
+            yield return e;
         }
     }
 
@@ -72,7 +99,7 @@ public sealed partial class AuditService(IAuditStore store, IClock clock, ILogge
     public async Task WriteAsync(AuditEvent auditEvent, CancellationToken cancellationToken = default)
     {
         var meta = Sanitize(auditEvent.Metadata);
-        var now = clock.UtcNow;
+        var now = Micro(clock.UtcNow);
         var entry = await store.AppendAsync((seq, prev) =>
         {
             var id = Guid.NewGuid();
@@ -87,21 +114,14 @@ public sealed partial class AuditService(IAuditStore store, IClock clock, ILogge
 
     public async Task<IReadOnlyList<AuditEntry>> QueryAsync(AuditQuery query, CancellationToken cancellationToken = default)
     {
-        var all = await store.SnapshotAsync(cancellationToken);
-        return [.. all
-            .Where(x => (query.ActorUserId is null || x.ActorUserId == query.ActorUserId)
-                     && (query.SubjectUserId is null || x.SubjectUserId == query.SubjectUserId)
-                     && (query.Action is null || x.Action == query.Action))
-            .OrderByDescending(x => x.Sequence)
-            .Take(Math.Clamp(query.Take, 1, 500))];
+        return await store.QueryAsync(query, cancellationToken);
     }
 
     public async Task<bool> VerifyChainAsync(CancellationToken cancellationToken = default)
     {
-        var all = await store.SnapshotAsync(cancellationToken);
         var prev = GenesisHash;
         long expected = 1;
-        foreach (var e in all)
+        await foreach (var e in store.StreamAsync(cancellationToken))
         {
             if (e.Sequence != expected || e.Hash != ComputeHash(e, prev))
             {
@@ -114,6 +134,9 @@ public sealed partial class AuditService(IAuditStore store, IClock clock, ILogge
 
         return true;
     }
+
+    /// <summary>PostgreSQL keeps microseconds; the hash covers the stored precision so a durable round trip verifies.</summary>
+    private static DateTimeOffset Micro(DateTimeOffset t) => new(t.UtcTicks - (t.UtcTicks % 10), TimeSpan.Zero);
 
     private static string? Trim(string? s) => s is null ? null : (s.Length <= MaxValueLength ? s : s[..MaxValueLength]);
 

@@ -56,6 +56,18 @@ public sealed record ConsentCheck(
 /// <param name="Reason">Internal reason code (audit only, never sent to clients).</param>
 public sealed record ConsentDecision(bool Allowed, Guid? ConsentId, string Reason);
 
+public enum ConsentEventKind
+{
+    Granted,
+    Revoked,
+}
+
+/// <summary>One line of a consent's history. The history is append-only: a revoked consent keeps both lines.</summary>
+public sealed record ConsentEventDto(Guid ConsentId, ConsentEventKind Kind, DateTimeOffset At, Guid ActorUserId, string Purpose);
+
+/// <summary>Asks whether the subject has an active consent for a purpose that has no grantee (manufacturer report, monitoring, AI processing...).</summary>
+public sealed record PurposeConsentCheck(Guid SubjectUserId, string Purpose, IReadOnlyCollection<string> RequiredScopes);
+
 public interface IConsentService
 {
     /// <summary>A consent can only be granted by its subject: <paramref name="actorUserId"/> must equal the subject.</summary>
@@ -65,6 +77,15 @@ public interface IConsentService
     Task<ConsentOutcome> RevokeAsync(Guid actorUserId, Guid consentId, string source, string? correlationId, CancellationToken ct = default);
 
     Task<IReadOnlyList<ConsentDto>> ListGivenAsync(Guid subjectUserId, CancellationToken ct = default);
+
+    /// <summary>The subject's consent history (granted and revoked events), newest first.</summary>
+    Task<IReadOnlyList<ConsentEventDto>> HistoryAsync(Guid subjectUserId, CancellationToken ct = default);
+}
+
+/// <summary>Consent evaluation for purposes that are not "give person X access" (the data goes nowhere on its own account).</summary>
+public interface IPurposeConsentEvaluator
+{
+    Task<ConsentDecision> EvaluateAsync(PurposeConsentCheck check, CancellationToken ct = default);
 }
 
 /// <summary>Consent evaluation is separate from authentication and from role checks.</summary>

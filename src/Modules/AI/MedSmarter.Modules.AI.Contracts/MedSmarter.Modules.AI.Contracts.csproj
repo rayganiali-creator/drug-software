@@ -2,5 +2,6 @@
   <!-- Public surface of the module: DTOs, service interfaces, integration events. Only other Contracts may be referenced. -->
   <ItemGroup>
     <ProjectReference Include="..\..\Medications\MedSmarter.Modules.Medications.Contracts\MedSmarter.Modules.Medications.Contracts.csproj" />
+    <ProjectReference Include="..\..\Patients\MedSmarter.Modules.Patients.Contracts\MedSmarter.Modules.Patients.Contracts.csproj" />
   </ItemGroup>
 </Project>

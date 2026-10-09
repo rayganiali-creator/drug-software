@@ -1,4 +1,5 @@
 using MedSmarter.Modules.Medications.Contracts;
+using MedSmarter.Modules.Patients.Contracts;
 
 namespace MedSmarter.Modules.AI.Contracts;
 
@@ -24,10 +25,10 @@ public enum AiErrorCode
 }
 
 /// <summary>
-/// Everything a provider may see. Deliberately has NO patient fields: it carries a question and source-bearing medication
-/// documents only. Sending patient data to a provider needs its own reviewed contract (data minimisation, lawful basis).
+/// Everything a provider may see: a question, source-bearing medication documents and, only when the patient consented, the minimised
+/// <see cref="PatientContext"/> (no name, no account id, no contact data). A provider never reads a database.
 /// </summary>
-public sealed record AiRequest(string Purpose, string Question, string Locale, IReadOnlyList<MedicationKnowledgeDocument> Context, int MaxTokens);
+public sealed record AiRequest(string Purpose, string Question, string Locale, IReadOnlyList<MedicationKnowledgeDocument> Context, int MaxTokens, PatientContext? Patient = null);
 
 public sealed record AiCompletion(string Text, string Provider, string Model, bool IsMock);
 
@@ -50,9 +51,10 @@ public interface IAIProvider
 /// <summary>Public status (never includes the key itself).</summary>
 public sealed record AiProviderStatus(string Provider, AiProviderKind Kind, bool Configured, bool IsMock, string? Model, bool ApiKeyPresent, bool ExternalTransferApproved);
 
-public sealed record AssistantQuestion(string Question, string Locale, IReadOnlyList<Guid>? MedicationIds);
+/// <param name="IncludePatientContext">Ask the assistant to use the caller's own consented patient context. Never a way to read someone else's data.</param>
+public sealed record AssistantQuestion(string Question, string Locale, IReadOnlyList<Guid>? MedicationIds, bool IncludePatientContext = false);
 
-public sealed record AssistantAnswer(string Text, string Provider, bool IsMock, bool Answered, IReadOnlyList<KnowledgeSourceRef> Sources, string Notice, AiErrorCode Error);
+public sealed record AssistantAnswer(string Text, string Provider, bool IsMock, bool Answered, IReadOnlyList<KnowledgeSourceRef> Sources, string Notice, AiErrorCode Error, bool PatientContextUsed = false, string? PatientContextNote = null);
 
 public interface IAIAssistantService
 {

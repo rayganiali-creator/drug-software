@@ -11,8 +11,22 @@ namespace MedSmarter.Modules.Identity;
 ///   3. Consent       - accessing ANOTHER person's data additionally needs an active, in-scope, unexpired consent.
 /// Every denial is audited with an internal reason; callers must return a uniform 403 without that reason.
 /// </summary>
-public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore identity, IConsentEvaluator consent, IAuditWriter audit) : IAccessAuthorizer
+public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore identity, IConsentEvaluator consent, IAuditWriter audit, IEnumerable<ICareRelationshipSource> careSources) : IAccessAuthorizer
 {
+    private readonly ICareRelationshipSource[] _careSources = [.. careSources];
+
+    /// <summary>Static catalog relationships plus every dynamic source (a relationship ended in a source stops granting access immediately).</summary>
+    private async Task<List<(Guid? User, Guid? Org, CareRelationshipKind Kind)>> ActiveLinksAsync(Guid patient, CancellationToken ct)
+    {
+        var links = (await identity.RelationshipsForPatientAsync(patient, ct)).Where(r => r.IsActive).Select(r => (r.ProviderUserId, r.ProviderOrganizationId, r.Kind)).ToList();
+        foreach (var source in _careSources)
+        {
+            links.AddRange((await source.ActiveForPatientAsync(patient, ct)).Select(l => (l.ProviderUserId, l.ProviderOrganizationId, Enum.Parse<CareRelationshipKind>(l.Kind))));
+        }
+
+        return links;
+    }
+
     public async Task<AccessDecision> AuthorizeAsync(CurrentUser actor, string permission, AccessResource resource, RequestContext context, CancellationToken ct = default)
     {
         var decision = await DecideAsync(actor, permission, resource, ct);
@@ -71,7 +85,7 @@ public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore ident
 
     private async Task<AccessDecision> DecideThroughOrganizationAsync(CurrentUser actor, string permission, Guid organizationId, Guid patient, CancellationToken ct)
     {
-        var related = (await identity.RelationshipsForPatientAsync(patient, ct)).Any(r => r.IsActive && r.ProviderOrganizationId == organizationId);
+        var related = (await ActiveLinksAsync(patient, ct)).Any(r => r.Org == organizationId);
         if (!related)
         {
             return AccessDecision.Deny(AccessLayer.Relationship, "no_care_relationship");
@@ -94,8 +108,8 @@ public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore ident
             return AccessDecision.Allow(AccessLayer.Ownership);
         }
 
-        var relationships = (await identity.RelationshipsForPatientAsync(subject, ct))
-            .Where(r => r.IsActive && (r.ProviderUserId == actor.UserId || (r.ProviderOrganizationId is { } o && actor.OrganizationIds.Contains(o))))
+        var relationships = (await ActiveLinksAsync(subject, ct))
+            .Where(r => r.User == actor.UserId || (r.Org is { } o && actor.OrganizationIds.Contains(o)))
             .ToList();
         if (relationships.Count == 0)
         {

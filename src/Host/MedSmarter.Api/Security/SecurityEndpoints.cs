@@ -215,13 +215,10 @@ public static class SecurityEndpoints
 
     private static readonly Kind[] PatientKinds =
     [
-        new("profile", Permissions.PatientProfileRead, AuditActions.PatientDataAccessed),
-        new("medications", Permissions.PatientMedicationsRead, AuditActions.PatientDataAccessed),
+        // profile, medications, adherence and symptoms are REAL since Phase 5 (Patients/PatientEndpoints.cs). What remains here has no module yet.
         new("prescriptions", Permissions.PatientPrescriptionsRead, AuditActions.PrescriptionAccessed),
-        new("adherence", Permissions.PatientAdherenceRead, AuditActions.PatientDataAccessed),
         new("adr", Permissions.PatientAdrRead, AuditActions.AdrAccessed),
         new("checkins", Permissions.PatientCheckinsRead, AuditActions.PatientDataAccessed),
-        new("symptoms", Permissions.PatientSymptomsRead, AuditActions.PatientDataAccessed),
         new("ai-summary", Permissions.PatientAiSummaryRead, AuditActions.PatientDataAccessed),
     ];
 

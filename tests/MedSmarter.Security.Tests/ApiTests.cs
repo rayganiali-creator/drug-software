@@ -24,6 +24,8 @@ public sealed class SecureApiFactory : WebApplicationFactory<Program>
             Environment.SetEnvironmentVariable(k, v);
         }
     }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseSetting("Persistence:Provider", "InMemory"); // tests never need a database
 }
 
 public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory>
@@ -391,6 +393,7 @@ public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory
         using var f = factory.WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Persistence:Provider", "Postgres"); 
             b.UseSetting("Auth:Mode", "DevelopmentMock");
             b.UseSetting("Auth:SigningKey", new string('k', 40));
         });
@@ -403,6 +406,7 @@ public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory
         using var f = factory.WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Persistence:Provider", "Postgres"); 
             b.UseSetting("Auth:Mode", "Disabled");
         });
         Assert.ThrowsAny<Exception>(() => f.CreateClient());
@@ -414,12 +418,16 @@ public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory
         using var f = factory.WithWebHostBuilder(b =>
         {
             b.UseEnvironment("Production");
+            b.UseSetting("Persistence:Provider", "Postgres"); 
             b.UseSetting("Auth:Mode", "Disabled");
             b.UseSetting("Auth:SigningKey", new string('k', 40));
         });
         var c = f.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/auth/demo-accounts")).StatusCode); // not mapped: deny-by-default fallback
         var login = await c.PostAsJsonAsync("/auth/login", new { credentials = new { accountId = "demo-patient" } });
-        Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
+        // Production persistence is PostgreSQL (unreachable here) and the failed login must be audited durably, so the request fails closed
+        // (401 when the audit store is reachable, 500 when it is not). What must never happen is a token.
+        Assert.NotEqual(HttpStatusCode.OK, login.StatusCode);
+        Assert.DoesNotContain("accessToken", await login.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
     }
 }

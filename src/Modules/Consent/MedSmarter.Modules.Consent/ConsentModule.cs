@@ -1,4 +1,6 @@
+using MedSmarter.BuildingBlocks;
 using MedSmarter.Modules.Consent.Contracts;
+using MedSmarter.Modules.Consent.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,10 +13,20 @@ public sealed class ConsentModule : MedSmarter.BuildingBlocks.IModule
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<IConsentStore, InMemoryConsentStore>();
+        if (PersistenceSettings.UsePostgres(configuration))
+        {
+            services.AddModuleDatabase<ConsentDbContext>(configuration, ConsentDbContext.Schema);
+            services.AddSingleton<IConsentStore, PostgresConsentStore>();
+        }
+        else
+        {
+            services.AddSingleton<IConsentStore, InMemoryConsentStore>();
+        }
+
         services.AddSingleton<ConsentService>();
         services.AddSingleton<IConsentService>(sp => sp.GetRequiredService<ConsentService>());
         services.AddSingleton<IConsentEvaluator>(sp => sp.GetRequiredService<ConsentService>());
+        services.AddSingleton<IPurposeConsentEvaluator>(sp => sp.GetRequiredService<ConsentService>());
         services.AddSingleton<IDemoConsentSeeder>(sp => sp.GetRequiredService<ConsentService>());
     }
 }

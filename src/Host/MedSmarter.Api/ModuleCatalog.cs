@@ -13,6 +13,7 @@ internal static class ModuleCatalog
         new MedSmarter.Modules.Audit.AuditModule(),
         new MedSmarter.Modules.ClinicalRules.ClinicalRulesModule(),
         new MedSmarter.Modules.Consent.ConsentModule(),
+        new MedSmarter.Modules.Guidance.GuidanceModule(),
         new MedSmarter.Modules.Identity.IdentityModule(),
         new MedSmarter.Modules.Integrations.IntegrationsModule(),
         new MedSmarter.Modules.KnowledgeBase.KnowledgeBaseModule(),
@@ -25,6 +26,7 @@ internal static class ModuleCatalog
         new MedSmarter.Modules.Pharmacists.PharmacistsModule(),
         new MedSmarter.Modules.Physicians.PhysiciansModule(),
         new MedSmarter.Modules.Prescriptions.PrescriptionsModule(),
+        new MedSmarter.Modules.ProductTrace.ProductTraceModule(),
         new MedSmarter.Modules.Symptoms.SymptomsModule(),
         new MedSmarter.Modules.Users.UsersModule(),
     ];

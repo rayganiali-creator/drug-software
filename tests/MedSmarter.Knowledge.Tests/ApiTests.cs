@@ -9,11 +9,19 @@ namespace MedSmarter.Knowledge.Tests;
 
 public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
 {
+    private readonly Action? _drop;
+
     public KnowledgeApiFactory()
     {
+        string? pg = null;
+        if (PgTemplate.Enabled)
+        {
+            (pg, _drop) = PgTemplate.NewDatabase(); // the whole API suite also runs against a scratch PostgreSQL when MEDSMARTER_PG_TEST is set
+        }
+
         foreach (var (k, v) in new Dictionary<string, string>
         {
-            ["ConnectionStrings__Postgres"] = "Host=127.0.0.1;Port=1;Database=x;Username=x;Password=not-a-real-secret;Timeout=1;Command Timeout=1",
+            ["ConnectionStrings__Postgres"] = pg ?? "Host=127.0.0.1;Port=1;Database=x;Username=x;Password=not-a-real-secret;Timeout=1;Command Timeout=1",
             ["Redis__ConnectionString"] = "127.0.0.1:1",
             ["OpenSearch__Uri"] = "http://127.0.0.1:1",
             ["Kafka__BootstrapServers"] = "127.0.0.1:1",
@@ -22,6 +30,24 @@ public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
         })
         {
             Environment.SetEnvironmentVariable(k, v);
+        }
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseSetting("Persistence:Provider", PgTemplate.Enabled ? "Postgres" : "InMemory"); // tests never need a database unless MEDSMARTER_PG_TEST is set
+        if (PgTemplate.Enabled)
+        {
+            builder.UseSetting("Persistence:MigrateOnStartup", "false");
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+        {
+            _drop?.Invoke();
         }
     }
 }
@@ -252,6 +278,7 @@ public class KnowledgeApiTests(KnowledgeApiFactory factory) : IClassFixture<Know
     public async Task Content_manager_runs_the_full_edit_publish_flow_and_every_step_is_enforced()
     {
         var editor = await As("demo-content-manager");
+        var reviewer = await As("demo-content-reviewer"); // a second person: the editor may not validate their own work
         var patient = await As("demo-patient");
 
         var ing = (await (await editor.PostAsJsonAsync("/admin/ingredients", new { name = new { en = "apitestium" }, synonyms = Array.Empty<string>() })).Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("id").GetGuid();
@@ -271,12 +298,15 @@ public class KnowledgeApiTests(KnowledgeApiFactory factory) : IClassFixture<Know
         Assert.Equal(HttpStatusCode.OK, (await patient.GetAsync($"/medications/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await editor.SendAsync(Req(HttpMethod.Post, $"/admin/medications/{id}/lifecycle", new { status = "Inactive" }, 1))).StatusCode); // stale version
 
-        var notValidated = await editor.SendAsync(Req(HttpMethod.Post, $"/admin/medications/{id}/validation", new { status = "Validated", revisionId = rev }, 2));
+        var selfValidation = await editor.SendAsync(Req(HttpMethod.Post, $"/admin/medications/{id}/validation", new { status = "Validated", revisionId = rev }, 2));
+        Assert.Equal(HttpStatusCode.Forbidden, selfValidation.StatusCode); // separation of duties: uniform 403, no hint why
+        Assert.DoesNotContain("separation", await selfValidation.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        var notValidated = await reviewer.SendAsync(Req(HttpMethod.Post, $"/admin/medications/{id}/validation", new { status = "Validated", revisionId = rev }, 2));
         Assert.Equal(HttpStatusCode.BadRequest, notValidated.StatusCode); // revision is still a draft
         Assert.Contains("revision.not_validated", await notValidated.Content.ReadAsStringAsync(), StringComparison.Ordinal);
 
         Assert.Equal(HttpStatusCode.OK, (await editor.PostAsJsonAsync($"/admin/knowledge-revisions/{rev}/status", new { status = "Validated" })).StatusCode);
-        var validated = await editor.SendAsync(Req(HttpMethod.Post, $"/admin/medications/{id}/validation", new { status = "Validated", revisionId = rev }, 2));
+        var validated = await reviewer.SendAsync(Req(HttpMethod.Post, $"/admin/medications/{id}/validation", new { status = "Validated", revisionId = rev }, 2));
         Assert.Equal(HttpStatusCode.OK, validated.StatusCode);
         var shown = await patient.GetFromJsonAsync<JsonElement>($"/medications/{id}", Web);
         Assert.Equal("Validated", shown.GetProperty("validation").GetString());
@@ -368,19 +398,21 @@ public class KnowledgeApiTests(KnowledgeApiFactory factory) : IClassFixture<Know
     [Fact]
     public void Host_refuses_demo_seed_or_mock_ai_in_production()
     {
-        using var seed = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "true"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); });
+        using var seed = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "true"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); });
         Assert.ThrowsAny<Exception>(() => seed.CreateClient());
-        using var mock = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Mock"); });
+        using var mock = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Mock"); });
         Assert.ThrowsAny<Exception>(() => mock.CreateClient());
     }
 
     [Fact]
     public async Task A_production_style_host_has_no_demo_medications_and_a_disabled_assistant()
     {
-        using var prod = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); b.UseSetting("Integrations:Insurance:EnableMock", "false"); });
+        using var prod = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); b.UseSetting("Integrations:Insurance:EnableMock", "false"); });
         var c = prod.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/medications/search?q=nocturin")).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await c.PostAsJsonAsync("/auth/login", new { credentials = new { accountId = "demo-patient" } })).StatusCode); // no mock login, so no token, so no data
+        var login = await c.PostAsJsonAsync("/auth/login", new { credentials = new { accountId = "demo-patient" } });
+        Assert.NotEqual(HttpStatusCode.OK, login.StatusCode); // no mock login, so no token, so no data (401, or fail-closed 500 because the durable audit store is unreachable here)
+        Assert.DoesNotContain("accessToken", await login.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

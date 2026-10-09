@@ -290,16 +290,33 @@ public class VersioningAndLifecycleTests
     {
         var (env, med, rev, _) = await Created();
         using var _1 = env;
-        var ok = await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 1, ValidationStatus.Validated, rev.Id, "t", null);
+        var ok = await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 1, ValidationStatus.Validated, rev.Id, "t", null);
         Assert.True(ok.Succeeded, ok.Detail);
         Assert.Equal(ValidationStatus.Validated, ok.Value!.Validation);
         Assert.Contains("Source-validated", ok.Value.Notice, StringComparison.Ordinal);
 
         var (_, unvalidatedRev) = await env.RealSource(validatedRevision: false);
-        Assert.Contains("revision.not_validated", (await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 2, ValidationStatus.Validated, unvalidatedRev.Id, "t", null)).Detail);
+        Assert.Contains("revision.not_validated", (await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 2, ValidationStatus.Validated, unvalidatedRev.Id, "t", null)).Detail);
         var (_, noLicenceRev) = await env.RealSource(redistribution: false);
-        Assert.Contains("license.redistribution_not_confirmed", (await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 2, ValidationStatus.Validated, noLicenceRev.Id, "t", null)).Detail);
-        Assert.Contains("revision.unknown", (await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 2, ValidationStatus.Validated, Guid.NewGuid(), "t", null)).Detail);
+        Assert.Contains("license.redistribution_not_confirmed", (await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 2, ValidationStatus.Validated, noLicenceRev.Id, "t", null)).Detail);
+        Assert.Contains("revision.unknown", (await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 2, ValidationStatus.Validated, Guid.NewGuid(), "t", null)).Detail);
+    }
+
+    [Fact]
+    public async Task Whoever_edited_a_medication_cannot_validate_it_but_a_second_person_can()
+    {
+        var (env, med, rev, ing) = await Created();
+        using var _1 = env;
+        var self = await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 1, ValidationStatus.Validated, rev.Id, "t", null); // KEnv.Actor created it
+        Assert.Equal(MedicationError.Forbidden, self.Error);
+        Assert.Contains(await env.Audit.QueryAsync(new AuditQuery(ActorUserId: KEnv.Actor, Take: 50)), e => e.Action == AuditActions.MedicationValidationChanged && e.Result == AuditResult.Denied && e.ReasonCode == "separation_of_duties");
+        Assert.Equal(1, (await env.Meds.GetAsync(med.Id, true)).Value!.Version); // nothing changed
+        Assert.True((await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 1, ValidationStatus.Validated, rev.Id, "t", null)).Succeeded);
+        // The reviewer then edits it: the edit withdraws validation, and now the reviewer is an editor and the original author may validate.
+        var edited = await env.Admin.UpdateAsync(KEnv.Reviewer, med.Id, 2, env.Draft(ing, rev.Id, name: "Second hand"), "typo", "t", null);
+        Assert.True(edited.Succeeded);
+        Assert.Equal(MedicationError.Forbidden, (await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 3, ValidationStatus.Validated, rev.Id, "t", null)).Error);
+        Assert.Equal(MedicationError.Forbidden, (await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 3, ValidationStatus.Validated, rev.Id, "t", null)).Error); // the author is still an editor of this record
     }
 
     [Fact]
@@ -307,7 +324,7 @@ public class VersioningAndLifecycleTests
     {
         var (env, med, rev, ing) = await Created();
         using var _1 = env;
-        await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 1, ValidationStatus.Validated, rev.Id, "t", null);
+        await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 1, ValidationStatus.Validated, rev.Id, "t", null);
         var edited = await env.Admin.UpdateAsync(KEnv.Actor, med.Id, 2, env.Draft(ing, rev.Id, name: "Changed"), "changed text", "t", null);
         Assert.Equal(ValidationStatus.Unverified, edited.Value!.Validation);
     }
@@ -319,10 +336,10 @@ public class VersioningAndLifecycleTests
         var demo = await env.One("nocturin");
         var detail = (await env.Meds.GetAsync(demo.Id)).Value!;
         var (_, rev) = await env.RealSource();
-        Assert.Contains("demo.cannot_change_validation", (await env.Admin.SetValidationAsync(KEnv.Actor, demo.Id, detail.Version, ValidationStatus.Validated, rev.Id, "t", null)).Detail);
+        Assert.Contains("demo.cannot_change_validation", (await env.Admin.SetValidationAsync(KEnv.Reviewer, demo.Id, detail.Version, ValidationStatus.Validated, rev.Id, "t", null)).Detail);
         var (env2, med, rev2, _) = await Created();
         using var _1 = env2;
-        Assert.Contains("demo.cannot_change_validation", (await env2.Admin.SetValidationAsync(KEnv.Actor, med.Id, 1, ValidationStatus.Demo, rev2.Id, "t", null)).Detail);
+        Assert.Contains("demo.cannot_change_validation", (await env2.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 1, ValidationStatus.Demo, rev2.Id, "t", null)).Detail);
     }
 
     [Fact]
@@ -340,7 +357,7 @@ public class VersioningAndLifecycleTests
         var (env, med, rev, _) = await Created();
         using var _1 = env;
         await env.Admin.SetLifecycleAsync(KEnv.Actor, med.Id, 1, LifecycleStatus.Active, "web", "corr-12345678");
-        await env.Admin.SetValidationAsync(KEnv.Actor, med.Id, 2, ValidationStatus.Validated, rev.Id, "web", "corr-12345678");
+        await env.Admin.SetValidationAsync(KEnv.Reviewer, med.Id, 2, ValidationStatus.Validated, rev.Id, "web", "corr-12345678");
         var entries = await env.Audit.QueryAsync(new AuditQuery(ActorUserId: KEnv.Actor, Take: 100));
         Assert.Contains(entries, e => e.Action == AuditActions.MedicationCreated);
         Assert.Contains(entries, e => e.Action == AuditActions.MedicationLifecycleChanged && e.ReasonCode == "Active");

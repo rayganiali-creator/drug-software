@@ -1,11 +1,12 @@
 using MedSmarter.Modules.AI.Contracts;
 using MedSmarter.Modules.Audit.Contracts;
 using MedSmarter.Modules.Medications.Contracts;
+using MedSmarter.Modules.Patients.Contracts;
 using Microsoft.Extensions.Options;
 
 namespace MedSmarter.Modules.AI;
 
-public sealed class AssistantService(ConfiguredAIProvider provider, IMedicationService medications, IAuditWriter audit, IOptions<AiOptions> options) : IAIAssistantService
+public sealed class AssistantService(ConfiguredAIProvider provider, IMedicationService medications, IAuditWriter audit, IOptions<AiOptions> options, IPatientContextService? patientContext = null) : IAIAssistantService
 {
     public const int MaxQuestion = 500;
     public const int MaxDocuments = 5;
@@ -58,13 +59,48 @@ public sealed class AssistantService(ConfiguredAIProvider provider, IMedicationS
         var sources = documents.SelectMany(d => d.Sources).DistinctBy(s => s.SourceId).ToList();
         var notice = documents.Any(d => d.IsDemo) ? "DEMO DATA - NOT FOR CLINICAL USE" : documents.All(d => d.Validation == ValidationStatus.Validated) ? "Based on validated sources. Not a substitute for professional advice." : "Based on information that is NOT fully validated.";
 
-        var result = await provider.CompleteAsync(new AiRequest("medication-information", text, question.Locale, documents, options.Value.MaxTokens), ct);
+        // 2b) Patient context: only the caller's own, only consented categories, and for an external provider only with BOTH the global approval and the patient's own consent for external processing.
+        var (context, contextNote) = await PatientContextAsync(actorUserId, question.IncludePatientContext, ct);
+        var result = await provider.CompleteAsync(new AiRequest("medication-information", text, question.Locale, documents, options.Value.MaxTokens, context), ct);
         await audit.WriteAsync(new AuditEvent(AuditActions.AiProviderCalled, result.Succeeded ? AuditResult.Success : AuditResult.Failure, actorUserId, "ai-assistant", null, null, source, correlationId,
-            result.Error.ToString(), new Dictionary<string, string> { ["provider"] = provider.Name, ["documents"] = documents.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) }), ct);
+            result.Error.ToString(), new Dictionary<string, string> { ["provider"] = provider.Name, ["documents"] = documents.Count.ToString(System.Globalization.CultureInfo.InvariantCulture), ["patient_context"] = context is null ? "no" : "yes" }), ct);
+        if (context is not null)
+        {
+            await audit.WriteAsync(new AuditEvent(AuditActions.AiPatientContextUsed, AuditResult.Success, actorUserId, "ai-assistant", null, actorUserId, source, correlationId, provider.Name), ct);
+        }
 
         return result.Succeeded
-            ? new AssistantAnswer(result.Completion!.Text, result.Completion.Provider, result.Completion.IsMock, true, sources, notice, AiErrorCode.None)
-            : new AssistantAnswer(result.SafeMessage ?? "The assistant is not available right now.", provider.Name, provider.Kind == AiProviderKind.Mock, false, sources, notice, result.Error);
+            ? new AssistantAnswer(result.Completion!.Text, result.Completion.Provider, result.Completion.IsMock, true, sources, notice, AiErrorCode.None, context is not null, contextNote)
+            : new AssistantAnswer(result.SafeMessage ?? "The assistant is not available right now.", provider.Name, provider.Kind == AiProviderKind.Mock, false, sources, notice, result.Error, false, contextNote);
+    }
+
+    private async Task<(PatientContext? Context, string? Note)> PatientContextAsync(Guid actorUserId, bool requested, CancellationToken ct)
+    {
+        if (!requested)
+        {
+            return (null, null);
+        }
+
+        if (patientContext is null)
+        {
+            return (null, "patient_context.unavailable");
+        }
+
+        var built = await patientContext.BuildAsync(actorUserId, PatientContextPurpose.AiAssistant, ct);
+        if (!built.Succeeded)
+        {
+            return (null, "patient_context.unavailable");
+        }
+
+        var context = built.Value!;
+        var o = options.Value;
+        if (provider.Kind == AiProviderKind.External && !(o.AllowExternalDataTransfer && context.ExternalProcessingConsented))
+        {
+            return (null, "patient_context.external_processing_consent_required"); // the question is still answered, without any patient data
+        }
+
+        var anyData = context.Medications.Count + context.Allergies.Count + context.Conditions.Count + context.RecentSymptoms.Count > 0 || context.AgeGroup != "unknown";
+        return anyData ? (context, "patient_context.used") : (null, "patient_context.no_consented_data");
     }
 
     private const int SearchMax = 64;

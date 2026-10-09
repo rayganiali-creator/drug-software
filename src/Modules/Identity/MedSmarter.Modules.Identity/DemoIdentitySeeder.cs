@@ -9,8 +9,23 @@ namespace MedSmarter.Modules.Identity;
 /// Seeds the FICTIONAL demo identities, organizations, roles, care relationships and consents from the shared catalog.
 /// Development/Testing only (Auth:Mode=DevelopmentMock). Contains no credentials.
 /// </summary>
-public sealed class DemoIdentitySeeder(AccessCatalog catalog, IIdentityStore identity, IDemoConsentSeeder consents, IClock clock, IOptions<AuthOptions> options) : IDemoIdentitySeeder
+public sealed class DemoIdentitySeeder(AccessCatalog catalog, IIdentityStore identity, IDemoConsentSeeder consents, IClock clock, IOptions<AuthOptions> options, IEnumerable<ICareRelationshipSource> careSources) : IDemoIdentitySeeder, IDemoCareData
 {
+    /// <summary>When a dynamic relationship source (the Patients module) is registered it owns the demo relationships, so a patient can end them.</summary>
+    private readonly bool _relationshipsOwnedElsewhere = careSources.Any();
+
+    public IReadOnlyList<DemoPatientAccount> PatientAccounts() =>
+        [.. catalog.File.DemoAccounts.Where(a => a.Roles.Any(r => r.Role == RoleNames.Patient) && a.Status == "Active")
+            .Select(a => new DemoPatientAccount(a.Id, a.UserId, a.DisplayName["en"], a.DisplayName.GetValueOrDefault("fa", a.DisplayName["en"])))];
+
+    public IReadOnlyList<ActiveCareLink> CareLinks()
+    {
+        var f = catalog.File;
+        var orgIds = f.Organizations.ToDictionary(o => o.Key, o => o.Id);
+        var userIds = f.DemoAccounts.ToDictionary(a => a.Id, a => a.UserId);
+        return [.. f.CareRelationships.Select(r => new ActiveCareLink(userIds[r.PatientAccountId], r.ProviderAccountId is null ? null : userIds[r.ProviderAccountId], r.ProviderOrganizationKey is null ? null : orgIds[r.ProviderOrganizationKey], r.Kind))];
+    }
+
     public async Task SeedAsync(CancellationToken ct = default)
     {
         if (options.Value.Mode != AuthModes.DevelopmentMock)
@@ -45,7 +60,7 @@ public sealed class DemoIdentitySeeder(AccessCatalog catalog, IIdentityStore ide
             }
         }
 
-        foreach (var r in f.CareRelationships)
+        foreach (var r in _relationshipsOwnedElsewhere ? [] : f.CareRelationships)
         {
             await identity.AddRelationshipAsync(new CareRelationship
             {
@@ -58,7 +73,7 @@ public sealed class DemoIdentitySeeder(AccessCatalog catalog, IIdentityStore ide
         }
 
         await consents.SeedAsync(f.Consents.Select(c => new ConsentDto(
-            Guid.NewGuid(),
+            DeterministicId($"{c.SubjectAccountId}|{c.GranteeAccountId}|{c.GranteeOrganizationKey}|{c.Purpose}|{c.Version}"), // same id on every start: seeding twice never duplicates
             userIds[c.SubjectAccountId],
             c.GranteeAccountId is null ? null : userIds[c.GranteeAccountId],
             c.GranteeOrganizationKey is null ? null : orgIds[c.GranteeOrganizationKey],
@@ -69,5 +84,11 @@ public sealed class DemoIdentitySeeder(AccessCatalog catalog, IIdentityStore ide
             null,
             c.ExpiresInDays < 0 ? ConsentStatus.Expired : ConsentStatus.Active,
             c.Version)), ct);
+    }
+
+    private static Guid DeterministicId(string name)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("medsmarter-demo-consent|" + name));
+        return new Guid(hash.AsSpan(0, 16));
     }
 }

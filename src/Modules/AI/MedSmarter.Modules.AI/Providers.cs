@@ -38,10 +38,20 @@ public sealed class AiOptions
 
 public static class AiGuard
 {
-    public static void EnsureSafe(string environmentName, AiOptions options)
+    /// <summary>
+    /// Refuses unsafe configurations. Returns a warning to log when the Mock provider is deliberately allowed outside development (for a
+    /// demo environment); in "Production" it is never allowed, whatever the flag says.
+    /// </summary>
+    public static string? EnsureSafe(string environmentName, AiOptions options)
     {
         var devLike = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
             || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        var production = string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
+        if (options.AllowMockInProduction && production)
+        {
+            throw new InvalidOperationException("Ai:AllowMockInProduction must not be enabled in the Production environment: the Mock provider produces no real analysis. Use Ai:Provider=Disabled, or a real provider once approved. Refusing to start.");
+        }
+
         if (options.Kind == AiProviderKind.Mock && !devLike && !options.AllowMockInProduction)
         {
             throw new InvalidOperationException($"Ai:Provider=Mock is only allowed in Development/Testing (environment is '{environmentName}'). Refusing to start.");
@@ -51,6 +61,10 @@ public static class AiGuard
         {
             throw new InvalidOperationException("Ai:Provider must be Disabled, Mock, External or Local.");
         }
+
+        return options.Kind == AiProviderKind.Mock && !devLike
+            ? $"AI MOCK PROVIDER IS ACTIVE in environment '{environmentName}' (Ai:AllowMockInProduction=true). Answers are NOT produced by a language model. Use only for demonstrations; never for real patients."
+            : null;
     }
 }
 
@@ -68,6 +82,12 @@ public sealed class MockAIProvider : IAIProvider
     {
         var sb = new StringBuilder();
         sb.Append(Label).Append(" No language model was used; this lists the supplied source records.\n");
+        if (request.Patient is { } patient)
+        {
+            sb.Append("[Patient context received: ").Append(patient.Medications.Count).Append(" medicines, ").Append(patient.Allergies.Count).Append(" allergies, ").Append(patient.Conditions.Count)
+              .Append(" conditions, ").Append(patient.RecentSymptoms.Count).Append(" recent symptoms. No clinical analysis is performed on it.]\n");
+        }
+
         foreach (var d in request.Context)
         {
             sb.Append("\n- ").Append(string.Join(" / ", d.Names)).Append(" (").Append(d.DosageForm).Append(", ").Append(d.Strength.Length == 0 ? "strength not recorded" : d.Strength)
@@ -123,7 +143,7 @@ public sealed partial class ExternalAIProvider(HttpClient http, IOptions<AiOptio
         {
             using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(baseUri, "complete"))
             {
-                Content = JsonContent.Create(new GatewayRequest(o.Model, Math.Min(request.MaxTokens, o.MaxTokens), request.Locale, request.Question, request.Context)),
+                Content = JsonContent.Create(new GatewayRequest(o.Model, Math.Min(request.MaxTokens, o.MaxTokens), request.Locale, request.Question, request.Context, request.Patient)),
             };
             message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", o.ApiKey);
             using var response = await http.SendAsync(message, timeout.Token);
@@ -162,7 +182,8 @@ public sealed partial class ExternalAIProvider(HttpClient http, IOptions<AiOptio
         [property: JsonPropertyName("max_tokens")] int MaxTokens,
         [property: JsonPropertyName("locale")] string Locale,
         [property: JsonPropertyName("question")] string Question,
-        [property: JsonPropertyName("documents")] IReadOnlyList<MedicationKnowledgeDocument> Documents);
+        [property: JsonPropertyName("documents")] IReadOnlyList<MedicationKnowledgeDocument> Documents,
+        [property: JsonPropertyName("patient"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] MedSmarter.Modules.Patients.Contracts.PatientContext? Patient);
 
     private sealed record GatewayResponse([property: JsonPropertyName("text")] string? Text, [property: JsonPropertyName("model")] string? Model);
 }

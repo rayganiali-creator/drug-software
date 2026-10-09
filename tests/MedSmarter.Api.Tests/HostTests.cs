@@ -34,11 +34,11 @@ public class HostTests(UnreachableDependenciesFactory factory) : IClassFixture<U
     }
 
     [Fact]
-    public async Task Version_lists_all_22_modules()
+    public async Task Version_lists_all_24_modules()
     {
         var doc = JsonDocument.Parse(await _client.GetStringAsync("/version"));
         Assert.Equal("medsmarter-api", doc.RootElement.GetProperty("service").GetString());
-        Assert.Equal(22, doc.RootElement.GetProperty("modules").GetArrayLength());
+        Assert.Equal(24, doc.RootElement.GetProperty("modules").GetArrayLength());
     }
 
     [Fact]

@@ -132,6 +132,14 @@ public sealed class MedicationAdminService(IMedicationRepository repo, Medicatio
 
         if (status == ValidationStatus.Validated)
         {
+            // Separation of duties: whoever created or edited the content may not be the one who declares it validated.
+            var versions = await repo.GetVersionsAsync(id, ct);
+            if (versions.Any(v => v.ChangedBy == actorUserId && !v.ChangeReason.StartsWith("validation:", StringComparison.Ordinal) && !v.ChangeReason.StartsWith("lifecycle:", StringComparison.Ordinal)))
+            {
+                await audit.WriteAsync(new AuditEvent(AuditActions.MedicationValidationChanged, AuditResult.Denied, actorUserId, "medication", id.ToString(), null, source, correlationId, "separation_of_duties"), ct);
+                return OperationResult.Fail<MedicationDetailDto>(MedicationError.Forbidden, "separation_of_duties");
+            }
+
             var problems = new List<string>();
             if (src.Type == SourceType.Demo)
             {
@@ -202,7 +210,15 @@ public sealed class MedicationAdminService(IMedicationRepository repo, Medicatio
         }
 
         var m = new Manufacturer { Id = Guid.CreateVersion7(), NameEn = value.Name.En?.Trim(), NameFa = value.Name.Fa?.Trim(), Country = value.Country, ManufacturerCode = value.ManufacturerCode };
-        await repo.AddManufacturerAsync(m, ct);
+        try
+        {
+            await repo.AddManufacturerAsync(m, ct);
+        }
+        catch (DuplicateRecordException)
+        {
+            return OperationResult.Fail<ManufacturerDto>(MedicationError.Conflict, "manufacturer_code.duplicate");
+        }
+
         return OperationResult.Ok<ManufacturerDto>(new ManufacturerDto(m.Id, new LocalizedText(m.NameEn, m.NameFa), m.Country, m.ManufacturerCode));
     }
 
@@ -236,7 +252,15 @@ public sealed class MedicationAdminService(IMedicationRepository repo, Medicatio
         }
 
         var t = new ReferenceTerm { Id = Guid.CreateVersion7(), Kind = value.Kind, Code = value.Code, NameEn = value.Name.En?.Trim(), NameFa = value.Name.Fa?.Trim() };
-        await repo.AddTermAsync(t, ct);
+        try
+        {
+            await repo.AddTermAsync(t, ct);
+        }
+        catch (DuplicateRecordException)
+        {
+            return OperationResult.Fail<ReferenceTermDto>(MedicationError.Conflict, "code.duplicate");
+        }
+
         return OperationResult.Ok<ReferenceTermDto>(new ReferenceTermDto(t.Id, t.Kind, t.Code, new LocalizedText(t.NameEn, t.NameFa)));
     }
 

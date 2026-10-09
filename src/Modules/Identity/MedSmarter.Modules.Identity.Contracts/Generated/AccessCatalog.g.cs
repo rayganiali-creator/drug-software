@@ -53,6 +53,24 @@ public static class Permissions
     public const string MedicationRead = "medication.read";
     public const string InsuranceImport = "insurance.import";
     public const string InsuranceRead = "insurance.read";
+    public const string PatientConditionsRead = "patient.conditions.read";
+    public const string PatientConditionsUpdate = "patient.conditions.update";
+    public const string PatientAllergiesRead = "patient.allergies.read";
+    public const string PatientAllergiesUpdate = "patient.allergies.update";
+    public const string PatientSymptomsCreate = "patient.symptoms.create";
+    public const string PatientAdherenceLog = "patient.adherence.log";
+    public const string PatientProductsRead = "patient.products.read";
+    public const string PatientProductsRecord = "patient.products.record";
+    public const string ManufacturerReportCreate = "manufacturer-report.create";
+    public const string ManufacturerReportRead = "manufacturer-report.read";
+    public const string ManufacturerReportReview = "manufacturer-report.review";
+    public const string ManufacturerReportQueueRead = "manufacturer-report.queue.read";
+    public const string ManufacturerReportQueueManage = "manufacturer-report.queue.manage";
+    public const string CareRelationshipRead = "care.relationship.read";
+    public const string CareRelationshipManage = "care.relationship.manage";
+    public const string GuidanceRead = "guidance.read";
+    public const string GuidanceUpdate = "guidance.update";
+    public const string GuidanceProfessionalRead = "guidance.professional.read";
 }
 
 public static class RoleNames
@@ -75,6 +93,14 @@ public static class ConsentPurposes
     public const string MedicationReview = "MedicationReview";
     public const string Dispensing = "Dispensing";
     public const string Research = "Research";
+    public const string InsuranceSharing = "InsuranceSharing";
+    public const string ManufacturerReport = "ManufacturerReport";
+    public const string Monitoring = "Monitoring";
+    public const string AiProcessing = "AiProcessing";
+    public const string AiExternalProcessing = "AiExternalProcessing";
+
+    /// <summary>Purposes that have no grantee (the data is not given to a person or organization): consent is recorded for the purpose itself.</summary>
+    public static readonly string[] GranteeFree = ["InsuranceSharing", "ManufacturerReport", "Monitoring", "AiProcessing", "AiExternalProcessing"];
 }
 
 /// <summary>Consent data scopes (data categories).</summary>
@@ -88,4 +114,7 @@ public static class DataScopes
     public const string Checkins = "checkins";
     public const string Symptoms = "symptoms";
     public const string AiSummary = "ai_summary";
+    public const string Conditions = "conditions";
+    public const string Allergies = "allergies";
+    public const string Products = "products";
 }

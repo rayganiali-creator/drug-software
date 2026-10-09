@@ -1,0 +1,137 @@
+{
+  "basis": {
+    "en": "Based on: {basis}. How sure we are: {confidence}.",
+    "fa": "مبنا: {basis}. میزان اطمینان: {confidence}."
+  },
+  "confidence": {
+    "en": { "NotAssessable": "we cannot tell yet", "Low": "low", "Moderate": "moderate", "High": "high" },
+    "fa": { "NotAssessable": "هنوز نمی‌توان گفت", "Low": "کم", "Moderate": "متوسط", "High": "زیاد" }
+  },
+  "templates": {
+    "data.insufficient": {
+      "patient": {
+        "en": {
+          "observed": "We do not have enough information about {topic} to say anything reliable.",
+          "why": "Without enough information, any statement could be wrong, so we prefer not to guess.",
+          "action": "If you like, add or update your information in the app. That helps us give you more useful notes.",
+          "consult": "If you have questions about {topic}, you can ask your doctor or pharmacist at your next visit.",
+          "urgent": "",
+          "basis": "There was not enough recorded information."
+        },
+        "fa": {
+          "observed": "اطلاعات ما درباره‌ی {topic} برای اظهار نظر قابل اتکا کافی نیست.",
+          "why": "وقتی اطلاعات کافی نباشد، هر اظهار نظری ممکن است نادرست باشد؛ برای همین حدس نمی‌زنیم.",
+          "action": "اگر مایل بودید، اطلاعاتتان را در برنامه تکمیل یا به‌روز کنید تا بتوانیم نکته‌های مفیدتری به شما بدهیم.",
+          "consult": "اگر درباره‌ی {topic} پرسشی دارید، در اولین فرصت از پزشک یا داروساز خود بپرسید.",
+          "urgent": "",
+          "basis": "اطلاعات ثبت‌شده کافی نبود."
+        }
+      },
+      "professional": {
+        "en": { "summary": "Insufficient data for {topic}.", "detail": "No assessment was produced: the required inputs for {topic} are missing or too old." },
+        "fa": { "summary": "داده‌ی ناکافی برای {topic}.", "detail": "ارزیابی تولید نشد: ورودی‌های لازم برای {topic} موجود نیست یا قدیمی است." }
+      },
+      "severityLabel": { "en": "Not assessed", "fa": "ارزیابی نشده" }
+    },
+    "adherence.skipped_pattern": {
+      "patient": {
+        "en": {
+          "observed": "You marked {medication} as skipped on {count} of the last {days} days.",
+          "why": "Taking a medicine regularly is how it is meant to work, so it is useful to notice when doses are being missed.",
+          "action": "You could set a reminder in the app, or note down what makes the dose hard to take.",
+          "consult": "Please mention it to your doctor or pharmacist at your next contact, especially if there is a reason you skip it, such as side effects or cost.",
+          "urgent": "",
+          "basis": "Your own dose log."
+        },
+        "fa": {
+          "observed": "شما مصرف {medication} را در {count} روز از {days} روز گذشته «انجام نشده» ثبت کرده‌اید.",
+          "why": "دارو وقتی منظم مصرف شود همان‌گونه که باید اثر می‌کند؛ پس خوب است متوجه شویم کجا دوزها از قلم می‌افتد.",
+          "action": "می‌توانید در برنامه یادآور تنظیم کنید یا یادداشت کنید چه چیزی مصرف دارو را برایتان سخت می‌کند.",
+          "consult": "در اولین فرصت این موضوع را با پزشک یا داروساز خود در میان بگذارید؛ به‌ویژه اگر دلیلی مانند عارضه یا هزینه دارد.",
+          "urgent": "",
+          "basis": "ثبت مصرف خودتان."
+        }
+      },
+      "professional": {
+        "en": { "summary": "Self-reported adherence gap for {medication}.", "detail": "{count} skipped doses in {days} days according to the patient's own intake log. No pharmacy refill data used." },
+        "fa": { "summary": "فاصله‌ی مصرف گزارش‌شده توسط بیمار برای {medication}.", "detail": "{count} دوز ردشده در {days} روز بر اساس ثبت مصرف خود بیمار. از داده‌ی تحویل داروخانه استفاده نشده است." }
+      },
+      "severityLabel": { "en": "Adherence signal (self-reported)", "fa": "نشانه‌ی پایبندی (خوداظهاری)" }
+    },
+    "interaction.review": {
+      "patient": {
+        "en": {
+          "observed": "Two of your medicines, {medicationA} and {medicationB}, are listed together in the reference as worth a closer look.",
+          "why": "Some medicines can change how others work, so a professional usually checks combinations.",
+          "action": "Keep taking your medicines as prescribed and write down any new effects you notice.",
+          "consult": "Please ask your doctor or pharmacist to check this combination at your next contact, or sooner if you feel different from usual.",
+          "urgent": "",
+          "basis": "The medication reference."
+        },
+        "fa": {
+          "observed": "دو داروی شما، {medicationA} و {medicationB}، در مرجع دارویی کنار هم به‌عنوان مورد قابل بررسی آمده‌اند.",
+          "why": "بعضی داروها می‌توانند اثر داروهای دیگر را تغییر دهند؛ به همین دلیل معمولاً یک متخصص ترکیب داروها را بررسی می‌کند.",
+          "action": "داروهایتان را طبق نسخه ادامه دهید و اگر اثر تازه‌ای حس کردید یادداشت کنید.",
+          "consult": "لطفاً از پزشک یا داروساز بخواهید این ترکیب را در اولین فرصت بررسی کند؛ اگر حال شما با همیشه فرق کرد، زودتر.",
+          "urgent": "",
+          "basis": "مرجع دارویی."
+        }
+      },
+      "professional": {
+        "en": { "summary": "Listed interaction: {medicationA} + {medicationB}.", "detail": "Interaction entry present in the reference (severity {severity}). Clinical relevance for this patient was not assessed." },
+        "fa": { "summary": "تداخل ثبت‌شده: {medicationA} + {medicationB}.", "detail": "مورد تداخل در مرجع وجود دارد (شدت {severity}). ارتباط بالینی برای این بیمار ارزیابی نشده است." }
+      },
+      "severityLabel": { "en": "Interaction entry: {severity}", "fa": "مورد تداخل: {severity}" }
+    },
+    "symptom.followup": {
+      "patient": {
+        "en": {
+          "observed": "You recorded {symptom} and you also take {medication}.",
+          "why": "We cannot tell whether the two are related. Noting when symptoms start helps a professional work it out.",
+          "action": "Keep noting when it happens, how strong it is and when it passes.",
+          "consult": "Please tell your doctor or pharmacist about it at your next contact, or sooner if it gets stronger or keeps coming back.",
+          "urgent": "",
+          "basis": "Your own symptom note and medication list."
+        },
+        "fa": {
+          "observed": "شما {symptom} را ثبت کرده‌اید و {medication} هم مصرف می‌کنید.",
+          "why": "نمی‌توان گفت این دو به هم ربط دارند یا نه. یادداشت زمان شروع علائم به متخصص کمک می‌کند بهتر بررسی کند.",
+          "action": "ادامه دهید و یادداشت کنید چه زمانی رخ می‌دهد، چقدر شدید است و کی برطرف می‌شود.",
+          "consult": "لطفاً در اولین فرصت با پزشک یا داروساز خود در میان بگذارید؛ اگر شدیدتر شد یا تکرار شد، زودتر.",
+          "urgent": "",
+          "basis": "یادداشت علامت و فهرست داروهای خودتان."
+        }
+      },
+      "professional": {
+        "en": { "summary": "Patient-reported symptom '{symptom}' while taking {medication}.", "detail": "Temporal association only; no causality assessment performed." },
+        "fa": { "summary": "علامت گزارش‌شده توسط بیمار «{symptom}» هم‌زمان با مصرف {medication}.", "detail": "فقط هم‌زمانی زمانی؛ ارزیابی رابطه‌ی علّی انجام نشده است." }
+      },
+      "severityLabel": { "en": "Patient-reported symptom", "fa": "علامت گزارش‌شده توسط بیمار" }
+    },
+    "symptom.severe_followup": {
+      "patient": {
+        "en": {
+          "observed": "You recorded a strong symptom: {symptom}.",
+          "why": "Strong symptoms deserve prompt attention from a professional, whatever the cause turns out to be.",
+          "action": "Please contact your doctor or pharmacist today. If you cannot reach them, use your local urgent-care service.",
+          "consult": "Contact a professional today rather than waiting for your next regular visit.",
+          "urgent": "If you have trouble breathing, swelling of the face or throat, chest pain, or you faint, call your local emergency number right away.",
+          "basis": "Your own symptom note."
+        },
+        "fa": {
+          "observed": "شما یک علامت قوی را ثبت کرده‌اید: {symptom}.",
+          "why": "علامت‌های قوی، هر علتی که داشته باشند، شایسته‌ی توجه سریع یک متخصص هستند.",
+          "action": "لطفاً امروز با پزشک یا داروساز خود تماس بگیرید. اگر در دسترس نبودند، به مرکز درمانی اورژانسی نزدیک مراجعه کنید.",
+          "consult": "برای مراجعه‌ی عادی بعدی منتظر نمانید و امروز با یک متخصص تماس بگیرید.",
+          "urgent": "اگر نفس‌کشیدن برایتان سخت شد، صورت یا گلویتان ورم کرد، درد قفسه‌ی سینه داشتید یا از حال رفتید، همان لحظه با شماره‌ی اورژانس تماس بگیرید.",
+          "basis": "یادداشت علامتِ خودتان."
+        }
+      },
+      "professional": {
+        "en": { "summary": "Patient reports a severe symptom: '{symptom}'.", "detail": "Self-rated as severe. Triage by a clinician is advised; no automated clinical assessment was performed." },
+        "fa": { "summary": "بیمار علامت شدید «{symptom}» را گزارش کرده است.", "detail": "بیمار آن را شدید ارزیابی کرده است. بررسی و اولویت‌بندی توسط بالینی توصیه می‌شود؛ ارزیابی بالینی خودکار انجام نشده است." }
+      },
+      "severityLabel": { "en": "Severe (patient-rated)", "fa": "شدید (به گفته‌ی بیمار)" }
+    }
+  }
+}

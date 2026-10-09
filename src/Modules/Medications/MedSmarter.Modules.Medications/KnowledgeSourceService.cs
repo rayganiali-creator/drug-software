@@ -27,7 +27,15 @@ public sealed class KnowledgeSourceService(IMedicationRepository repo, IAuditWri
             RedistributionAllowed = value.RedistributionAllowed, UsageRestrictions = value.UsageRestrictions, ReceivedAt = clock.UtcNow,
             Validation = value.Type == SourceType.Demo ? ValidationStatus.Demo : ValidationStatus.Unverified,
         };
-        await repo.AddSourceAsync(s, ct);
+        try
+        {
+            await repo.AddSourceAsync(s, ct);
+        }
+        catch (DuplicateRecordException)
+        {
+            return OperationResult.Fail<KnowledgeSourceDto>(MedicationError.Conflict, "source.duplicate");
+        }
+
         await audit.WriteAsync(new AuditEvent(AuditActions.KnowledgeSourceRegistered, AuditResult.Success, actorUserId, "knowledge-source", s.Id.ToString(), null, source, correlationId), ct);
         return OperationResult.Ok<KnowledgeSourceDto>(MedicationReader.ToDto(s));
     }
@@ -45,7 +53,15 @@ public sealed class KnowledgeSourceService(IMedicationRepository repo, IAuditWri
         }
 
         var r = new KnowledgeRevision { Id = Guid.CreateVersion7(), SourceId = value.SourceId, Label = value.Label.Trim(), Notes = value.Notes, ReceivedAt = clock.UtcNow, Status = RevisionStatus.Draft };
-        await repo.AddRevisionAsync(r, ct);
+        try
+        {
+            await repo.AddRevisionAsync(r, ct);
+        }
+        catch (DuplicateRecordException)
+        {
+            return OperationResult.Fail<KnowledgeRevisionDto>(MedicationError.Conflict, "revision.duplicate");
+        }
+
         await audit.WriteAsync(new AuditEvent(AuditActions.KnowledgeRevisionAdded, AuditResult.Success, actorUserId, "knowledge-revision", r.Id.ToString(), null, source, correlationId), ct);
         return OperationResult.Ok<KnowledgeRevisionDto>(MedicationReader.ToDto(r));
     }

@@ -35,7 +35,9 @@ public sealed class IdentityModule : IModule
             services.AddSingleton<MockAuthenticationProvider>();
             services.AddSingleton<IAuthenticationProvider>(sp => sp.GetRequiredService<MockAuthenticationProvider>());
             services.AddSingleton<IDemoAccountDirectory>(sp => sp.GetRequiredService<MockAuthenticationProvider>());
-            services.AddSingleton<IDemoIdentitySeeder, DemoIdentitySeeder>();
+            services.AddSingleton<DemoIdentitySeeder>();
+            services.AddSingleton<IDemoIdentitySeeder>(sp => sp.GetRequiredService<DemoIdentitySeeder>());
+            services.AddSingleton<IDemoCareData>(sp => sp.GetRequiredService<DemoIdentitySeeder>());
         }
     }
 }

@@ -5,7 +5,12 @@
     "Treatment",
     "MedicationReview",
     "Dispensing",
-    "Research"
+    "Research",
+    "InsuranceSharing",
+    "ManufacturerReport",
+    "Monitoring",
+    "AiProcessing",
+    "AiExternalProcessing"
   ],
   "dataScopes": [
     "profile",
@@ -15,7 +20,10 @@
     "adr",
     "checkins",
     "symptoms",
-    "ai_summary"
+    "ai_summary",
+    "conditions",
+    "allergies",
+    "products"
   ],
   "permissions": [
     {
@@ -279,6 +287,107 @@
       "name": "insurance.read",
       "kind": "global",
       "description": "Read imported insurance records (no role holds it by default)"
+    },
+    {
+      "name": "patient.conditions.read",
+      "kind": "subject",
+      "description": "Read a patient's conditions",
+      "dataScope": "conditions"
+    },
+    {
+      "name": "patient.conditions.update",
+      "kind": "subject",
+      "description": "Add or change a patient's conditions",
+      "dataScope": "conditions"
+    },
+    {
+      "name": "patient.allergies.read",
+      "kind": "subject",
+      "description": "Read a patient's allergies",
+      "dataScope": "allergies"
+    },
+    {
+      "name": "patient.allergies.update",
+      "kind": "subject",
+      "description": "Add or change a patient's allergies",
+      "dataScope": "allergies"
+    },
+    {
+      "name": "patient.symptoms.create",
+      "kind": "subject",
+      "description": "Record a symptom report",
+      "dataScope": "symptoms"
+    },
+    {
+      "name": "patient.adherence.log",
+      "kind": "subject",
+      "description": "Record taken/skipped doses",
+      "dataScope": "adherence"
+    },
+    {
+      "name": "patient.products.read",
+      "kind": "subject",
+      "description": "Read a patient's batch/lot product records",
+      "dataScope": "products"
+    },
+    {
+      "name": "patient.products.record",
+      "kind": "subject",
+      "description": "Record the batch/lot of a product a patient received",
+      "dataScope": "products"
+    },
+    {
+      "name": "manufacturer-report.create",
+      "kind": "subject",
+      "description": "Draft a safety report about a product",
+      "dataScope": "products"
+    },
+    {
+      "name": "manufacturer-report.read",
+      "kind": "subject",
+      "description": "Read a patient's manufacturer safety reports",
+      "dataScope": "products"
+    },
+    {
+      "name": "manufacturer-report.review",
+      "kind": "subject",
+      "description": "Review (approve or reject) a safety report before it can be sent",
+      "dataScope": "products"
+    },
+    {
+      "name": "manufacturer-report.queue.read",
+      "kind": "global",
+      "description": "See the status of the manufacturer report queue (no clinical content)"
+    },
+    {
+      "name": "manufacturer-report.queue.manage",
+      "kind": "global",
+      "description": "Run or retry the manufacturer report queue"
+    },
+    {
+      "name": "care.relationship.read",
+      "kind": "own",
+      "description": "See own care relationships and requests"
+    },
+    {
+      "name": "care.relationship.manage",
+      "kind": "own",
+      "description": "Request, accept, decline or end own care relationships"
+    },
+    {
+      "name": "guidance.read",
+      "kind": "own",
+      "description": "Read own guidance messages"
+    },
+    {
+      "name": "guidance.update",
+      "kind": "own",
+      "description": "Change the status of own guidance messages"
+    },
+    {
+      "name": "guidance.professional.read",
+      "kind": "global",
+      "description": "Read the professional view of guidance messages (demo samples in Phase 5)"
     }
   ],
   "roles": [
@@ -306,7 +415,21 @@
         "session.read",
         "session.revoke",
         "audit.read.own",
-        "medication.read"
+        "medication.read",
+        "patient.conditions.read",
+        "patient.conditions.update",
+        "patient.allergies.read",
+        "patient.allergies.update",
+        "patient.symptoms.create",
+        "patient.adherence.log",
+        "patient.products.read",
+        "patient.products.record",
+        "manufacturer-report.create",
+        "manufacturer-report.read",
+        "care.relationship.read",
+        "care.relationship.manage",
+        "guidance.read",
+        "guidance.update"
       ]
     },
     {
@@ -329,7 +452,16 @@
         "ai.review",
         "session.read",
         "session.revoke",
-        "medication.read"
+        "medication.read",
+        "patient.conditions.read",
+        "patient.allergies.read",
+        "patient.products.read",
+        "patient.products.record",
+        "manufacturer-report.read",
+        "manufacturer-report.review",
+        "care.relationship.read",
+        "care.relationship.manage",
+        "guidance.professional.read"
       ]
     },
     {
@@ -348,7 +480,15 @@
         "ai.review",
         "session.read",
         "session.revoke",
-        "medication.read"
+        "medication.read",
+        "patient.allergies.read",
+        "patient.products.read",
+        "patient.products.record",
+        "manufacturer-report.read",
+        "manufacturer-report.review",
+        "care.relationship.read",
+        "care.relationship.manage",
+        "guidance.professional.read"
       ]
     },
     {
@@ -429,7 +569,9 @@
         "org.read",
         "org.manage",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "manufacturer-report.queue.read",
+        "manufacturer-report.queue.manage"
       ]
     }
   ],
@@ -627,6 +769,29 @@
       "description": {
         "en": "Knowledge content, no patient data",
         "fa": "محتوای دانش، بدون داده بیمار"
+      }
+    },
+    {
+      "id": "demo-content-reviewer",
+      "userId": "59d164a5-4626-54b8-af02-46410e864520",
+      "displayName": {
+        "en": "DEMO Content Reviewer",
+        "fa": "دمو بازبین محتوا"
+      },
+      "email": "demo-content-reviewer@example.invalid",
+      "roles": [
+        {
+          "role": "ContentManager",
+          "organizationId": null
+        }
+      ],
+      "organizations": [],
+      "status": "Active",
+      "loginEnabled": true,
+      "primary": false,
+      "description": {
+        "en": "Second content role: validates what others edited",
+        "fa": "نقش دوم محتوا: اعتبارسنجی آنچه دیگری ویرایش کرده"
       }
     },
     {
@@ -1056,7 +1221,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1075,7 +1243,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1094,7 +1265,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1113,7 +1287,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1132,7 +1309,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1151,7 +1331,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1170,7 +1353,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 30,
       "expiresInDays": 335,
@@ -1189,7 +1375,10 @@
         "adr",
         "checkins",
         "symptoms",
-        "ai_summary"
+        "ai_summary",
+        "conditions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 300,
       "expiresInDays": -30,
@@ -1203,7 +1392,9 @@
       "scope": [
         "profile",
         "medications",
-        "prescriptions"
+        "prescriptions",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 20,
       "expiresInDays": 345,
@@ -1219,7 +1410,9 @@
         "medications",
         "prescriptions",
         "adherence",
-        "adr"
+        "adr",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 20,
       "expiresInDays": 345,
@@ -1235,7 +1428,9 @@
         "medications",
         "prescriptions",
         "adherence",
-        "adr"
+        "adr",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 20,
       "expiresInDays": 345,
@@ -1251,7 +1446,9 @@
         "medications",
         "prescriptions",
         "adherence",
-        "adr"
+        "adr",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 20,
       "expiresInDays": 345,
@@ -1267,7 +1464,9 @@
         "medications",
         "prescriptions",
         "adherence",
-        "adr"
+        "adr",
+        "allergies",
+        "products"
       ],
       "grantedDaysAgo": 20,
       "expiresInDays": 345,
@@ -1285,5 +1484,12 @@
       "expiresInDays": 355,
       "version": "consent-text-v1"
     }
+  ],
+  "granteeFreePurposes": [
+    "InsuranceSharing",
+    "ManufacturerReport",
+    "Monitoring",
+    "AiProcessing",
+    "AiExternalProcessing"
   ]
 }

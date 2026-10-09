@@ -56,6 +56,11 @@ public sealed class MedicationService(IMedicationRepository repo, MedicationRead
             ? OperationResult.Ok<MedicationKnowledgeDocument>(MedicationReader.ToKnowledgeDocument(detail.Value!))
             : OperationResult.Fail<MedicationKnowledgeDocument>(detail.Error);
     }
+
+    public async Task<OperationResult<ManufacturerDto>> GetManufacturerAsync(Guid id, CancellationToken ct = default) =>
+        await repo.FindManufacturerAsync(id, ct) is { } m
+            ? OperationResult.Ok(new ManufacturerDto(m.Id, new LocalizedText(m.NameEn, m.NameFa), m.Country, m.ManufacturerCode))
+            : OperationResult.Fail<ManufacturerDto>(MedicationError.NotFound);
 }
 
 /// <summary>Raised for an invalid search query; carries only a machine-readable code.</summary>

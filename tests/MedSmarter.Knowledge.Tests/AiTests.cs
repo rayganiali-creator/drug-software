@@ -163,7 +163,11 @@ public class ProviderTests
         Assert.Throws<InvalidOperationException>(() => AiGuard.EnsureSafe("Staging", mock));
         AiGuard.EnsureSafe("Development", mock);
         AiGuard.EnsureSafe("Testing", mock);
-        AiGuard.EnsureSafe("Production", new AiOptions { Provider = "Mock", AllowMockInProduction = true });
+        // The override never works in Production, not even together with a real provider choice; elsewhere it is allowed but loudly logged.
+        Assert.Throws<InvalidOperationException>(() => AiGuard.EnsureSafe("Production", new AiOptions { Provider = "Mock", AllowMockInProduction = true }));
+        Assert.Throws<InvalidOperationException>(() => AiGuard.EnsureSafe("Production", new AiOptions { Provider = "Disabled", AllowMockInProduction = true }));
+        Assert.Contains("MOCK PROVIDER IS ACTIVE", AiGuard.EnsureSafe("Staging", new AiOptions { Provider = "Mock", AllowMockInProduction = true }), StringComparison.Ordinal);
+        Assert.Null(AiGuard.EnsureSafe("Development", mock));
         AiGuard.EnsureSafe("Production", new AiOptions()); // default = Disabled
         Assert.Throws<InvalidOperationException>(() => AiGuard.EnsureSafe("Development", new AiOptions { Provider = "Banana" }));
     }

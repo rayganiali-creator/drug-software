@@ -29,7 +29,7 @@ public static class MedicationsGuard
     }
 }
 
-/// <summary>Medication knowledge core (see docs/phase4). The store is in memory until the PostgreSQL repository is added.</summary>
+/// <summary>Medication knowledge core (see docs/phase4, docs/phase5). PostgreSQL by default; in memory only when Persistence:Provider=InMemory.</summary>
 public sealed class MedicationsModule : IModule
 {
     public string Name => "Medications";
@@ -38,15 +38,17 @@ public sealed class MedicationsModule : IModule
     {
         services.Configure<MedicationsOptions>(configuration.GetSection(MedicationsOptions.Section));
         services.TryAddSingleton<IClock, SystemClock>();
-        // The PostgreSQL model is registered so migrations can be applied (`--migrate-and-exit`). The API itself still serves from the
-        // in-memory repository until the PostgreSQL repository is written (docs/phase4/07).
-        if (configuration.GetConnectionString("Postgres") is { Length: > 0 } cs)
+        if (PersistenceSettings.UsePostgres(configuration))
         {
-            services.AddDbContext<MedicationsDbContext>(o => o.UseNpgsql(cs, b => b.MigrationsHistoryTable("__ef_migrations_history", MedicationsDbContext.Schema)));
+            services.AddModuleDatabase<MedicationsDbContext>(configuration, MedicationsDbContext.Schema);
+            services.AddSingleton<IMedicationRepository, PostgresMedicationRepository>();
+        }
+        else
+        {
+            services.AddSingleton<InMemoryMedicationRepository>();
+            services.AddSingleton<IMedicationRepository>(sp => sp.GetRequiredService<InMemoryMedicationRepository>());
         }
 
-        services.AddSingleton<InMemoryMedicationRepository>();
-        services.AddSingleton<IMedicationRepository>(sp => sp.GetRequiredService<InMemoryMedicationRepository>());
         services.AddSingleton<MedicationReader>();
         services.AddSingleton<IMedicationService, MedicationService>();
         services.AddSingleton<IMedicationAdminService, MedicationAdminService>();

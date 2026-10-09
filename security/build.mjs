@@ -22,6 +22,7 @@ for (const p of cat.permissions) {
   if (!["subject", "organization", "aggregate", "own", "global"].includes(p.kind)) problems.push(`bad kind ${p.name}`);
   if (p.kind === "subject" && !cat.dataScopes.includes(p.dataScope)) problems.push(`subject permission without data scope ${p.name}`);
 }
+for (const g of cat.granteeFreePurposes) if (!cat.consentPurposes.includes(g)) problems.push(`grantee-free purpose ${g} is not a consent purpose`);
 const roleNames = new Set();
 for (const r of cat.roles) {
   roleNames.add(r.name);
@@ -75,6 +76,9 @@ ${cat.roles.map((r) => `    public const string ${r.name} = "${r.name}";`).join(
 public static class ConsentPurposes
 {
 ${cat.consentPurposes.map((p) => `    public const string ${p} = "${p}";`).join("\n")}
+
+    /// <summary>Purposes that have no grantee (the data is not given to a person or organization): consent is recorded for the purpose itself.</summary>
+    public static readonly string[] GranteeFree = [${cat.granteeFreePurposes.map((p) => `"${p}"`).join(", ")}];
 }
 
 /// <summary>Consent data scopes (data categories).</summary>
@@ -97,6 +101,7 @@ export type RoleName = (typeof roleNames)[number];
 
 export const consentPurposes = [${cat.consentPurposes.map((p) => `"${p}"`).join(", ")}] as const;
 export type ConsentPurpose = (typeof consentPurposes)[number];
+export const granteeFreePurposes: readonly ConsentPurpose[] = [${cat.granteeFreePurposes.map((p) => `"${p}"`).join(", ")}];
 
 export const dataScopes = [${cat.dataScopes.map((s) => `"${s}"`).join(", ")}] as const;
 export type DataScope = (typeof dataScopes)[number];
@@ -114,6 +119,11 @@ ${cat.permissions.map((p) => `  static const ${camel(p.name)} = '${p.name}';`).j
 
 abstract final class RoleNames {
 ${cat.roles.map((r) => `  static const ${camel(r.name)} = '${r.name}';`).join("\n")}
+}
+
+abstract final class ConsentPurposes {
+${cat.consentPurposes.map((p) => `  static const ${p[0].toLowerCase() + p.slice(1)} = '${p}';`).join("\n")}
+  static const granteeFree = [${cat.granteeFreePurposes.map((p) => `'${p}'`).join(", ")}];
 }
 
 abstract final class DataScopes {

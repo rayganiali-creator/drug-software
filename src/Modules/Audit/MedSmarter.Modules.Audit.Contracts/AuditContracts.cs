@@ -38,6 +38,23 @@ public static class AuditActions
     public const string KnowledgeRevisionAdded = "KNOWLEDGE_REVISION_ADDED";
     public const string AiProviderCalled = "AI_PROVIDER_CALLED";
     public const string InsuranceImport = "INSURANCE_IMPORT";
+    public const string CareRelationshipRequested = "CARE_RELATIONSHIP_REQUESTED";
+    public const string CareRelationshipAccepted = "CARE_RELATIONSHIP_ACCEPTED";
+    public const string CareRelationshipDeclined = "CARE_RELATIONSHIP_DECLINED";
+    public const string CareRelationshipEnded = "CARE_RELATIONSHIP_ENDED";
+    public const string ProductRecorded = "PRODUCT_RECORDED";
+    public const string ProductUpdated = "PRODUCT_UPDATED";
+    public const string ProductRemoved = "PRODUCT_REMOVED";
+    public const string ManufacturerReportCreated = "MANUFACTURER_REPORT_CREATED";
+    public const string ManufacturerReportSubmitted = "MANUFACTURER_REPORT_SUBMITTED";
+    public const string ManufacturerReportReviewed = "MANUFACTURER_REPORT_REVIEWED";
+    public const string ManufacturerReportSent = "MANUFACTURER_REPORT_SENT";
+    public const string ManufacturerReportAcknowledged = "MANUFACTURER_REPORT_ACKNOWLEDGED";
+    public const string ManufacturerReportFailed = "MANUFACTURER_REPORT_FAILED";
+    public const string ManufacturerReportCancelled = "MANUFACTURER_REPORT_CANCELLED";
+    public const string ManufacturerReportBlocked = "MANUFACTURER_REPORT_BLOCKED";
+    public const string GuidanceStatusChanged = "GUIDANCE_STATUS_CHANGED";
+    public const string AiPatientContextUsed = "AI_PATIENT_CONTEXT_USED";
 }
 
 /// <summary>

@@ -283,6 +283,9 @@ public interface IMedicationService
     /// <param name="includeNonActive">Draft/inactive records are invisible to ordinary readers; only editors may ask for them.</param>
     Task<OperationResult<MedicationDetailDto>> GetAsync(Guid id, bool includeNonActive = false, CancellationToken ct = default);
     Task<OperationResult<MedicationKnowledgeDocument>> GetKnowledgeDocumentAsync(Guid id, bool includeNonActive = false, CancellationToken ct = default);
+
+    /// <summary>A manufacturer from the reference (used to check that a product's manufacturer is compatible with its medication).</summary>
+    Task<OperationResult<ManufacturerDto>> GetManufacturerAsync(Guid id, CancellationToken ct = default);
 }
 
 /// <summary>Controlled editing. Every method audits; callers must already hold the permission (checked at the API edge).</summary>

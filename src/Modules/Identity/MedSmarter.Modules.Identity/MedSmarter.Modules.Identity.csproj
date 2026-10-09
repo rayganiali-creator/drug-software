@@ -15,5 +15,6 @@
     <!-- Single source of truth for roles, permissions and FICTIONAL demo identities (see security/build.mjs). -->
     <EmbeddedResource Include="..\..\..\..\security\access-catalog.json" LogicalName="access-catalog.json" />
     <InternalsVisibleTo Include="MedSmarter.Security.Tests" />
+    <InternalsVisibleTo Include="MedSmarter.Patients.Tests" />
   </ItemGroup>
 </Project>

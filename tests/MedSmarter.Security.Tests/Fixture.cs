@@ -27,6 +27,7 @@ public sealed class Env : IDisposable
         var settings = new Dictionary<string, string?>
         {
             ["Auth:Mode"] = mode,
+            ["Persistence:Provider"] = "InMemory",
             ["Auth:SigningKey"] = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), // random per test run, never a real secret
         };
         foreach (var (k, v) in extra ?? [])

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace MedSmarter.Api.Tests;
@@ -25,4 +26,6 @@ public sealed class UnreachableDependenciesFactory : WebApplicationFactory<Progr
             Environment.SetEnvironmentVariable(k, v);
         }
     }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseSetting("Persistence:Provider", "InMemory"); // tests never need a database
 }

@@ -49,14 +49,33 @@ export const permissions = {
   medicationRead: "medication.read",
   insuranceImport: "insurance.import",
   insuranceRead: "insurance.read",
+  patientConditionsRead: "patient.conditions.read",
+  patientConditionsUpdate: "patient.conditions.update",
+  patientAllergiesRead: "patient.allergies.read",
+  patientAllergiesUpdate: "patient.allergies.update",
+  patientSymptomsCreate: "patient.symptoms.create",
+  patientAdherenceLog: "patient.adherence.log",
+  patientProductsRead: "patient.products.read",
+  patientProductsRecord: "patient.products.record",
+  manufacturerReportCreate: "manufacturer-report.create",
+  manufacturerReportRead: "manufacturer-report.read",
+  manufacturerReportReview: "manufacturer-report.review",
+  manufacturerReportQueueRead: "manufacturer-report.queue.read",
+  manufacturerReportQueueManage: "manufacturer-report.queue.manage",
+  careRelationshipRead: "care.relationship.read",
+  careRelationshipManage: "care.relationship.manage",
+  guidanceRead: "guidance.read",
+  guidanceUpdate: "guidance.update",
+  guidanceProfessionalRead: "guidance.professional.read",
 } as const;
 export type Permission = (typeof permissions)[keyof typeof permissions];
 
 export const roleNames = ["Patient", "Physician", "Pharmacist", "PharmacyAdmin", "PharmaceuticalCompany", "Researcher", "ContentManager", "AIManager", "SystemAdmin"] as const;
 export type RoleName = (typeof roleNames)[number];
 
-export const consentPurposes = ["Treatment", "MedicationReview", "Dispensing", "Research"] as const;
+export const consentPurposes = ["Treatment", "MedicationReview", "Dispensing", "Research", "InsuranceSharing", "ManufacturerReport", "Monitoring", "AiProcessing", "AiExternalProcessing"] as const;
 export type ConsentPurpose = (typeof consentPurposes)[number];
+export const granteeFreePurposes: readonly ConsentPurpose[] = ["InsuranceSharing", "ManufacturerReport", "Monitoring", "AiProcessing", "AiExternalProcessing"];
 
-export const dataScopes = ["profile", "medications", "prescriptions", "adherence", "adr", "checkins", "symptoms", "ai_summary"] as const;
+export const dataScopes = ["profile", "medications", "prescriptions", "adherence", "adr", "checkins", "symptoms", "ai_summary", "conditions", "allergies", "products"] as const;
 export type DataScope = (typeof dataScopes)[number];

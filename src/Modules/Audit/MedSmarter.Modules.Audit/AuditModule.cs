@@ -1,4 +1,6 @@
+using MedSmarter.BuildingBlocks;
 using MedSmarter.Modules.Audit.Contracts;
+using MedSmarter.Modules.Audit.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,8 +13,17 @@ public sealed class AuditModule : MedSmarter.BuildingBlocks.IModule
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<InMemoryAuditStore>();
-        services.AddSingleton<IAuditStore>(sp => sp.GetRequiredService<InMemoryAuditStore>());
+        if (PersistenceSettings.UsePostgres(configuration))
+        {
+            services.AddModuleDatabase<AuditDbContext>(configuration, AuditDbContext.Schema);
+            services.AddSingleton<IAuditStore, PostgresAuditStore>();
+        }
+        else
+        {
+            services.AddSingleton<InMemoryAuditStore>();
+            services.AddSingleton<IAuditStore>(sp => sp.GetRequiredService<InMemoryAuditStore>());
+        }
+
         services.AddSingleton<AuditService>();
         services.AddSingleton<IAuditWriter>(sp => sp.GetRequiredService<AuditService>());
         services.AddSingleton<IAuditReader>(sp => sp.GetRequiredService<AuditService>());

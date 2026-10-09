@@ -51,6 +51,24 @@ abstract final class Permissions {
   static const medicationRead = 'medication.read';
   static const insuranceImport = 'insurance.import';
   static const insuranceRead = 'insurance.read';
+  static const patientConditionsRead = 'patient.conditions.read';
+  static const patientConditionsUpdate = 'patient.conditions.update';
+  static const patientAllergiesRead = 'patient.allergies.read';
+  static const patientAllergiesUpdate = 'patient.allergies.update';
+  static const patientSymptomsCreate = 'patient.symptoms.create';
+  static const patientAdherenceLog = 'patient.adherence.log';
+  static const patientProductsRead = 'patient.products.read';
+  static const patientProductsRecord = 'patient.products.record';
+  static const manufacturerReportCreate = 'manufacturer-report.create';
+  static const manufacturerReportRead = 'manufacturer-report.read';
+  static const manufacturerReportReview = 'manufacturer-report.review';
+  static const manufacturerReportQueueRead = 'manufacturer-report.queue.read';
+  static const manufacturerReportQueueManage = 'manufacturer-report.queue.manage';
+  static const careRelationshipRead = 'care.relationship.read';
+  static const careRelationshipManage = 'care.relationship.manage';
+  static const guidanceRead = 'guidance.read';
+  static const guidanceUpdate = 'guidance.update';
+  static const guidanceProfessionalRead = 'guidance.professional.read';
 }
 
 abstract final class RoleNames {
@@ -65,6 +83,19 @@ abstract final class RoleNames {
   static const systemAdmin = 'SystemAdmin';
 }
 
+abstract final class ConsentPurposes {
+  static const treatment = 'Treatment';
+  static const medicationReview = 'MedicationReview';
+  static const dispensing = 'Dispensing';
+  static const research = 'Research';
+  static const insuranceSharing = 'InsuranceSharing';
+  static const manufacturerReport = 'ManufacturerReport';
+  static const monitoring = 'Monitoring';
+  static const aiProcessing = 'AiProcessing';
+  static const aiExternalProcessing = 'AiExternalProcessing';
+  static const granteeFree = ['InsuranceSharing', 'ManufacturerReport', 'Monitoring', 'AiProcessing', 'AiExternalProcessing'];
+}
+
 abstract final class DataScopes {
   static const profile = 'profile';
   static const medications = 'medications';
@@ -74,4 +105,7 @@ abstract final class DataScopes {
   static const checkins = 'checkins';
   static const symptoms = 'symptoms';
   static const aiSummary = 'ai_summary';
+  static const conditions = 'conditions';
+  static const allergies = 'allergies';
+  static const products = 'products';
 }

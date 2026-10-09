@@ -2,8 +2,10 @@ using MedSmarter.Modules.Identity.Contracts;
 
 namespace MedSmarter.Modules.Identity;
 
-public sealed class UserIdentityService(IIdentityStore identity, ISessionService sessions, AccessCatalog catalog) : IUserIdentityService
+public sealed class UserIdentityService(IIdentityStore identity, ISessionService sessions, AccessCatalog catalog, IEnumerable<ICareRelationshipSource> careSources) : IUserIdentityService
 {
+    private readonly ICareRelationshipSource[] _careSources = [.. careSources];
+
     /// <summary>
     /// Resolved on EVERY request: session must still be valid, user active, roles current. Because nothing is cached in
     /// the token, a revoked session or role takes effect on the very next request.
@@ -64,6 +66,12 @@ public sealed class UserIdentityService(IIdentityStore identity, ISessionService
     public async Task<IReadOnlyList<PatientRef>> ListRelatedPatientsAsync(CurrentUser actor, CancellationToken ct = default)
     {
         var result = new List<PatientRef>();
+        var dynamicPatients = new HashSet<Guid>();
+        foreach (var source in _careSources)
+        {
+            dynamicPatients.UnionWith((await source.ActiveForProviderAsync(actor.UserId, actor.OrganizationIds, ct)).Select(l => l.PatientUserId));
+        }
+
         foreach (var u in await identity.AllUsersAsync(ct))
         {
             if (u.Id == actor.UserId || u.Status != UserStatusValue.Active)
@@ -71,7 +79,7 @@ public sealed class UserIdentityService(IIdentityStore identity, ISessionService
                 continue;
             }
 
-            var related = (await identity.RelationshipsForPatientAsync(u.Id, ct))
+            var related = dynamicPatients.Contains(u.Id) || (await identity.RelationshipsForPatientAsync(u.Id, ct))
                 .Any(r => r.IsActive && (r.ProviderUserId == actor.UserId || (r.ProviderOrganizationId is { } o && actor.OrganizationIds.Contains(o))));
             if (related)
             {

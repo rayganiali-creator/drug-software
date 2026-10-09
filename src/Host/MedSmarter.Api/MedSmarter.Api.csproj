@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\Modules\Medications\MedSmarter.Modules.Medications\MedSmarter.Modules.Medications.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\MedSmarter.Modules.Notifications\MedSmarter.Modules.Notifications.csproj" />
     <ProjectReference Include="..\..\Modules\Patients\MedSmarter.Modules.Patients\MedSmarter.Modules.Patients.csproj" />
+    <ProjectReference Include="..\..\Modules\Guidance\MedSmarter.Modules.Guidance\MedSmarter.Modules.Guidance.csproj" />
+    <ProjectReference Include="..\..\Modules\ProductTrace\MedSmarter.Modules.ProductTrace\MedSmarter.Modules.ProductTrace.csproj" />
     <ProjectReference Include="..\..\Modules\Pharmacies\MedSmarter.Modules.Pharmacies\MedSmarter.Modules.Pharmacies.csproj" />
     <ProjectReference Include="..\..\Modules\Pharmacists\MedSmarter.Modules.Pharmacists\MedSmarter.Modules.Pharmacists.csproj" />
     <ProjectReference Include="..\..\Modules\Physicians\MedSmarter.Modules.Physicians\MedSmarter.Modules.Physicians.csproj" />

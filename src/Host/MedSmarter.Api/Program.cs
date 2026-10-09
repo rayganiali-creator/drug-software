@@ -1,9 +1,15 @@
 using MedSmarter.Api;
+using MedSmarter.BuildingBlocks;
 using MedSmarter.Api.Http;
 using MedSmarter.Api.Knowledge;
+using MedSmarter.Api.Patients;
 using MedSmarter.Api.Security;
 using MedSmarter.Modules.AI;
 using MedSmarter.Modules.Medications;
+using MedSmarter.Modules.Patients;
+using MedSmarter.Modules.Patients.Contracts;
+using MedSmarter.Modules.Guidance.Contracts;
+using MedSmarter.Modules.ProductTrace;
 using System.Threading.RateLimiting;
 using MedSmarter.Modules.Identity;
 using MedSmarter.Modules.Identity.Contracts;
@@ -50,9 +56,20 @@ try
     var authOptions = builder.Configuration.GetSection(AuthOptions.Section).Get<AuthOptions>() ?? new AuthOptions();
     if (!args.Contains("--migrate-and-exit"))
     {
+        PersistenceSettings.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration); // volatile storage can never run outside Development/Testing
         AuthGuard.EnsureSafe(builder.Environment.EnvironmentName, authOptions); // DevelopmentMock can never start in production
         MedicationsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(MedicationsOptions.Section).Get<MedicationsOptions>() ?? new MedicationsOptions());
-        AiGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions());
+        if (AiGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions()) is { } aiWarning)
+        {
+            Log.Warning("{Warning}", aiWarning); // a deliberate demo setup outside development: never silent
+        }
+
+        PatientsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(PatientsOptions.Section).Get<PatientsOptions>() ?? new PatientsOptions());
+        ManufacturerReportsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(ManufacturerReportsOptions.Section).Get<ManufacturerReportsOptions>() ?? new ManufacturerReportsOptions());
+        if (!PersistenceSettings.IsDevLike(builder.Environment.EnvironmentName) && builder.Configuration.GetSection("Guidance").GetValue<bool>("SeedDemoData"))
+        {
+            throw new InvalidOperationException("Guidance:SeedDemoData is only allowed in Development/Testing. Refusing to start.");
+        }
     }
 
     // Per-caller rate limits (user id when signed in, otherwise client address). Limits are per instance; a shared limiter replaces them when scaling out.
@@ -81,13 +98,25 @@ try
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
         await db.Database.MigrateAsync();
-        if (scope.ServiceProvider.GetService<MedSmarter.Modules.Medications.Persistence.MedicationsDbContext>() is { } medicationsDb)
+        foreach (var migrator in scope.ServiceProvider.GetServices<IDatabaseMigrator>())
         {
-            await medicationsDb.Database.MigrateAsync();
+            await migrator.MigrateAsync(CancellationToken.None);
+            Log.Information("Migrations applied for {Database}", migrator.Name);
         }
 
         Log.Information("Database migrations applied");
         return 0;
+    }
+
+    if (PersistenceSettings.MigrateOnStartup(app.Configuration) && PersistenceSettings.UsePostgres(app.Configuration))
+    {
+        // Developer convenience only (PersistenceSettings.EnsureSafe refuses it outside Development/Testing).
+        foreach (var migrator in app.Services.GetServices<IDatabaseMigrator>())
+        {
+            await migrator.MigrateAsync(CancellationToken.None);
+        }
+
+        Log.Warning("DEV DATA: migrations were applied at startup (Persistence:MigrateOnStartup).");
     }
 
     app.UseExceptionHandler();
@@ -121,7 +150,18 @@ try
         Log.Warning("DEV DATA: fictional demo medications are loaded. Never enable outside local development.");
     }
 
+    if (app.Services.GetService<IDemoPatientSeeder>() is { } patientSeeder && app.Services.GetService<IDemoCareData>() is not null)
+    {
+        await patientSeeder.SeedAsync(); // fictional patients, records and care relationships (needs the demo identities)
+        Log.Warning("DEV DATA: fictional demo patients are loaded. Never enable outside local development.");
+        if (app.Services.GetService<IDemoGuidanceSeeder>() is { } guidanceSeeder)
+        {
+            await guidanceSeeder.SeedAsync();
+        }
+    }
+
     app.MapKnowledge();
+    app.MapPatientRecords();
     app.MapSecurity(app.Services.GetService<IDemoAccountDirectory>() is not null);
     app.MapPlatformHealth();
     app.MapGet("/version", () => Results.Ok(new
