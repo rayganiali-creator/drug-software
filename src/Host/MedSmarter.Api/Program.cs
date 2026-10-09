@@ -1,8 +1,13 @@
 using MedSmarter.Api;
 using MedSmarter.Api.Http;
+using MedSmarter.Api.Knowledge;
 using MedSmarter.Api.Security;
+using MedSmarter.Modules.AI;
+using MedSmarter.Modules.Medications;
+using System.Threading.RateLimiting;
 using MedSmarter.Modules.Identity;
 using MedSmarter.Modules.Identity.Contracts;
+using MedSmarter.Modules.Medications.Contracts;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using MedSmarter.BuildingBlocks.Infrastructure;
@@ -24,14 +29,16 @@ try
         .WriteTo.Console(new Serilog.Formatting.Compact.RenderedCompactJsonFormatter()));
 
     builder.Services.AddProblemDetails();
+    // Malformed input is the caller's mistake: always a plain 400 (also in Development, where the default would throw and become a 500).
+    builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(o => o.ThrowOnBadRequest = false);
     builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
     // CORS is deny-all unless origins are configured (Cors__AllowedOrigins__0=...). Read-only for now.
     var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
     builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
         .WithOrigins(origins)
-        .WithMethods("GET", "POST", "DELETE")
-        .WithHeaders("Accept", "Authorization", "Content-Type", "X-Client", CorrelationIdMiddleware.HeaderName)
+        .WithMethods("GET", "POST", "PUT", "DELETE")
+        .WithHeaders("Accept", "Authorization", "Content-Type", "If-Match", "X-Client", CorrelationIdMiddleware.HeaderName)
         .WithExposedHeaders(CorrelationIdMiddleware.HeaderName)));
     builder.Services.AddPlatformInfrastructure(builder.Configuration);
     foreach (var module in ModuleCatalog.All)
@@ -44,7 +51,19 @@ try
     if (!args.Contains("--migrate-and-exit"))
     {
         AuthGuard.EnsureSafe(builder.Environment.EnvironmentName, authOptions); // DevelopmentMock can never start in production
+        MedicationsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(MedicationsOptions.Section).Get<MedicationsOptions>() ?? new MedicationsOptions());
+        AiGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(AiOptions.Section).Get<AiOptions>() ?? new AiOptions());
     }
+
+    // Per-caller rate limits (user id when signed in, otherwise client address). Limits are per instance; a shared limiter replaces them when scaling out.
+    string CallerKey(HttpContext c) => c.User.FindFirst("sub")?.Value ?? c.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    builder.Services.AddRateLimiter(o =>
+    {
+        o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        o.AddPolicy(KnowledgeEndpoints.SearchLimiter, c => RateLimitPartition.GetFixedWindowLimiter(CallerKey(c), _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimits:SearchPerMinute", 120), Window = TimeSpan.FromMinutes(1) }));
+        o.AddPolicy(KnowledgeEndpoints.AiLimiter, c => RateLimitPartition.GetFixedWindowLimiter(CallerKey(c), _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimits:AiPerMinute", 20), Window = TimeSpan.FromMinutes(1) }));
+        o.AddPolicy(KnowledgeEndpoints.WriteLimiter, c => RateLimitPartition.GetFixedWindowLimiter(CallerKey(c), _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimits:WritePerMinute", 60), Window = TimeSpan.FromMinutes(1) }));
+    });
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddAuthentication(BearerDefaults.Scheme).AddScheme<AuthenticationSchemeOptions, BearerAuthenticationHandler>(BearerDefaults.Scheme, null);
@@ -78,6 +97,7 @@ try
     });
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseRateLimiter();
     // Request logging records method/path/status/latency only (no query string, no bodies: PHI safety).
     app.UseSerilogRequestLogging(o => o.GetLevel = (ctx, _, ex) =>
         ex is not null || ctx.Response.StatusCode >= 500 ? Serilog.Events.LogEventLevel.Error
@@ -90,6 +110,13 @@ try
         Log.Warning("DEV AUTH: DevelopmentMock is active with fictional demo identities. Never use outside local development.");
     }
 
+    if (app.Services.GetService<IDemoMedicationSeeder>() is { } medSeeder)
+    {
+        await medSeeder.SeedAsync(); // fictional medications only; registered solely when Medications:SeedDemoData is on
+        Log.Warning("DEV DATA: fictional demo medications are loaded. Never enable outside local development.");
+    }
+
+    app.MapKnowledge();
     app.MapSecurity(app.Services.GetService<IDemoAccountDirectory>() is not null);
     app.MapPlatformHealth();
     app.MapGet("/version", () => Results.Ok(new

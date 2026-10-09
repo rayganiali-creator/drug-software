@@ -30,6 +30,14 @@ public static class AuditActions
     public const string AccessDenied = "ACCESS_DENIED";
     public const string AdminAction = "ADMIN_ACTION";
     public const string AuditRead = "AUDIT_READ";
+    public const string MedicationCreated = "MEDICATION_CREATED";
+    public const string MedicationUpdated = "MEDICATION_UPDATED";
+    public const string MedicationLifecycleChanged = "MEDICATION_LIFECYCLE_CHANGED";
+    public const string MedicationValidationChanged = "MEDICATION_VALIDATION_CHANGED";
+    public const string KnowledgeSourceRegistered = "KNOWLEDGE_SOURCE_REGISTERED";
+    public const string KnowledgeRevisionAdded = "KNOWLEDGE_REVISION_ADDED";
+    public const string AiProviderCalled = "AI_PROVIDER_CALLED";
+    public const string InsuranceImport = "INSURANCE_IMPORT";
 }
 
 /// <summary>

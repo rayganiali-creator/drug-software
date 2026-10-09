@@ -48,6 +48,9 @@ abstract final class Permissions {
   static const roleManage = 'role.manage';
   static const auditRead = 'audit.read';
   static const sessionRevokeAny = 'session.revoke.any';
+  static const medicationRead = 'medication.read';
+  static const insuranceImport = 'insurance.import';
+  static const insuranceRead = 'insurance.read';
 }
 
 abstract final class RoleNames {

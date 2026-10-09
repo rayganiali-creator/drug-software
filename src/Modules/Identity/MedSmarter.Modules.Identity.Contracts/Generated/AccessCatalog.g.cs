@@ -50,6 +50,9 @@ public static class Permissions
     public const string RoleManage = "role.manage";
     public const string AuditRead = "audit.read";
     public const string SessionRevokeAny = "session.revoke.any";
+    public const string MedicationRead = "medication.read";
+    public const string InsuranceImport = "insurance.import";
+    public const string InsuranceRead = "insurance.read";
 }
 
 public static class RoleNames

@@ -264,6 +264,21 @@
       "name": "session.revoke.any",
       "kind": "global",
       "description": "Revoke any user's session"
+    },
+    {
+      "name": "medication.read",
+      "kind": "global",
+      "description": "Search and read the medication reference (not patient data)"
+    },
+    {
+      "name": "insurance.import",
+      "kind": "global",
+      "description": "Import insurance membership/coverage data from an approved provider (system integration; no role holds it by default)"
+    },
+    {
+      "name": "insurance.read",
+      "kind": "global",
+      "description": "Read imported insurance records (no role holds it by default)"
     }
   ],
   "roles": [
@@ -290,7 +305,8 @@
         "consent.revoke",
         "session.read",
         "session.revoke",
-        "audit.read.own"
+        "audit.read.own",
+        "medication.read"
       ]
     },
     {
@@ -312,7 +328,8 @@
         "ai.use",
         "ai.review",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {
@@ -330,7 +347,8 @@
         "ai.use",
         "ai.review",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {
@@ -346,7 +364,8 @@
         "org.read",
         "org.manage",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {
@@ -357,7 +376,8 @@
         "signals.read",
         "org.read",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {
@@ -368,7 +388,8 @@
         "signals.read",
         "research.dataset.request",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {
@@ -379,7 +400,8 @@
         "knowledge.manage",
         "knowledge.publish",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {
@@ -391,7 +413,8 @@
         "ai.review",
         "knowledge.read",
         "session.read",
-        "session.revoke"
+        "session.revoke",
+        "medication.read"
       ]
     },
     {

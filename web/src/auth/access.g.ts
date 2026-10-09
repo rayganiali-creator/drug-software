@@ -46,6 +46,9 @@ export const permissions = {
   roleManage: "role.manage",
   auditRead: "audit.read",
   sessionRevokeAny: "session.revoke.any",
+  medicationRead: "medication.read",
+  insuranceImport: "insurance.import",
+  insuranceRead: "insurance.read",
 } as const;
 export type Permission = (typeof permissions)[keyof typeof permissions];
 

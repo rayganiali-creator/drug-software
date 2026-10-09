@@ -1,3 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Public surface of the module: DTOs, service interfaces, integration events. No references allowed. -->
+  <!-- Public surface of the module: DTOs, service interfaces, integration events. Only other Contracts may be referenced. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Identity\MedSmarter.Modules.Identity.Contracts\MedSmarter.Modules.Identity.Contracts.csproj" />
+  </ItemGroup>
 </Project>
