@@ -1,5 +1,7 @@
 # 12 — Limitations and known risks
 
+> **Update after Phase 5 (repository review):** Items 2 (no persistent repository) and 11 (in-memory audit) are resolved since Phase 5; see `docs/phase5/11-limitations-and-risks.md` for the current list.
+
 Ordered by priority to fix before any real use.
 
 1. **No clinical content.** Everything medical is fictional. A pharmacology/clinical validation process, licensed sources and legal review are required before real data (see the redistribution-licence rule in [02](02-data-model.md)).

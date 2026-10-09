@@ -36,9 +36,14 @@ public static partial class FreeTextGuard
             return $"{field}.invalid_characters";
         }
 
-        var normalized = NormalizeDigits(text);
+        // Invisible format characters (zero-width space/joiner, word joiner, soft hyphen, BOM...) must not hide an e-mail address, link or number.
+        // They are removed for the check only; the Persian zero-width non-joiner is legitimate text and is stored unchanged.
+        var normalized = NormalizeDigits(StripInvisible(text));
         return Email().IsMatch(normalized) || Link().IsMatch(normalized) || LongNumber().IsMatch(normalized) ? $"{field}.looks_identifying" : null;
     }
+
+    private static string StripInvisible(string s) =>
+        s.Any(c => char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.Format) ? new string([.. s.Where(c => char.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.Format)]) : s;
 
     /// <summary>Maps Persian and Arabic-Indic digits to ASCII so number patterns cannot be hidden in another script.</summary>
     public static string NormalizeDigits(string s)

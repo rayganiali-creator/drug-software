@@ -14,7 +14,7 @@
 ## Consents — IMPLEMENTED
 * Fields: purpose, scope (`profile, medications, allergies, conditions, symptoms, adherence, products, prescriptions, adr, checkins, ai_summary`), grantee (or none for
   grantee-free purposes `InsuranceSharing, ManufacturerReport, Monitoring, AiProcessing, AiExternalProcessing`), expiry, version of the text, status.
-* **History**: every grant/revoke is an immutable `consent_event` (`GET /consents/history`), shown to the person.
+* **History**: every grant/revoke is recorded as a `consent_event` row that the application never updates or deletes (unlike the audit table, there is **no database trigger** protecting it) (`GET /consents/history`), shown to the person.
 * `IPurposeConsentEvaluator` answers "is purpose X active for this patient" for services (manufacturer send, AI context).
 * Revocation is immediate; the demo seeding uses deterministic ids so it is idempotent.
 

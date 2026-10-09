@@ -1,5 +1,7 @@
 # 11 — Real vs mock
 
+> **Update after Phase 5 (repository review):** Superseded for persistence by `docs/phase5/09-real-vs-mock.md`: the PostgreSQL-backed medication repository, audit and consent stores are implemented since Phase 5.
+
 Legend: **IMPLEMENTED** works and is tested · **MOCKED** works with fictional data / a stand-in · **NOT BUILT** only prepared or documented.
 
 | Capability | Status | Notes |

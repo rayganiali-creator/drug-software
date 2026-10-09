@@ -1,4 +1,6 @@
 # AI MedSmarter — Phase 3 final report
+
+> **Update after Phase 5 (repository review):** Written at the end of Phase 3. Persistence of consent and audit has since been added (Phase 5); users and sessions are still in memory.
 **Identity, Authentication, Authorization & Access Control** · branch `claude/amazing-darwin-kfj6sv` · **LOCAL / DEV / MOCK — DEMO ENVIRONMENT, fictional data, NOT FOR CLINICAL USE**
 
 Scope respected: Phases 0–2 were not redone; no medication knowledge, real AI/RAG, clinical safety engine, real external API or production infrastructure was added; Phase 4 was **not** started.

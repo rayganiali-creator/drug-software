@@ -1,5 +1,7 @@
 # 01 — Identity model
 
+> **Update after Phase 5 (repository review):** Consent, audit and care relationships are no longer in memory since Phase 5 (PostgreSQL: `consent`, `audit`, `patients` schemas). Users, sessions, devices and login throttling are still in memory.
+
 ## Entities (code: `src/Modules/Identity/MedSmarter.Modules.Identity/Domain.cs`)
 | Entity | Purpose | Status |
 |---|---|---|

@@ -353,6 +353,33 @@ public class ReportTests
     }
 
     [Fact]
+    public async Task Narrowing_consent_after_approval_stops_data_the_new_consent_no_longer_covers()
+    {
+        // Found by the repository review after Phase 5: the send-time check used to look at the batch scope only, so a patient who replaced
+        // "batch + age/sex + other medicines" by "batch only" after approval still had age band, sex and other medicines sent.
+        var s = await Arrange(scopes: [DataScopes.Products, DataScopes.Profile, DataScopes.Medications]);
+        using var env = s.Env;
+        await env.TakeMedication(s.Patient, "nocturin");
+        var mock = env.Get<MockManufacturerReportProvider>();
+        var draft = await Created(s, Draft(s, concomitant: true));
+        var submitted = (await env.Reports.SubmitAsync(s.Patient, s.Patient, draft.Id, draft.Version, "t", null)).Value!;
+        var pharmacist = env.UserId("demo-pharmacist");
+        Assert.Equal(ReportStatus.ReadyToSend, (await env.Reports.ReviewAsync(pharmacist, s.Patient, draft.Id, new ReviewReportCommand(ReviewDecision.Approve, null, submitted.Version), "t", null)).Value!.Status);
+
+        foreach (var c in (await env.Consents.ListGivenAsync(s.Patient)).Where(c => c.Purpose == ConsentPurposes.ManufacturerReport))
+        {
+            await env.Consents.RevokeAsync(s.Patient, c.Id, "t", null);
+        }
+
+        await env.Consent("demo-patient", ConsentPurposes.ManufacturerReport, ProductsOnly); // narrower than what the frozen payload contains
+
+        var run = await env.Outbox.ProcessDueAsync(env.UserId("demo-system-admin"), 20, "t", null);
+        Assert.Equal(1, run.Blocked);
+        Assert.Equal(0, mock.AcceptedCount);
+        Assert.Equal(ReportStatus.PendingConsentOrReview, (await env.Reports.GetAsync(s.Patient, draft.Id)).Value!.Status);
+    }
+
+    [Fact]
     public async Task A_report_that_was_changed_after_approval_is_not_sent()
     {
         var s = await Arrange();

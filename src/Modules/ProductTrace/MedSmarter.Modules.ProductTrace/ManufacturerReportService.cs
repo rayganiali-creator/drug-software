@@ -437,9 +437,23 @@ public sealed class ManufacturerReportService(
                 continue;
             }
 
-            if (!(await consent.EvaluateAsync(new PurposeConsentCheck(patientRef.SubjectId, ConsentPurposes.ManufacturerReport, [DataScopes.Products]), ct)).Allowed)
+            // The consent must still cover EVERYTHING the frozen payload contains, not only the batch: a patient may have replaced the original consent
+            // by a narrower one (e.g. products only) after approval, and then age band / sex or other medicines must not leave.
+            var frozen = ReportPayloadBuilder.Deserialize(report.PayloadJson)!;
+            var neededScopes = new List<string> { DataScopes.Products };
+            if (frozen.AgeGroup != "unknown" || frozen.SexGroup != "unknown")
             {
-                // The patient withdrew consent after approval: nothing leaves; the report waits for consent again.
+                neededScopes.Add(DataScopes.Profile);
+            }
+
+            if (frozen.ConcomitantMedications.Count > 0)
+            {
+                neededScopes.Add(DataScopes.Medications);
+            }
+
+            if (!(await consent.EvaluateAsync(new PurposeConsentCheck(patientRef.SubjectId, ConsentPurposes.ManufacturerReport, neededScopes), ct)).Allowed)
+            {
+                // The patient withdrew consent (or narrowed it) after approval: nothing leaves; the report waits for consent again.
                 report.Status = ReportStatus.PendingConsentOrReview;
                 report.FailureCode = "consent_revoked";
                 report.UpdatedAt = now;
@@ -454,7 +468,7 @@ public sealed class ManufacturerReportService(
                 continue;
             }
 
-            var payload = ReportPayloadBuilder.Deserialize(report.PayloadJson)!;
+            var payload = frozen;
             ReportSubmissionResult result;
             try
             {

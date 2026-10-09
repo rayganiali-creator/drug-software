@@ -1,5 +1,7 @@
 # 04 — Running the backend, web and Flutter locally
 
+> **Update after Phase 5 (repository review):** Since Phase 5 the API defaults to PostgreSQL (`Persistence:Provider=Postgres`); use `make api-memory` for the database-free mode described here. See `docs/phase5/07-local-setup-and-tests.md`.
+
 Nothing below needs a purchased server, a domain or an API key. Everything binds to localhost.
 
 ## Backend (ASP.NET Core)

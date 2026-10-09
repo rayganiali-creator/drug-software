@@ -1,5 +1,7 @@
 # 07 — PostgreSQL and migrations
 
+> **Update after Phase 5 (repository review):** The PostgreSQL repository for medications **now exists** (Phase 5, prerequisite A) and so do the audit and consent stores. See `docs/phase5/12-persistence-and-audit.md`.
+
 ## State
 | Item | Status |
 |---|---|

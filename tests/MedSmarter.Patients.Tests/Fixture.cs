@@ -80,8 +80,33 @@ internal static class PgTemplate
         }
 
         NpgsqlConnection.ClearAllPools();
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => { try { NpgsqlConnection.ClearAllPools(); Execute($"DROP DATABASE IF EXISTS {name} WITH (FORCE)"); } catch (Exception) { /* best effort */ } };
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => { try { NpgsqlConnection.ClearAllPools(); foreach (var left in Leftovers) { DropQuietly(left); } Execute($"DROP DATABASE IF EXISTS {name} WITH (FORCE)"); } catch (Exception) { /* best effort */ } };
         return name;
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentBag<string> Leftovers = [];
+
+    /// <summary>
+    /// Cleanup must never fail a test. PostgreSQL can answer "permission denied to terminate process" to DROP ... WITH (FORCE) when a
+    /// background worker (e.g. autovacuum, owned by another role) is attached to the scratch database at that very moment; retry, and
+    /// if it still fails remember the name and drop it when the test process exits.
+    /// </summary>
+    private static void DropQuietly(string name)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                Execute($"DROP DATABASE IF EXISTS {name} WITH (FORCE)");
+                return;
+            }
+            catch (PostgresException)
+            {
+                Thread.Sleep(200);
+            }
+        }
+
+        Leftovers.Add(name);
     }
 
     public static (string ConnectionString, Action Drop) NewDatabase()
@@ -90,7 +115,7 @@ internal static class PgTemplate
         Execute($"CREATE DATABASE {name} TEMPLATE {Template.Value}");
         var cs = Admin();
         cs.Database = name;
-        return (cs.ConnectionString, () => Execute($"DROP DATABASE IF EXISTS {name} WITH (FORCE)"));
+        return (cs.ConnectionString, () => DropQuietly(name));
     }
 }
 

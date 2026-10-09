@@ -1,5 +1,7 @@
 # 06 — Audit log
 
+> **Update after Phase 5 (repository review):** Durable append-only storage is **no longer deferred**: since Phase 5 the audit log is stored in PostgreSQL (`audit` schema, append-only triggers, hash chain) — see `docs/phase5/12-persistence-and-audit.md`. The hash chain is tamper-*evident* only against someone who cannot recompute it (see the limits in `docs/repository-review-after-phase5/REPORT.md`).
+
 `Audit` module (`AuditService`), status: writer/reader/hash chain **IMPLEMENTED NOW**; durable append-only storage **DEFERRED** (in-memory now).
 
 ## What is recorded
