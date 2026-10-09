@@ -91,6 +91,7 @@ public enum NameKind
 
 public sealed record LocalizedText(string? En, string? Fa)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
     public bool IsEmpty => string.IsNullOrWhiteSpace(En) && string.IsNullOrWhiteSpace(Fa);
 }
 

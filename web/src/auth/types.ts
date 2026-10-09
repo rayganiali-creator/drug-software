@@ -71,4 +71,6 @@ export interface AuthBackend {
   canViewPatient(subjectKey: string, scope?: DataScope): Promise<boolean>;
   /** DEMO DEV: end the session as if it expired. */
   simulateExpiry?(): void;
+  /** Authorised request to the API (the token never leaves the backend). Absent for the in-browser demo accounts. */
+  apiFetch?(path: string, init?: RequestInit): Promise<Response>;
 }

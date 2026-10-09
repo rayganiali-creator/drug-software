@@ -81,6 +81,11 @@ try
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
         await db.Database.MigrateAsync();
+        if (scope.ServiceProvider.GetService<MedSmarter.Modules.Medications.Persistence.MedicationsDbContext>() is { } medicationsDb)
+        {
+            await medicationsDb.Database.MigrateAsync();
+        }
+
         Log.Information("Database migrations applied");
         return 0;
     }

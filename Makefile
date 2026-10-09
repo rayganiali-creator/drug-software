@@ -37,6 +37,9 @@ web-install:
 web-run:
 	cd web && npm run dev
 
+web-run-api: ## web app signed in through the running API (needed for the drug reference)
+	cd web && VITE_AUTH_MODE=api VITE_API_BASE_URL=http://localhost:5080 npm run dev
+
 test: ## unit tests for all four codebases (no infrastructure needed)
 	dotnet test MedSmarter.sln
 	cd ai && .venv/bin/pytest

@@ -5,6 +5,7 @@ import 'features/assistant/assistant_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/checkin/checkin_screen.dart';
 import 'features/design_system/design_system_screen.dart';
+import 'features/drugs/drug_screens.dart';
 import 'features/home/home_screen.dart';
 import 'features/medications/medications_screen.dart';
 import 'features/profile/profile_screen.dart';
@@ -22,8 +23,9 @@ GoRouter buildRouter({
   redirect: (context, state) {
     final loc = state.matchedLocation;
     if (!auth.isAuthenticated) return loc == '/login' ? null : '/login';
-    if (!auth.canUsePatientApp)
+    if (!auth.canUsePatientApp) {
       return loc == '/no-access' ? null : '/no-access';
+    }
     if (loc == '/login' || loc == '/no-access') return '/home';
     return null;
   },
@@ -44,6 +46,18 @@ GoRouter buildRouter({
               path: '/medications',
               builder: (c, s) => const MedicationsScreen(),
               routes: [
+                // Drug reference (real API). Declared before ':id' so "reference" is never read as a drug id.
+                GoRoute(
+                  path: 'reference',
+                  builder: (c, s) => const DrugSearchScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      builder: (c, s) =>
+                          DrugDetailScreen(id: s.pathParameters['id']!),
+                    ),
+                  ],
+                ),
                 GoRoute(
                   path: ':id',
                   builder: (c, s) =>

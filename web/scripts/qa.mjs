@@ -26,6 +26,8 @@ const pages = [
   // Phase 3: sign-in, account & security, administration, workspace and the neutral no-access page ("@account" = fictional demo account to sign in as)
   "/login@", "/app/account@demo-patient", "/app/account@demo-physician", "/app/admin@demo-system-admin", "/app/workspace@demo-content-manager", "/app/admin@demo-patient",
   "/app/physician/patients/pt-1@demo-physician",
+  // Phase 4: drug reference (this run uses the in-browser demo accounts, so it renders the honest "not connected" state; scripts/knowledge-qa.mjs covers the API-backed states)
+  "/app/patient/drugs", "/app/physician/drugs", "/app/pharmacist/drugs", "/app/pharmacy/drugs", "/app/industry/drugs", "/app/workspace/drugs@demo-content-manager",
 ];
 const areaAccount = { patient: "demo-patient", physician: "demo-physician", pharmacist: "demo-pharmacist", pharmacy: "demo-pharmacy-admin", industry: "demo-industry", admin: "demo-system-admin", workspace: "demo-content-manager" };
 const SESSION_KEY = "ms.auth.demo-session";

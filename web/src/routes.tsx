@@ -50,7 +50,10 @@ export const routes: RouteObject[] = [
       },
       {
         path: "workspace", element: guarded("workspace", "workspace"),
-        children: [{ index: true, ...page(() => import("./features/auth/Workspace"), "Workspace") }],
+        children: [{ index: true, ...page(() => import("./features/auth/Workspace"), "Workspace") },
+          { path: "drugs", ...page(() => import("./features/knowledge/DrugSearch"), "DrugSearch") },
+          { path: "drugs/:id", ...page(() => import("./features/knowledge/DrugSearch"), "DrugDetail") }
+        ],
       },
       {
         path: "patient", element: guarded("patient", "patient"),
@@ -61,6 +64,8 @@ export const routes: RouteObject[] = [
             { path: "assistant", ...page(() => import("./features/assistant/Assistant"), "Assistant") },
             { path: "checkin", ...page(() => import("./features/patient/CheckIn"), "CheckIn") },
             { path: "profile", ...page(() => import("./features/patient/Profile"), "Profile") },
+          { path: "drugs", ...page(() => import("./features/knowledge/DrugSearch"), "DrugSearch") },
+          { path: "drugs/:id", ...page(() => import("./features/knowledge/DrugSearch"), "DrugDetail") },
         ],
       },
       {
@@ -72,6 +77,8 @@ export const routes: RouteObject[] = [
             { path: "prescriptions", ...page(() => import("./features/physician/Physician"), "PhysicianPrescriptions") },
             { path: "adr", ...page(() => import("./features/physician/Physician"), "PhysicianAdr") },
             { path: "reports", ...page(() => import("./features/physician/Physician"), "PhysicianReports") },
+          { path: "drugs", ...page(() => import("./features/knowledge/DrugSearch"), "DrugSearch") },
+          { path: "drugs/:id", ...page(() => import("./features/knowledge/DrugSearch"), "DrugDetail") },
         ],
       },
       {
@@ -84,6 +91,8 @@ export const routes: RouteObject[] = [
             { path: "adherence", ...page(() => import("./features/pharmacist/Pharmacist"), "PharmacistAdherence") },
             { path: "questions", ...page(() => import("./features/pharmacist/Pharmacist"), "PharmacistQuestions") },
             { path: "followups", ...page(() => import("./features/pharmacist/Pharmacist"), "PharmacistFollowUps") },
+          { path: "drugs", ...page(() => import("./features/knowledge/DrugSearch"), "DrugSearch") },
+          { path: "drugs/:id", ...page(() => import("./features/knowledge/DrugSearch"), "DrugDetail") },
         ],
       },
       {
@@ -95,6 +104,8 @@ export const routes: RouteObject[] = [
             { path: "dispensing", ...page(() => import("./features/pharmacy/Pharmacy"), "PharmacyDispensing") },
             { path: "requests", ...page(() => import("./features/pharmacy/Pharmacy"), "PharmacyRequests") },
             { path: "alerts", ...page(() => import("./features/pharmacy/Pharmacy"), "PharmacyAlerts") },
+          { path: "drugs", ...page(() => import("./features/knowledge/DrugSearch"), "DrugSearch") },
+          { path: "drugs/:id", ...page(() => import("./features/knowledge/DrugSearch"), "DrugDetail") },
         ],
       },
       {
@@ -105,6 +116,8 @@ export const routes: RouteObject[] = [
             { path: "experience", ...page(() => import("./features/industry/Industry"), "IndustryExperience") },
             { path: "signals", ...page(() => import("./features/industry/Industry"), "IndustrySignals") },
             { path: "reports", ...page(() => import("./features/industry/Industry"), "IndustryReports") },
+          { path: "drugs", ...page(() => import("./features/knowledge/DrugSearch"), "DrugSearch") },
+          { path: "drugs/:id", ...page(() => import("./features/knowledge/DrugSearch"), "DrugDetail") },
         ],
       },
     ],

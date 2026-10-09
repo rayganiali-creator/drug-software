@@ -104,6 +104,9 @@ export class ApiBackend implements AuthBackend {
     return this.refreshing;
   }
 
+  /** Authorised, auto-refreshing request for other API clients (e.g. the medication reference). */
+  apiFetch = (path: string, init?: RequestInit): Promise<Response> => this.request(path, init);
+
   async restore(): Promise<AuthUser | null> {
     if (!(await this.refresh())) { this.clear(); return null; }
     const me = await this.request("/auth/me");

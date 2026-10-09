@@ -40,6 +40,13 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
             onChanged: (v) => setState(() => _filter = v),
           ),
         ),
+        const SizedBox(height: Space.s3),
+        AppButton(
+          label: context.t('kn.title'),
+          variant: ButtonVariant.tonal,
+          iconStart: 'search',
+          onPressed: () => context.push('/medications/reference'),
+        ),
         const SizedBox(height: Space.s4),
         AsyncView<(List<PatientMedication>, List<Dose>)>(
           load: () async {

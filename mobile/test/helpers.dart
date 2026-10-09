@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medsmarter_mobile/app.dart';
 import 'package:medsmarter_mobile/core/app_controller.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:medsmarter_mobile/core/services.dart';
 
 /// Fixed clock: Tuesday 29 Sep 2026, 10:00 (Jalali 7 Mehr 1405).
@@ -13,6 +15,7 @@ Future<AppController> makeController(
   Locale locale = const Locale('en'),
   DateTime Function()? now,
   String? account = 'demo-patient',
+  http.Client? httpClient,
 }) async {
   final clock = now ?? fixedNow;
   final base = await tester.runAsync(
@@ -20,12 +23,20 @@ Future<AppController> makeController(
       bundle: rootBundle,
       clock: clock,
       initialAccountId: account,
+      // Tests never reach a network: by default every API call is refused as if the backend were off.
+      httpClient:
+          httpClient ??
+          MockClient(
+            (_) async => throw http.ClientException('backend off (test)'),
+          ),
       servicesBuilder: (data) =>
           MockServices(data, latency: Duration.zero, now: clock),
     ),
   );
   final c = base!;
   c.setLocale(locale);
+  // The background API login started at creation runs in the real-async zone: let it finish before the UI is pumped.
+  await tester.runAsync(() => c.api.whenReady());
   return c;
 }
 
@@ -39,6 +50,7 @@ Future<AppController> pumpApp(
   double textScale = 1,
   bool settle = true,
   String? account = 'demo-patient',
+  http.Client? httpClient,
 }) async {
   // Haptics go through the platform channel; there is no host in unit tests.
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -61,6 +73,7 @@ Future<AppController> pumpApp(
     locale: locale,
     now: now,
     account: account,
+    httpClient: httpClient,
   );
   await tester.pumpWidget(
     MedSmarterApp(controller: c, initialLocation: location),

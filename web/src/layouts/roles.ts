@@ -16,6 +16,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("assistant", "sparkles"),
     n("checkin", "checkCircle"),
     n("profile", "user"),
+    n("drugs", "bookOpen"),
   ],
   physician: [
     { ...n("home", "grid", true), labelKey: "nav.dashboard" },
@@ -23,6 +24,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("prescriptions", "clipboard"),
     n("adr", "alertTriangle"),
     n("reports", "fileText"),
+    n("drugs", "bookOpen"),
   ],
   pharmacist: [
     { ...n("home", "grid", true), labelKey: "nav.workQueue" },
@@ -32,6 +34,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("adherence", "activity"),
     n("questions", "message"),
     n("followups", "calendar"),
+    n("drugs", "bookOpen"),
   ],
   pharmacy: [
     { ...n("home", "grid", true), labelKey: "nav.overview" },
@@ -40,15 +43,17 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("dispensing", "truck"),
     n("requests", "inbox"),
     n("alerts", "bell"),
+    n("drugs", "bookOpen"),
   ],
   admin: [{ ...n("home", "shield", true), labelKey: "role.admin" }],
-  workspace: [{ ...n("home", "grid", true), labelKey: "role.workspace" }],
+  workspace: [{ ...n("home", "grid", true), labelKey: "role.workspace" }, n("drugs", "bookOpen")],
   industry: [
     { ...n("home", "chartBar", true), labelKey: "nav.analytics" },
     n("adr-trends", "trendUp"),
     n("experience", "heart"),
     n("signals", "activity"),
     n("reports", "fileText"),
+    n("drugs", "bookOpen"),
   ],
 };
 

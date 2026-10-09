@@ -5,7 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:http/http.dart' as http;
+
+import '../api/api_session.dart';
+import '../api/medication_client.dart';
 import '../auth/auth_controller.dart';
+import '../config.dart';
 import 'formatters.dart';
 import 'l10n.dart';
 import 'models.dart';
@@ -19,6 +24,7 @@ class AppController extends ChangeNotifier {
     required this.data,
     required this.services,
     required this.auth,
+    required this.api,
     Locale? locale,
     ThemeMode? themeMode,
     SharedPreferences? prefs,
@@ -26,7 +32,27 @@ class AppController extends ChangeNotifier {
   }) : clock = clock ?? DateTime.now,
        _locale = locale ?? const Locale('fa'),
        _themeMode = themeMode ?? ThemeMode.system,
-       _prefs = prefs;
+       _prefs = prefs {
+    auth.addListener(_syncApi);
+    _syncApi();
+  }
+
+  String? _apiAccount;
+
+  /// Keeps the API session in step with the demo sign-in: a signed-in account gets a (dev-only) API session in the
+  /// background, signing out forgets the tokens. Failure just leaves the API-backed screens in their "not connected" state.
+  void _syncApi() {
+    final account = auth.accountId;
+    if (account == _apiAccount) return;
+    _apiAccount = account;
+    if (account == null) {
+      api.clear();
+      return;
+    }
+    api.login(account).then((_) {
+      if (_apiAccount == account) notifyListeners();
+    });
+  }
 
   final AppStrings strings;
   final DemoData data;
@@ -34,6 +60,10 @@ class AppController extends ChangeNotifier {
 
   /// Demo sign-in state (see AuthController). The router redirects on its changes.
   final AuthController auth;
+
+  /// Authorised API access (token in memory only) and the medication reference client built on it.
+  final ApiSession api;
+  late final MedicationClient medications = MedicationClient(api);
   final SharedPreferences? _prefs;
 
   /// Injectable clock so "next dose" and greetings are testable.
@@ -69,6 +99,7 @@ class AppController extends ChangeNotifier {
     AppServices Function(DemoData)? servicesBuilder,
     DateTime Function()? clock,
     String? initialAccountId,
+    http.Client? httpClient,
   }) async {
     final b = bundle ?? rootBundle;
     final strings = await AppStrings.load(b);
@@ -81,6 +112,7 @@ class AppController extends ChangeNotifier {
       data: data,
       services: servicesBuilder?.call(data) ?? MockServices(data, now: clock),
       clock: clock,
+      api: ApiSession(baseUrl: AppConfig.apiBaseUrl, client: httpClient),
       auth: await AuthController.create(
         bundle: b,
         prefs: prefs,

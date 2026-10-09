@@ -170,6 +170,9 @@ class AuthController extends ChangeNotifier {
   bool get isAuthenticated => status == AuthStatus.authenticated;
   SignedOutReason get reason => _reason;
 
+  /// Id of the signed-in demo account (null when signed out).
+  String? get accountId => user == null ? null : _accountId;
+
   bool can(String permission) =>
       user?.permissions.contains(permission) ?? false;
 

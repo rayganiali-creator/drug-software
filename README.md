@@ -3,7 +3,8 @@
 Healthcare/pharmaceutical platform (patients, physicians, pharmacists, pharmacies, industry, AI assistant).
 Architecture and requirements: [`docs/phase0/`](docs/phase0/README.md). Design system and UI/UX: [`docs/phase2/`](docs/phase2/README.md).
 Identity, authentication, authorization, consent and audit: [`docs/phase3/`](docs/phase3/README.md).
-Current state: **Phase 3 – identity & access control** on top of the Phase 2 UI prototype (mock authentication with fictional accounts, Mock services, fictional demo data, no real external systems).
+Medication knowledge core, economical AI architecture and platform readiness: [`docs/phase4/`](docs/phase4/README.md).
+Current state: **Phase 4 – medication knowledge core (fictional DEMO data, in-memory repository, PostgreSQL schema prepared), AI provider architecture (Mock by default, no API key needed), insurance architecture (mock only), Web + Flutter drug reference, Flutter desktop folders**. Nothing is deployed or purchased; no paid API is used.
 
 ## Layout
 | Path | What | Stack |
@@ -35,6 +36,7 @@ cd mobile && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5080
 
 make up           # alternative: everything in containers (builds images)
 ```
+Drug reference without Docker: `make web-run-api` (web against the local API) – see [`docs/phase4/04-local-setup.md`](docs/phase4/04-local-setup.md).
 Readiness (`/health/ready`) reports `postgres`, `redis`, `opensearch`, `kafka` as Healthy/Unhealthy (HTTP 200/503) and
 never includes exception text. Liveness (`/health/live`) has no dependencies.
 
