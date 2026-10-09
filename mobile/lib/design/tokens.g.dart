@@ -293,90 +293,16 @@ abstract final class TypeScaleCompact {
 abstract final class Elevations {
   static const light = <int, List<BoxShadow>>{
     0: [],
-    1: [
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.06),
-        offset: Offset(0, 1),
-        blurRadius: 2,
-        spreadRadius: 0,
-      ),
-    ],
-    2: [
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.07),
-        offset: Offset(0, 2),
-        blurRadius: 6,
-        spreadRadius: 0,
-      ),
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.05),
-        offset: Offset(0, 1),
-        blurRadius: 2,
-        spreadRadius: 0,
-      ),
-    ],
-    3: [
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.12),
-        offset: Offset(0, 8),
-        blurRadius: 20,
-        spreadRadius: -4,
-      ),
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.06),
-        offset: Offset(0, 2),
-        blurRadius: 6,
-        spreadRadius: 0,
-      ),
-    ],
-    4: [
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.18),
-        offset: Offset(0, 16),
-        blurRadius: 40,
-        spreadRadius: -8,
-      ),
-      BoxShadow(
-        color: Color.fromRGBO(10, 17, 18, 0.08),
-        offset: Offset(0, 4),
-        blurRadius: 12,
-        spreadRadius: 0,
-      ),
-    ],
+    1: [BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.06), offset: Offset(0, 1), blurRadius: 2, spreadRadius: 0)],
+    2: [BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.07), offset: Offset(0, 2), blurRadius: 6, spreadRadius: 0), BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.05), offset: Offset(0, 1), blurRadius: 2, spreadRadius: 0)],
+    3: [BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.12), offset: Offset(0, 8), blurRadius: 20, spreadRadius: -4), BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.06), offset: Offset(0, 2), blurRadius: 6, spreadRadius: 0)],
+    4: [BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.18), offset: Offset(0, 16), blurRadius: 40, spreadRadius: -8), BoxShadow(color: Color.fromRGBO(10, 17, 18, 0.08), offset: Offset(0, 4), blurRadius: 12, spreadRadius: 0)],
   };
   static const dark = <int, List<BoxShadow>>{
     0: [],
-    1: [
-      BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, 0.4),
-        offset: Offset(0, 1),
-        blurRadius: 2,
-        spreadRadius: 0,
-      ),
-    ],
-    2: [
-      BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, 0.45),
-        offset: Offset(0, 2),
-        blurRadius: 6,
-        spreadRadius: 0,
-      ),
-    ],
-    3: [
-      BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, 0.55),
-        offset: Offset(0, 8),
-        blurRadius: 20,
-        spreadRadius: -4,
-      ),
-    ],
-    4: [
-      BoxShadow(
-        color: Color.fromRGBO(0, 0, 0, 0.65),
-        offset: Offset(0, 16),
-        blurRadius: 40,
-        spreadRadius: -8,
-      ),
-    ],
+    1: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.4), offset: Offset(0, 1), blurRadius: 2, spreadRadius: 0)],
+    2: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.45), offset: Offset(0, 2), blurRadius: 6, spreadRadius: 0)],
+    3: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.55), offset: Offset(0, 8), blurRadius: 20, spreadRadius: -4)],
+    4: [BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.65), offset: Offset(0, 16), blurRadius: 40, spreadRadius: -8)],
   };
 }

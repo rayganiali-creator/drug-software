@@ -76,7 +76,9 @@ public class ReportTests
         Assert.DoesNotContain(s.Product.Id.ToString(), json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Sara", json, StringComparison.OrdinalIgnoreCase); // the patient's name
         Assert.DoesNotContain("1985", json, StringComparison.Ordinal); // birth year
-        Assert.DoesNotContain("62", json.Replace("2026", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
+        // The weight must not leak. The random report reference (hex) could contain "62" by chance, so it is removed first.
+        var withoutReference = System.Text.RegularExpressions.Regex.Replace(json, "MSR-[0-9A-Fa-f]+", string.Empty).Replace("2026", string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain("62", withoutReference, StringComparison.Ordinal);
         Assert.DoesNotContain("example.invalid", json, StringComparison.OrdinalIgnoreCase); // account e-mail
         var p = submitted.PayloadPreview!;
         Assert.Equal("40-64", p.AgeGroup); // bands only

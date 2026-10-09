@@ -60,6 +60,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: Space.s4),
+        AppCard(
+          title: context.t('nav.records'),
+          flush: true,
+          child: Column(
+            children: [
+              for (final (path, key, icon) in const [
+                ('records', 'nav.records', 'clipboard'),
+                ('taking', 'nav.taking', 'pill'),
+                ('batches', 'nav.batches', 'box'),
+                ('sharing', 'nav.sharing', 'shield'),
+                ('messages', 'nav.messages', 'message'),
+              ])
+                AppListTile(
+                  title: context.t(key),
+                  leading: AppIcon(icon),
+                  trailing: const AppIcon('chevronRight'),
+                  onTap: () => context.push('/profile/$path'),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Space.s4),
         ListenableBuilder(
           listenable: app.auth,
           builder: (context, _) => _AccountCard(),

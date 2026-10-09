@@ -9,6 +9,11 @@ import 'features/drugs/drug_screens.dart';
 import 'features/home/home_screen.dart';
 import 'features/medications/medications_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/records/batches_screen.dart';
+import 'features/records/messages_screen.dart';
+import 'features/records/records_screen.dart';
+import 'features/records/sharing_screen.dart';
+import 'features/records/taking_screen.dart';
 import 'features/shell/app_shell.dart';
 
 /// Patient navigation (see docs/phase2/02-navigation-and-page-map.md).
@@ -95,6 +100,11 @@ GoRouter buildRouter({
               path: '/profile',
               builder: (c, s) => const ProfileScreen(),
               routes: [
+                GoRoute(path: 'records', builder: (c, s) => const RecordsScreen()),
+                GoRoute(path: 'taking', builder: (c, s) => const TakingScreen()),
+                GoRoute(path: 'batches', builder: (c, s) => const BatchesScreen()),
+                GoRoute(path: 'sharing', builder: (c, s) => const SharingScreen()),
+                GoRoute(path: 'messages', builder: (c, s) => const MessagesScreen()),
                 GoRoute(
                   path: 'design-system',
                   builder: (c, s) => const DesignSystemScreen(),

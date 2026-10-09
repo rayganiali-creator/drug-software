@@ -74,9 +74,16 @@ public class PatientContextTests
         Assert.Contains(ConsentPurposes.AiProcessing, ctx.ConsentedPurposes);
 
         var json = JsonSerializer.Serialize(ctx);
-        foreach (var leak in new[] { id.ToString(), "Sara", "1990", "example.invalid", "private note", "private symptom note", "62", "165", "Asia/Tehran", "Seasonal rhinitis" })
+        // Short numbers (weight, height) could appear by chance inside a random GUID, so they are looked for with GUIDs removed.
+        var withoutGuids = System.Text.RegularExpressions.Regex.Replace(json, "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", "");
+        foreach (var leak in new[] { id.ToString(), "Sara", "1990", "example.invalid", "private note", "private symptom note", "Asia/Tehran", "Seasonal rhinitis" })
         {
             Assert.DoesNotContain(leak, json, StringComparison.OrdinalIgnoreCase);
+        }
+
+        foreach (var leak in new[] { "62", "165" })
+        {
+            Assert.DoesNotContain(leak, withoutGuids, StringComparison.OrdinalIgnoreCase);
         }
     }
 

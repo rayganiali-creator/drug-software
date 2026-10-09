@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../api/api_session.dart';
 import '../api/medication_client.dart';
+import '../api/records_client.dart';
 import '../auth/auth_controller.dart';
 import '../config.dart';
 import 'formatters.dart';
@@ -64,6 +65,7 @@ class AppController extends ChangeNotifier {
   /// Authorised API access (token in memory only) and the medication reference client built on it.
   final ApiSession api;
   late final MedicationClient medications = MedicationClient(api);
+  late final RecordsClient records = RecordsClient(api);
   final SharedPreferences? _prefs;
 
   /// Injectable clock so "next dose" and greetings are testable.

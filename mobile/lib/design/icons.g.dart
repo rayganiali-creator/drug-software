@@ -30,8 +30,7 @@ const Map<String, String> appIconPaths = {
   'activity': '<path d="M3 12h4l2.500-6 4 12 2.500-6H21"/>',
   'clipboard': '<rect x="5" y="4.500" width="14" height="16" rx="2"/><path d="M9 4.500h6v2.500H9zM8.500 12h7M8.500 15.500h5"/>',
   'flask': '<path d="M9.500 3.500h5M10.500 3.500v6L5 19a1.500 1.500 0 0 0 1.300 2.200h11.400A1.500 1.500 0 0 0 19 19l-5.500-9.500v-6"/><path d="M7.500 15h9"/>',
-  'box':
-      '<path d="m12 3 8 4v10l-8 4-8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/>',
+  'box': '<path d="m12 3 8 4v10l-8 4-8-4V7z"/><path d="m4 7 8 4 8-4M12 11v10"/>',
   'truck': '<path d="M3 6.500h11v9H3zM14 10h4l3 3v2.500h-7z"/><circle cx="7" cy="17.500" r="1.800"/><circle cx="17" cy="17.500" r="1.800"/>',
   'chartBar': '<path d="M5 20V10M12 20V4M19 20v-7"/>',
   'trendUp': '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
@@ -59,8 +58,7 @@ const Map<String, String> appIconPaths = {
   'list': '<path d="M8.500 6.500H20M8.500 12H20M8.500 17.500H20"/><circle cx="4.500" cy="6.500" r=".8"/><circle cx="4.500" cy="12" r=".8"/><circle cx="4.500" cy="17.500" r=".8"/>',
   'inbox': '<path d="M3.500 13.500 6 5.500h12l2.500 8v5h-17z"/><path d="M3.500 13.500H9a3 3 0 0 0 6 0h5.500"/>',
   'record': '<circle cx="12" cy="12" r="6" fill="currentColor"/>',
-  'stop':
-      '<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/>',
+  'stop': '<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/>',
   'logout': '<path d="M10 4.500H6a1.500 1.500 0 0 0-1.500 1.500v12A1.500 1.500 0 0 0 6 19.500h4M15 8l4 4-4 4M19 12H9.500"/>',
   'moodBad': '<circle cx="12" cy="12" r="9"/><path d="M8.500 16c1-1.300 2.100-1.900 3.500-1.900s2.500.6 3.500 1.900M9 9.500h.01M15 9.500h.01"/>',
   'moodLow': '<circle cx="12" cy="12" r="9"/><path d="M9 15.500c1-.6 1.900-.9 3-.9s2 .3 3 .9M9 9.500h.01M15 9.500h.01"/>',
@@ -72,10 +70,4 @@ const Map<String, String> appIconPaths = {
   'paperclip': '<path d="m19.500 11-7.800 7.800a4.500 4.500 0 0 1-6.400-6.400l8-8a3 3 0 0 1 4.200 4.200l-8 8a1.500 1.500 0 0 1-2.100-2.100L14.500 8"/>',
 };
 
-const Set<String> directionalIcons = {
-  'chevronRight',
-  'chevronLeft',
-  'send',
-  'arrowRight',
-  'logout',
-};
+const Set<String> directionalIcons = {'chevronRight', 'chevronLeft', 'send', 'arrowRight', 'logout'};

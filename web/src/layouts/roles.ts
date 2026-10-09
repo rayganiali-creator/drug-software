@@ -16,6 +16,12 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("assistant", "sparkles"),
     n("checkin", "checkCircle"),
     n("profile", "user"),
+    n("records", "clipboard"),
+    n("taking", "pill"),
+    n("batches", "box"),
+    n("myreports", "fileText"),
+    n("sharing", "shield"),
+    n("messages", "message"),
     n("drugs", "bookOpen"),
   ],
   physician: [
@@ -24,6 +30,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("prescriptions", "clipboard"),
     n("adr", "alertTriangle"),
     n("reports", "fileText"),
+    n("reportreviews", "inbox"),
+    n("care", "users"),
     n("drugs", "bookOpen"),
   ],
   pharmacist: [
@@ -34,6 +42,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("adherence", "activity"),
     n("questions", "message"),
     n("followups", "calendar"),
+    n("reportreviews", "inbox"),
+    n("care", "users"),
     n("drugs", "bookOpen"),
   ],
   pharmacy: [
@@ -45,7 +55,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("alerts", "bell"),
     n("drugs", "bookOpen"),
   ],
-  admin: [{ ...n("home", "shield", true), labelKey: "role.admin" }],
+  admin: [{ ...n("home", "shield", true), labelKey: "role.admin" }, n("queue", "truck")],
   workspace: [{ ...n("home", "grid", true), labelKey: "role.workspace" }, n("drugs", "bookOpen")],
   industry: [
     { ...n("home", "chartBar", true), labelKey: "nav.analytics" },

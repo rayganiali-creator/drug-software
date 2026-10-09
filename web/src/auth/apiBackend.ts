@@ -13,7 +13,7 @@ interface ApiAuth { tokens: { accessToken: string; refreshToken: string }; user:
 
 const scopeRoute: Record<DataScope, string> = {
   profile: "profile", medications: "medications", prescriptions: "prescriptions", adherence: "adherence",
-  adr: "adr", checkins: "checkins", symptoms: "symptoms", ai_summary: "ai-summary",
+  adr: "adr", checkins: "checkins", symptoms: "symptoms", ai_summary: "ai-summary", conditions: "conditions", allergies: "allergies", products: "products",
 };
 
 export interface ApiBackendOptions {

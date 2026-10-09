@@ -16,6 +16,10 @@ class ApiSession {
   final http.Client _client;
   String? _access;
   String? _refresh;
+  String? _userId;
+
+  /// Id of the signed-in user (the key of their own patient record). Null when signed out.
+  String? get userId => _userId;
 
   bool get hasToken => _access != null;
 
@@ -71,26 +75,32 @@ class ApiSession {
   void clear() {
     _access = null;
     _refresh = null;
+    _userId = null;
   }
 
-  Future<http.Response> get(String path) async {
-    var res = await _send(path);
+  Future<http.Response> get(String path) => send('GET', path);
+
+  /// Authorised request with one automatic token refresh. `body` is sent as JSON.
+  Future<http.Response> send(String method, String path, [Object? body]) async {
+    var res = await _send(method, path, body);
     if (res.statusCode == 401 && await _refreshTokens()) {
-      res = await _send(path);
+      res = await _send(method, path, body);
     }
     return res;
   }
 
-  Future<http.Response> _send(String path) => _client
-      .get(
-        Uri.parse('$baseUrl$path'),
-        headers: {
-          'Accept': 'application/json',
-          'X-Client': _platform == 'other' ? 'api' : _platform,
-          if (_access != null) 'Authorization': 'Bearer $_access',
-        },
-      )
-      .timeout(_timeout);
+  Future<http.Response> _send(String method, String path, Object? body) async {
+    final req = http.Request(method, Uri.parse('$baseUrl$path'))
+      ..headers.addAll({
+        'Accept': 'application/json',
+        'X-Client': _platform == 'other' ? 'api' : _platform,
+        if (_access != null) 'Authorization': 'Bearer $_access',
+        if (body != null) 'Content-Type': 'application/json',
+      });
+    if (body != null) req.body = jsonEncode(body);
+    final streamed = await _client.send(req).timeout(_timeout);
+    return http.Response.fromStream(streamed).timeout(_timeout);
+  }
 
   Future<bool> _refreshTokens() async {
     final token = _refresh;
@@ -119,6 +129,8 @@ class ApiSession {
     if (tokens is! Map<String, dynamic>) return false;
     _access = tokens['accessToken'] as String?;
     _refresh = tokens['refreshToken'] as String?;
+    final user = body['user'];
+    if (user is Map<String, dynamic>) _userId = user['id'] as String?;
     return _access != null;
   }
 

@@ -38,7 +38,7 @@ public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Persistence:Provider", PgTemplate.Enabled ? "Postgres" : "InMemory"); // tests never need a database unless MEDSMARTER_PG_TEST is set
         if (PgTemplate.Enabled)
         {
-            builder.UseSetting("Persistence:MigrateOnStartup", "false");
+            builder.UseSetting("Persistence:MigrateOnStartup", "true"); // the template holds only the Knowledge schemas; the host also needs the patient-layer ones
         }
     }
 
@@ -398,16 +398,16 @@ public class KnowledgeApiTests(KnowledgeApiFactory factory) : IClassFixture<Know
     [Fact]
     public void Host_refuses_demo_seed_or_mock_ai_in_production()
     {
-        using var seed = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "true"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); });
+        using var seed = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:MigrateOnStartup", "false"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "true"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); });
         Assert.ThrowsAny<Exception>(() => seed.CreateClient());
-        using var mock = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Mock"); });
+        using var mock = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:MigrateOnStartup", "false"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Mock"); });
         Assert.ThrowsAny<Exception>(() => mock.CreateClient());
     }
 
     [Fact]
     public async Task A_production_style_host_has_no_demo_medications_and_a_disabled_assistant()
     {
-        using var prod = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); b.UseSetting("Integrations:Insurance:EnableMock", "false"); });
+        using var prod = factory.WithWebHostBuilder(b => { b.UseEnvironment("Production"); b.UseSetting("Persistence:MigrateOnStartup", "false"); b.UseSetting("Persistence:Provider", "Postgres");  b.UseSetting("Auth:SigningKey", new string('k', 40)); b.UseSetting("Medications:SeedDemoData", "false"); b.UseSetting("Auth:Mode", "Disabled"); b.UseSetting("Ai:Provider", "Disabled"); b.UseSetting("Integrations:Insurance:EnableMock", "false"); });
         var c = prod.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await c.GetAsync("/medications/search?q=nocturin")).StatusCode);
         var login = await c.PostAsJsonAsync("/auth/login", new { credentials = new { accountId = "demo-patient" } });

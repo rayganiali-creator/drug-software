@@ -4,14 +4,15 @@ Healthcare/pharmaceutical platform (patients, physicians, pharmacists, pharmacie
 Architecture and requirements: [`docs/phase0/`](docs/phase0/README.md). Design system and UI/UX: [`docs/phase2/`](docs/phase2/README.md).
 Identity, authentication, authorization, consent and audit: [`docs/phase3/`](docs/phase3/README.md).
 Medication knowledge core, economical AI architecture and platform readiness: [`docs/phase4/`](docs/phase4/README.md).
-Current state: **Phase 4 – medication knowledge core (fictional DEMO data, in-memory repository, PostgreSQL schema prepared), AI provider architecture (Mock by default, no API key needed), insurance architecture (mock only), Web + Flutter drug reference, Flutter desktop folders**. Nothing is deployed or purchased; no paid API is used.
+Patient record, medicines taken, batch/lot tracing, manufacturer reports (Mock delivery) and safe anticipatory guidance: [`docs/phase5/`](docs/phase5/README.md).
+Current state: **Phase 5 – patient record + medicines taken + batch/lot records + consent-gated, de-identified manufacturer reports (Mock delivery only) + guidance contract (fa/en), PostgreSQL persistence with a persistent hash-chained audit, Web + Flutter pages; nothing deployed or bought, no paid API**. (Earlier: Phase 4 – medication knowledge core (fictional DEMO data, in-memory repository, PostgreSQL schema prepared), AI provider architecture (Mock by default, no API key needed), insurance architecture (mock only), Web + Flutter drug reference, Flutter desktop folders**. Nothing is deployed or purchased; no paid API is used.
 
 ## Layout
 | Path | What | Stack |
 |---|---|---|
 | `src/Host/MedSmarter.Api` | Composition root, health, logging, `/version` | ASP.NET Core (.NET 10) |
 | `src/BuildingBlocks/*` | `IModule`, `Result`, outbox/inbox, Postgres/Redis/OpenSearch/Kafka wiring, EF migrations | C# |
-| `src/Modules/<Name>/` | 22 bounded modules from Phase 0 (`.Contracts` + implementation, both empty) | C# |
+| `src/Modules/<Name>/` | 24 bounded modules (`.Contracts` + implementation; Patients, ProductTrace, Guidance, Consent, Audit, Medications… have code) | C# |
 | `ai/` | AI service (health/config/logging only; no LLM yet) | Python 3.11+, FastAPI |
 | `web/` | Web app: landing page, design-system gallery, patient / physician / pharmacist / pharmacy / industry UIs (Mock data) | React 19, TypeScript, Vite |
 | `mobile/` | Patient app for Android + iOS (one codebase, Mock data) | Flutter/Dart |

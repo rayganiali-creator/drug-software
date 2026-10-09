@@ -31,6 +31,21 @@ jobs:
           dotnet ef migrations has-pending-model-changes \
             -p src/Modules/Medications/MedSmarter.Modules.Medications \
             -s src/Host/MedSmarter.Api -c MedicationsDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/Audit/MedSmarter.Modules.Audit \
+            -s src/Host/MedSmarter.Api -c AuditDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/Consent/MedSmarter.Modules.Consent \
+            -s src/Host/MedSmarter.Api -c ConsentDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/Patients/MedSmarter.Modules.Patients \
+            -s src/Host/MedSmarter.Api -c PatientsDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/ProductTrace/MedSmarter.Modules.ProductTrace \
+            -s src/Host/MedSmarter.Api -c ProductTraceDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/Guidance/MedSmarter.Modules.Guidance \
+            -s src/Host/MedSmarter.Api -c GuidanceDbContext
 
   integration:
     runs-on: ubuntu-latest
@@ -53,6 +68,11 @@ jobs:
         run: |
           set -a; . ./.env; set +a
           MEDSMARTER_PG_TEST="$ConnectionStrings__Postgres" dotnet test tests/MedSmarter.Knowledge.Tests -c Release --filter PostgresSchemaTests
+      - name: Phase 5 tests against the real PostgreSQL (patients, consent, batches, reports, guidance, persistent audit)
+        run: |
+          set -a; . ./.env; set +a
+          MEDSMARTER_PG_TEST="$ConnectionStrings__Postgres" dotnet test tests/MedSmarter.Patients.Tests -c Release
+          MEDSMARTER_PG_TEST="$ConnectionStrings__Postgres" dotnet test tests/MedSmarter.Knowledge.Tests -c Release --filter PersistenceTests
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color --tail=100

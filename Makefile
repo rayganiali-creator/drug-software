@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 DOTNET_ENV := set -a; . ./.env; set +a;
 
-.PHONY: help env up down infra-up migrate api ai-install ai-run web-install web-run test test-integration lint
+.PHONY: help env up down infra-up migrate api db-up api-memory test-pg ai-install ai-run web-install web-run test test-integration lint
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1 | tr '\n' ' '; echo
@@ -39,6 +39,16 @@ web-run:
 
 web-run-api: ## web app signed in through the running API (needed for the drug reference)
 	cd web && VITE_AUTH_MODE=api VITE_API_BASE_URL=http://localhost:5080 npm run dev
+
+db-up: ## only PostgreSQL in Docker (enough for the API with Persistence__Provider=Postgres)
+	docker compose up -d --wait postgres
+
+api-memory: ## run the API with the in-memory store (no database; data is lost on restart; Development only)
+	$(DOTNET_ENV) ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5080 Persistence__Provider=InMemory Redis__ConnectionString=localhost:6379 OpenSearch__Uri=http://localhost:9200 Kafka__BootstrapServers=localhost:29092 Cors__AllowedOrigins__0=http://localhost:5173 dotnet run --project src/Host/MedSmarter.Api --no-launch-profile
+
+test-pg: ## Phase 5 + persistence tests against a real local PostgreSQL (set MEDSMARTER_PG_TEST to a connection string whose user may create databases)
+	MEDSMARTER_PG_TEST="$${MEDSMARTER_PG_TEST:?set MEDSMARTER_PG_TEST}" dotnet test tests/MedSmarter.Patients.Tests
+	MEDSMARTER_PG_TEST="$${MEDSMARTER_PG_TEST:?set MEDSMARTER_PG_TEST}" dotnet test tests/MedSmarter.Knowledge.Tests --filter PersistenceTests
 
 test: ## unit tests for all four codebases (no infrastructure needed)
 	dotnet test MedSmarter.sln
