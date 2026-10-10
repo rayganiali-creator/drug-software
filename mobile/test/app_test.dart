@@ -230,6 +230,8 @@ void main() {
         location: '/assistant',
       );
       await ask(tester, 'Can Demopril and Nocturin be taken together?');
+      await tester.ensureVisible(find.text('Send to pharmacist')); // the prototype banner above the chat takes some height
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Send to pharmacist'));
       await tester.pumpAndSettle();
       expect(find.text('Send this question to a pharmacist?'), findsOneWidget);

@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import 'auth/auth_controller.dart';
 import 'features/assistant/assistant_screen.dart';
+import 'features/assistant/grounded_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/checkin/checkin_screen.dart';
 import 'features/design_system/design_system_screen.dart';
@@ -84,6 +85,12 @@ GoRouter buildRouter({
                 GoRoute(
                   path: 'history',
                   builder: (c, s) => const ConversationHistoryScreen(),
+                ),
+                GoRoute(
+                  path: 'live',
+                  builder: (c, s) => GroundedAssistantScreen(
+                    initialQuestion: s.uri.queryParameters['q'],
+                  ),
                 ),
               ],
             ),

@@ -38,7 +38,7 @@ public static partial class FreeTextGuard
 
         // Invisible format characters (zero-width space/joiner, word joiner, soft hyphen, BOM...) must not hide an e-mail address, link or number.
         // They are removed for the check only; the Persian zero-width non-joiner is legitimate text and is stored unchanged.
-        var normalized = NormalizeDigits(StripInvisible(text));
+        var normalized = NormalizeDigits(TextFolding.Fold(StripInvisible(text)));
         return Email().IsMatch(normalized) || Link().IsMatch(normalized) || LongNumber().IsMatch(normalized) ? $"{field}.looks_identifying" : null;
     }
 

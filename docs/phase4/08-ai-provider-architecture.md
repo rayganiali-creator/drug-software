@@ -1,5 +1,7 @@
 # 08 — AI provider architecture
 
+> **Update after Phase 6:** the assistant pipeline, the fail-closed external-processing gate (consent + privacy screening), evidence-grounded retrieval and the structured answer contract replace the simple flow described here. See `docs/phase6/`.
+
 ```
 POST /ai/medication-assistant  (ai.use, rate limited, audited)
    │

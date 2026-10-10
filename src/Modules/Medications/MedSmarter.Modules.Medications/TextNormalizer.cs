@@ -17,7 +17,7 @@ public static class TextNormalizer
             return string.Empty;
         }
 
-        var text = input.Normalize(NormalizationForm.FormKC);
+        var text = MedSmarter.BuildingBlocks.TextFolding.Fold(input).Normalize(NormalizationForm.FormKC);
         var sb = new StringBuilder(text.Length);
         foreach (var raw in text)
         {

@@ -83,11 +83,14 @@ class AppBadge extends StatelessWidget {
             AppIcon(icon!, size: IconSizes.xs, color: fg),
             const SizedBox(width: Space.s1),
           ],
-          Text(
-            text,
-            style: context.text.caption.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w600,
+          // Flexible: a long label (translated text can be long) wraps instead of overflowing a narrow screen.
+          Flexible(
+            child: Text(
+              text,
+              style: context.text.caption.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

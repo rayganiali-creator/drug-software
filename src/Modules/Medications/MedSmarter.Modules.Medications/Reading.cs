@@ -142,7 +142,7 @@ public sealed class MedicationReader(IMedicationRepository repo)
             [.. d.Ingredients.Select(i => Pick(i.Name))], Pick(d.DosageForm), d.StrengthSummary,
             [.. d.Statements.Select(s => new KnowledgeStatementView(s.Kind, Pick(s.Text), s.SourceId, s.Validation))],
             [.. d.Interactions.Select(i => new KnowledgeInteractionView(Pick(i.OtherIngredientName), i.Severity, Pick(i.Mechanism), i.SourceId, i.Validation))],
-            [.. d.Sources.Select(s => new KnowledgeSourceRef(s.Id, s.Name, s.Version, s.Publisher))],
+            [.. d.Sources.Select(s => new KnowledgeSourceRef(s.Id, s.Name, s.Version, s.Publisher, s.ReceivedAt, s.Validation))],
             d.Validation, d.IsDemo, d.UpdatedAt, d.Notice);
     }
 }

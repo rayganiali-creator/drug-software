@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ConfidenceMeter, Demo, EvidenceCard, SourceChips } from "../../components/health/cards";
 import { AlertCard, BottomSheet, Button, Card, ChatBubble, Chip, Drawer, EmptyState, Icon, IconButton, List, ListItem, MessageComposer, ThinkingDots, useToast } from "../../components/ui";
 import { useBreakpoint, useReducedMotion } from "../../hooks/useBreakpoint";
@@ -164,6 +164,9 @@ export function Assistant() {
           {(compact || bp === "medium") && <Button variant="secondary" iconStart="clock" onClick={() => setHistoryOpen(true)}>{t("ai.history")}</Button>}
           <Button variant="secondary" iconStart="plus" onClick={newChat}>{t("ai.newChat")}</Button>
         </>} />
+      <AlertCard tone="warning" title={t("grounded.proto.title")} icon="info">
+        {t("grounded.proto.body")} <Link className="ms-link" to="/app/patient/assistant">{t("grounded.proto.open")}</Link>
+      </AlertCard>
       <div className="assistant">
         <Card flush className="assistant__panel" aria-label={t("nav.assistant")}>
           <div className="assistant__head">

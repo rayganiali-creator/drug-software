@@ -10,6 +10,7 @@ namespace MedSmarter.Knowledge.Tests;
 public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
 {
     private readonly Action? _drop;
+    private readonly string? _pg;
 
     public KnowledgeApiFactory()
     {
@@ -19,9 +20,12 @@ public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
             (pg, _drop) = PgTemplate.NewDatabase(); // the whole API suite also runs against a scratch PostgreSQL when MEDSMARTER_PG_TEST is set
         }
 
+        _pg = pg;
+
         foreach (var (k, v) in new Dictionary<string, string>
         {
-            ["ConnectionStrings__Postgres"] = pg ?? "Host=127.0.0.1;Port=1;Database=x;Username=x;Password=not-a-real-secret;Timeout=1;Command Timeout=1",
+            // The scratch database is passed per host (UseSetting), never through a process-wide environment variable: two factories starting in one process would otherwise share one database.
+            ["ConnectionStrings__Postgres"] = "Host=127.0.0.1;Port=1;Database=x;Username=x;Password=not-a-real-secret;Timeout=1;Command Timeout=1",
             ["Redis__ConnectionString"] = "127.0.0.1:1",
             ["OpenSearch__Uri"] = "http://127.0.0.1:1",
             ["Kafka__BootstrapServers"] = "127.0.0.1:1",
@@ -29,7 +33,10 @@ public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
             ["Cors__AllowedOrigins__0"] = "http://localhost:3000",
         })
         {
-            Environment.SetEnvironmentVariable(k, v);
+            if (k != "ConnectionStrings__Postgres" || pg is null)
+            {
+                Environment.SetEnvironmentVariable(k, v);
+            }
         }
     }
 
@@ -38,6 +45,7 @@ public sealed class KnowledgeApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Persistence:Provider", PgTemplate.Enabled ? "Postgres" : "InMemory"); // tests never need a database unless MEDSMARTER_PG_TEST is set
         if (PgTemplate.Enabled)
         {
+            builder.UseSetting("ConnectionStrings:Postgres", _pg!);
             builder.UseSetting("Persistence:MigrateOnStartup", "true"); // the template holds only the Knowledge schemas; the host also needs the patient-layer ones
         }
     }

@@ -310,6 +310,41 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final lastAssistantId = _messages.where((m) => !m.isUser).lastOrNull?.id;
     final chat = Column(
       children: [
+        // Always visible and compact: this conversation is scripted; the real, source-based assistant is one tap away.
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.2, // persistent chrome must not take over small screens (same rule as the demo banner)
+          child: Semantics(
+            container: true,
+            child: Container(
+              width: double.infinity,
+              color: context.colors.warningContainer,
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: Space.s3,
+                vertical: Space.s1,
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: Space.s2,
+                children: [
+                  Text(
+                    context.t('grounded.proto.short'),
+                    style: context.text.caption.copyWith(
+                      color: context.colors.onWarningContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  AppButton(
+                    label: context.t('grounded.proto.open'),
+                    size: ButtonSize.sm,
+                    variant: ButtonVariant.ghost,
+                    onPressed: () => context.push('/assistant/live'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         Expanded(
           child: ListView(
             controller: _scroll,

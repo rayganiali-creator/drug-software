@@ -32,7 +32,8 @@ try
         .ReadFrom.Configuration(ctx.Configuration)
         .Enrich.FromLogContext()
         .Enrich.WithProperty("Service", "medsmarter-api")
-        .WriteTo.Console(new Serilog.Formatting.Compact.RenderedCompactJsonFormatter()));
+        .WriteTo.Console(new Serilog.Formatting.Compact.RenderedCompactJsonFormatter()),
+        preserveStaticLogger: true); // every host builds its own logger instead of freezing the shared static one: two hosts starting in one process (parallel API tests) no longer race ("The logger is already frozen")
 
     builder.Services.AddProblemDetails();
     // Malformed input is the caller's mistake: always a plain 400 (also in Development, where the default would throw and become a 500).

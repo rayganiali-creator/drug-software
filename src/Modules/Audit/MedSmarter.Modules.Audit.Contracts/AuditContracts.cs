@@ -55,6 +55,12 @@ public static class AuditActions
     public const string ManufacturerReportBlocked = "MANUFACTURER_REPORT_BLOCKED";
     public const string GuidanceStatusChanged = "GUIDANCE_STATUS_CHANGED";
     public const string AiPatientContextUsed = "AI_PATIENT_CONTEXT_USED";
+    /// <summary>Every assistant request, whatever the outcome: status codes and counts only, never the question or the answer.</summary>
+    public const string AiRequestHandled = "AI_REQUEST_HANDLED";
+    /// <summary>An external-provider call was refused before anything left the system (reason code only).</summary>
+    public const string AiExternalBlocked = "AI_EXTERNAL_BLOCKED";
+    /// <summary>A generated answer failed the safety policy and was withheld (reason codes only).</summary>
+    public const string AiAnswerBlocked = "AI_ANSWER_BLOCKED";
 }
 
 /// <summary>

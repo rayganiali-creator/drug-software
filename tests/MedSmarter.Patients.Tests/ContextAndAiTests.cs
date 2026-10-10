@@ -153,7 +153,9 @@ public class AiPatientDataGateTests
         var handler = new CapturingHandler();
         var opts = Options.Create(options);
         var provider = new ConfiguredAIProvider(opts, new MockAIProvider(), new ExternalAIProvider(new HttpClient(handler), opts, NullLogger<ExternalAIProvider>.Instance), new LocalAIProvider(), new DisabledAIProvider());
-        var assistant = new AssistantService(provider, env.Reference, env.Get<IAuditWriter>(), opts, env.Context);
+        var consent = env.Get<MedSmarter.Modules.Consent.Contracts.IPurposeConsentEvaluator>();
+        var clock = new MedSmarter.BuildingBlocks.SystemClock();
+        var assistant = new AssistantService(provider, new MedicationEvidenceRetriever(env.Reference, clock, opts), new ExternalProcessingGate(opts, clock, consent), env.Get<IAuditWriter>(), opts, env.Context);
         return new Rig(env, id, assistant, handler);
     }
 
@@ -170,8 +172,8 @@ public class AiPatientDataGateTests
         var answer = await r.Assistant.AskAsync(r.Id, Ask(true), "t", null);
         Assert.True(answer.PatientContextUsed);
         Assert.Equal("patient_context.used", answer.PatientContextNote);
-        Assert.Contains("Patient context received: 1 medicines", answer.Text, StringComparison.Ordinal);
-        Assert.Contains("No clinical analysis", answer.Text, StringComparison.Ordinal);
+        Assert.Contains("Patient context received", answer.Text, StringComparison.Ordinal);
+        Assert.Contains("no clinical analysis", answer.Text, StringComparison.Ordinal);
         Assert.Contains(await r.Env.Audit.QueryAsync(new AuditQuery(Action: AuditActions.AiPatientContextUsed)), e => e.SubjectUserId == r.Id);
     }
 
@@ -200,15 +202,30 @@ public class AiPatientDataGateTests
     }
 
     [Fact]
-    public async Task The_global_flag_alone_never_sends_patient_data_to_an_external_provider()
+    public async Task The_global_flag_alone_sends_nothing_to_an_external_provider_not_even_the_question()
     {
+        // Phase 6 (review finding M-01): previously the question was still sent after answering "no patient data"; now the whole request fails closed.
         var r = await Arrange(External(transfer: true));
         using var _ = r.Env;
         await r.Env.Consent("demo-patient", ConsentPurposes.AiProcessing, [DataScopes.Medications]); // in-house consent only
         var answer = await r.Assistant.AskAsync(r.Id, Ask(true), "t", null);
+        Assert.False(answer.Answered);
+        Assert.Equal(AnswerStatus.Unavailable, answer.Status);
+        Assert.Equal("external.consent_required", answer.Reason);
+        Assert.False(answer.PatientContextUsed);
+        Assert.Equal(0, r.Handler.Calls);
+        Assert.Contains(await r.Env.Audit.QueryAsync(new AuditQuery(Action: AuditActions.AiExternalBlocked)), e => e.ReasonCode == "external.consent_required");
+    }
+
+    [Fact]
+    public async Task The_external_consent_alone_sends_the_question_but_no_patient_data_without_the_in_house_consent()
+    {
+        var r = await Arrange(External(transfer: true));
+        using var _ = r.Env;
+        await r.Env.Consent("demo-patient", ConsentPurposes.AiExternalProcessing, [DataScopes.Medications]);
+        var answer = await r.Assistant.AskAsync(r.Id, Ask(true), "t", null);
         Assert.True(answer.Answered);
         Assert.False(answer.PatientContextUsed);
-        Assert.Equal("patient_context.external_processing_consent_required", answer.PatientContextNote);
         Assert.Equal(1, r.Handler.Calls);
         Assert.DoesNotContain("\"patient\"", r.Handler.Body!, StringComparison.Ordinal);
         Assert.DoesNotContain("Demopril 5", r.Handler.Body!, StringComparison.Ordinal);

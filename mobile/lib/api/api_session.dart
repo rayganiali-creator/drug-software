@@ -81,15 +81,25 @@ class ApiSession {
   Future<http.Response> get(String path) => send('GET', path);
 
   /// Authorised request with one automatic token refresh. `body` is sent as JSON.
-  Future<http.Response> send(String method, String path, [Object? body]) async {
-    var res = await _send(method, path, body);
+  Future<http.Response> send(
+    String method,
+    String path, [
+    Object? body,
+    Duration? timeout,
+  ]) async {
+    var res = await _send(method, path, body, timeout);
     if (res.statusCode == 401 && await _refreshTokens()) {
-      res = await _send(method, path, body);
+      res = await _send(method, path, body, timeout);
     }
     return res;
   }
 
-  Future<http.Response> _send(String method, String path, Object? body) async {
+  Future<http.Response> _send(
+    String method,
+    String path,
+    Object? body,
+    Duration? timeout,
+  ) async {
     final req = http.Request(method, Uri.parse('$baseUrl$path'))
       ..headers.addAll({
         'Accept': 'application/json',
@@ -98,8 +108,9 @@ class ApiSession {
         if (body != null) 'Content-Type': 'application/json',
       });
     if (body != null) req.body = jsonEncode(body);
-    final streamed = await _client.send(req).timeout(_timeout);
-    return http.Response.fromStream(streamed).timeout(_timeout);
+    final limit = timeout ?? _timeout;
+    final streamed = await _client.send(req).timeout(limit);
+    return http.Response.fromStream(streamed).timeout(limit);
   }
 
   Future<bool> _refreshTokens() async {

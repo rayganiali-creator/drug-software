@@ -29,7 +29,9 @@ internal sealed class FakeHandler(Func<HttpRequestMessage, CancellationToken, Ta
 
 public class ProviderTests
 {
-    private static AiRequest Request(params MedicationKnowledgeDocument[] docs) => new("medication-information", "what is this?", "en", docs, 256);
+    private static readonly ExternalProcessingGrant Grant = new(Guid.NewGuid(), DateTimeOffset.UtcNow, true);
+
+    private static AiRequest Request(params MedicationKnowledgeDocument[] docs) => new("medication-information", "what is this?", "en", docs, 256, null, null, Grant);
 
     private static async Task<MedicationKnowledgeDocument> Doc(string name = "nocturin")
     {
@@ -94,6 +96,7 @@ public class ProviderTests
         Assert.Equal("Bearer", h.Last.Headers.Authorization!.Scheme);
         Assert.DoesNotContain("test-key-not-real-0001", h.LastBody!, StringComparison.Ordinal);
         Assert.Contains("\"question\"", h.LastBody!, StringComparison.Ordinal);
+        Assert.Contains("\"policy\"", h.LastBody!, StringComparison.Ordinal);
         Assert.DoesNotContain("patient", h.LastBody!, StringComparison.OrdinalIgnoreCase); // the request type has no patient data
     }
 
@@ -201,7 +204,8 @@ public class AssistantTests
         var a = await env.Get<IAIAssistantService>().AskAsync(KEnv.Actor, new AssistantQuestion("xyzzyqq nothing like this", "en", null), "test", null);
         Assert.False(a.Answered);
         Assert.Equal("none", a.Provider);
-        Assert.Contains("No information", a.Text, StringComparison.Ordinal);
+        Assert.Equal(AnswerStatus.NoEvidence, a.Status);
+        Assert.Contains("could not find anything", a.Text, StringComparison.Ordinal);
         Assert.Empty(await env.Audit.QueryAsync(new AuditQuery(Action: AuditActions.AiProviderCalled)));
     }
 

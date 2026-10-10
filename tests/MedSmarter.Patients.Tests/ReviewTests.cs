@@ -52,6 +52,12 @@ public class ReviewTests(PatientsApiFactory factory) : IClassFixture<PatientsApi
         Assert.NotNull(FreeTextGuard.Problem(text, "t", 200));
     }
 
+    [Theory]
+    [InlineData("sara\uFF20example.com")]            // full-width @: invariant globalization does not fold it
+    [InlineData("\uFF48\uFF54\uFF54\uFF50\uFF53\uFF1A\uFF0F\uFF0Fexample.com")] // full-width "https://"
+    [InlineData("\U0001D7CE\U0001D7D7\U0001D7CF\U0001D7D0\U0001D7D1\U0001D7D2\U0001D7D3\U0001D7D4\U0001D7D5\U0001D7D6\U0001D7D7")] // mathematical bold digits
+    public void Free_text_filter_folds_look_alike_characters_first(string text) => Assert.NotNull(FreeTextGuard.Problem(text, "t", 200));
+
     [Fact]
     public void Free_text_filter_still_accepts_ordinary_text_in_both_scripts()
     {

@@ -203,7 +203,9 @@ public sealed record KnowledgeStatementView(StatementKind Kind, string Text, Gui
 
 public sealed record KnowledgeInteractionView(string WithIngredient, InteractionSeverity Severity, string Summary, Guid SourceId, ValidationStatus Validation);
 
-public sealed record KnowledgeSourceRef(Guid SourceId, string Name, string Version, string Publisher);
+/// <param name="ReceivedAt">When this system received the source (NOT the publication or effective date, which is not recorded). Null when unknown.</param>
+/// <param name="Validation">Validation status of the source itself. Null when not supplied by an older caller.</param>
+public sealed record KnowledgeSourceRef(Guid SourceId, string Name, string Version, string Publisher, DateTimeOffset? ReceivedAt = null, ValidationStatus? Validation = null);
 
 // ---------- commands ----------
 

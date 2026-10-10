@@ -12,6 +12,7 @@ namespace MedSmarter.Patients.Tests;
 public sealed class PatientsApiFactory : WebApplicationFactory<Program>
 {
     private readonly Action? _drop;
+    private readonly string? _pg;
 
     public PatientsApiFactory()
     {
@@ -21,9 +22,12 @@ public sealed class PatientsApiFactory : WebApplicationFactory<Program>
             (pg, _drop) = PgTemplate.NewDatabase();
         }
 
+        _pg = pg;
+
         foreach (var (k, v) in new Dictionary<string, string>
         {
-            ["ConnectionStrings__Postgres"] = pg ?? "Host=127.0.0.1;Port=1;Database=x;Username=x;Password=not-a-real-secret;Timeout=1;Command Timeout=1",
+            // The scratch database is passed per host (UseSetting), never through a process-wide environment variable: two factories starting in one process would otherwise share one database.
+            ["ConnectionStrings__Postgres"] = "Host=127.0.0.1;Port=1;Database=x;Username=x;Password=not-a-real-secret;Timeout=1;Command Timeout=1",
             ["Redis__ConnectionString"] = "127.0.0.1:1",
             ["OpenSearch__Uri"] = "http://127.0.0.1:1",
             ["Kafka__BootstrapServers"] = "127.0.0.1:1",
@@ -33,13 +37,21 @@ public sealed class PatientsApiFactory : WebApplicationFactory<Program>
             ["RateLimits__SearchPerMinute"] = "100000",
         })
         {
-            Environment.SetEnvironmentVariable(k, v);
+            if (k != "ConnectionStrings__Postgres" || pg is null)
+            {
+                Environment.SetEnvironmentVariable(k, v);
+            }
         }
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("Persistence:Provider", PgTemplate.Enabled ? "Postgres" : "InMemory");
+        if (_pg is not null)
+        {
+            builder.UseSetting("ConnectionStrings:Postgres", _pg);
+        }
+
         builder.UseSetting("Persistence:MigrateOnStartup", "false");
         builder.UseSetting("Patients:IdentifierHashKey", "api-test-hash-key-not-a-secret");
     }
