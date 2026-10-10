@@ -388,6 +388,38 @@
       "name": "guidance.professional.read",
       "kind": "global",
       "description": "Read the professional view of guidance messages (demo samples in Phase 5)"
+    },
+    {
+      "name": "safety.assess.run",
+      "kind": "subject",
+      "description": "Run a medication safety assessment for a patient (rules engine, no model)",
+      "dataScope": "medications"
+    },
+    {
+      "name": "safety.assess.read",
+      "kind": "subject",
+      "description": "Read stored medication safety assessments of a patient",
+      "dataScope": "medications"
+    },
+    {
+      "name": "clinicalrules.read",
+      "kind": "global",
+      "description": "Read clinical safety rules, their status and coverage"
+    },
+    {
+      "name": "clinicalrules.author",
+      "kind": "global",
+      "description": "Write draft clinical safety rules and submit them for review"
+    },
+    {
+      "name": "clinicalrules.review",
+      "kind": "global",
+      "description": "Approve or reject clinical safety rules written by someone else"
+    },
+    {
+      "name": "clinicalrules.retire",
+      "kind": "global",
+      "description": "Retire an approved clinical safety rule"
     }
   ],
   "roles": [
@@ -429,7 +461,9 @@
         "care.relationship.read",
         "care.relationship.manage",
         "guidance.read",
-        "guidance.update"
+        "guidance.update",
+        "safety.assess.run",
+        "safety.assess.read"
       ]
     },
     {
@@ -461,7 +495,11 @@
         "manufacturer-report.review",
         "care.relationship.read",
         "care.relationship.manage",
-        "guidance.professional.read"
+        "guidance.professional.read",
+        "safety.assess.run",
+        "safety.assess.read",
+        "clinicalrules.read",
+        "clinicalrules.review"
       ]
     },
     {
@@ -488,7 +526,11 @@
         "manufacturer-report.review",
         "care.relationship.read",
         "care.relationship.manage",
-        "guidance.professional.read"
+        "guidance.professional.read",
+        "safety.assess.run",
+        "safety.assess.read",
+        "clinicalrules.read",
+        "clinicalrules.review"
       ]
     },
     {
@@ -541,7 +583,9 @@
         "knowledge.publish",
         "session.read",
         "session.revoke",
-        "medication.read"
+        "medication.read",
+        "clinicalrules.read",
+        "clinicalrules.author"
       ]
     },
     {
@@ -554,7 +598,8 @@
         "knowledge.read",
         "session.read",
         "session.revoke",
-        "medication.read"
+        "medication.read",
+        "clinicalrules.read"
       ]
     },
     {
@@ -571,7 +616,8 @@
         "session.read",
         "session.revoke",
         "manufacturer-report.queue.read",
-        "manufacturer-report.queue.manage"
+        "manufacturer-report.queue.manage",
+        "clinicalrules.retire"
       ]
     }
   ],

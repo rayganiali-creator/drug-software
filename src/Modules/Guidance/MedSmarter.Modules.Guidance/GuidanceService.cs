@@ -33,10 +33,33 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
 
     public async Task<GuidanceOutcome<GuidanceMessageDto>> CreateAsync(Guid subjectId, GuidanceRequest request, bool isDemo, string source, string? correlationId, CancellationToken ct = default)
     {
+        var created = await CreateCoreAsync(subjectId, request, null, isDemo, ct);
+        return created.Succeeded ? GuidanceOutcome.Ok(created.Value!.Message) : GuidanceOutcome.Fail<GuidanceMessageDto>(created.Error, created.Detail);
+    }
+
+    public async Task<GuidanceOutcome<GuidanceCreated>> CreateFromOriginAsync(Guid subjectId, GuidanceRequest request, GuidanceOrigin origin, bool isDemo, string source, string? correlationId, CancellationToken ct = default) =>
+        await CreateCoreAsync(subjectId, request, origin, isDemo, ct);
+
+    public async Task<GuidanceOutcome<IReadOnlyList<GuidanceOriginRef>>> ListOpenByOriginAsync(Guid subjectId, string originKind, CancellationToken ct = default)
+    {
         var patient = await patients.FindBySubjectAsync(subjectId, ct);
         if (patient is null)
         {
-            return GuidanceOutcome.Fail<GuidanceMessageDto>(GuidanceError.NotFound, "patient.not_found");
+            return GuidanceOutcome.Fail<IReadOnlyList<GuidanceOriginRef>>(GuidanceError.NotFound, "patient.not_found");
+        }
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var rows = await db.Messages.AsNoTracking().Where(m => m.PatientId == patient.PatientId && m.OriginKind == originKind && m.Status != GuidanceStatus.Resolved)
+            .OrderByDescending(m => m.CreatedAt).Take(200).ToListAsync(ct);
+        return GuidanceOutcome.Ok<IReadOnlyList<GuidanceOriginRef>>([.. rows.Select(r => new GuidanceOriginRef(r.Id, r.Status, OriginOf(r)!))]);
+    }
+
+    private async Task<GuidanceOutcome<GuidanceCreated>> CreateCoreAsync(Guid subjectId, GuidanceRequest request, GuidanceOrigin? origin, bool isDemo, CancellationToken ct)
+    {
+        var patient = await patients.FindBySubjectAsync(subjectId, ct);
+        if (patient is null)
+        {
+            return GuidanceOutcome.Fail<GuidanceCreated>(GuidanceError.NotFound, "patient.not_found");
         }
 
         GuidanceComposition composition;
@@ -46,26 +69,40 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
         }
         catch (ArgumentException)
         {
-            return GuidanceOutcome.Fail<GuidanceMessageDto>(GuidanceError.Validation, "template.unknown");
+            return GuidanceOutcome.Fail<GuidanceCreated>(GuidanceError.Validation, "template.unknown");
         }
 
         if (!composition.IsValid)
         {
             // A message that breaks the policy is never stored or shown.
-            return GuidanceOutcome.Fail<GuidanceMessageDto>(GuidanceError.Validation, string.Join(';', composition.Violations.Select(v => $"{v.Code}@{v.Part}")));
+            return GuidanceOutcome.Fail<GuidanceCreated>(GuidanceError.Validation, string.Join(';', composition.Violations.Select(v => $"{v.Code}@{v.Part}")));
         }
 
         await using var db = await factory.CreateDbContextAsync(ct);
+        if (origin is not null)
+        {
+            // One open message per finding; a resolved one stays resolved unless the data changed after it was resolved.
+            var existing = await db.Messages.AsNoTracking().Where(m => m.PatientId == patient.PatientId && m.OriginFindingKey == origin.FindingKey).OrderByDescending(m => m.CreatedAt).FirstOrDefaultAsync(ct);
+            if (existing is not null && (existing.Status != GuidanceStatus.Resolved || (existing.ResolvedAt is { } resolvedAt && origin.DataAsOf <= resolvedAt)))
+            {
+                return GuidanceOutcome.Ok(new GuidanceCreated(ToDto(existing, includeProfessional: false), true));
+            }
+        }
+
         var row = new GuidanceMessageRow
         {
             Id = Guid.CreateVersion7(), PatientId = patient.PatientId, TemplateKey = request.HasSufficientData ? request.TemplateKey : "data.insufficient", Level = composition.Level, Status = GuidanceStatus.Sent,
             Locale = request.Locale.StartsWith("fa", StringComparison.OrdinalIgnoreCase) ? "fa" : "en", Confidence = composition.Professional.Confidence,
             PatientJson = JsonSerializer.Serialize(composition.Patient, Json), ProfessionalJson = JsonSerializer.Serialize(composition.Professional, Json), CreatedAt = clock.UtcNow, IsDemo = isDemo,
+            OriginKind = origin?.Kind, OriginAssessmentId = origin?.AssessmentId, OriginRuleId = origin?.RuleId, OriginRuleVersion = origin?.RuleVersion, OriginFindingKey = origin?.FindingKey, OriginDataAsOf = origin?.DataAsOf,
         };
         db.Messages.Add(row);
         await db.SaveChangesAsync(ct);
-        return GuidanceOutcome.Ok(ToDto(row, includeProfessional: false));
+        return GuidanceOutcome.Ok(new GuidanceCreated(ToDto(row, includeProfessional: false), false));
     }
+
+    private static GuidanceOrigin? OriginOf(GuidanceMessageRow r) =>
+        r.OriginKind is null ? null : new GuidanceOrigin(r.OriginKind, r.OriginAssessmentId ?? Guid.Empty, r.OriginRuleId ?? string.Empty, r.OriginRuleVersion ?? 0, r.OriginFindingKey ?? string.Empty, r.OriginDataAsOf ?? r.CreatedAt);
 
     public async Task<GuidanceOutcome<IReadOnlyList<GuidanceMessageDto>>> ListForPatientAsync(Guid subjectId, CancellationToken ct = default)
     {
@@ -141,5 +178,5 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
     private static GuidanceMessageDto ToDto(GuidanceMessageRow r, bool includeProfessional) => new(
         r.Id, r.TemplateKey, r.Level, r.Status, r.Locale, JsonSerializer.Deserialize<PatientGuidanceContent>(r.PatientJson, Json)!,
         includeProfessional ? JsonSerializer.Deserialize<ProfessionalGuidanceContent>(r.ProfessionalJson, Json) : null,
-        r.CreatedAt, r.SeenAt, r.ReviewedAt, r.ReferredAt, r.ResolvedAt, r.IsDemo, r.IsDemo ? DemoNotice : null);
+        r.CreatedAt, r.SeenAt, r.ReviewedAt, r.ReferredAt, r.ResolvedAt, r.IsDemo, r.IsDemo ? DemoNotice : null, OriginOf(r));
 }

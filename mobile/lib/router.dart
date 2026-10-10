@@ -14,6 +14,7 @@ import 'features/records/batches_screen.dart';
 import 'features/records/messages_screen.dart';
 import 'features/records/records_screen.dart';
 import 'features/records/sharing_screen.dart';
+import 'features/safety/safety_screen.dart';
 import 'features/records/taking_screen.dart';
 import 'features/shell/app_shell.dart';
 
@@ -112,6 +113,7 @@ GoRouter buildRouter({
                 GoRoute(path: 'batches', builder: (c, s) => const BatchesScreen()),
                 GoRoute(path: 'sharing', builder: (c, s) => const SharingScreen()),
                 GoRoute(path: 'messages', builder: (c, s) => const MessagesScreen()),
+                GoRoute(path: 'safety', builder: (c, s) => const SafetyScreen()),
                 GoRoute(
                   path: 'design-system',
                   builder: (c, s) => const DesignSystemScreen(),

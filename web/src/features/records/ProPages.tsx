@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge, Button, Card, EmptyState, TextField } from "../../components/ui";
 import { useI18n } from "../../i18n/I18nProvider";
 import { PageHeader } from "../../layouts/PageHeader";
@@ -57,6 +58,7 @@ export function CareRequests() {
               <span className="rec-badges"><Badge tone={r.status === "Active" ? "success" : "info"} icon={r.status === "Active" ? "check" : "clock"}>{t(`rec.care.status.${r.status}`)}</Badge></span></div>
             <div className="rec-row__actions">
               {r.status === "PendingProvider" && <><Button size="sm" onClick={() => go(r.id, "accept")}>{t("rec.care.accept")}</Button><Button size="sm" variant="secondary" onClick={() => go(r.id, "decline")}>{t("rec.care.decline")}</Button></>}
+              {r.status === "Active" && r.kind === "Treating" && <Link className="ms-link" to={`../patients/${r.patientSubjectId}/safety`}>{t("nav.safety")}</Link>}
               {r.status === "Active" && <Button size="sm" variant="ghost" onClick={() => go(r.id, "end")}>{t("rec.care.end")}</Button>}
             </div>
           </li>))}

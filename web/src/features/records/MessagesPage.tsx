@@ -41,6 +41,7 @@ export function PatientMessages() {
             <li key={m.id}><Card>
               <div className="rec-badges"><Badge tone={tone[m.level]} icon={m.level === "Urgent" ? "alertTriangle" : "info"}>{t(`rec.level.${m.level}`)}</Badge><Badge tone="neutral">{t(`rec.msgStatus.${m.status}`)}</Badge><DemoFlag show={m.isDemo} /><span className="ms-muted">{fmt.date(new Date(m.createdAt), "short")}</span></div>
               <GuidanceBody g={m.patient} level={m.level} />
+              {m.origin && <p className="ms-muted" dir="auto">{t("sf.origin", { rule: m.origin.ruleId, version: m.origin.ruleVersion })} · {fmt.date(new Date(m.origin.dataAsOf), "short")}</p>}
               <div className="rec-row__actions">
                 {m.status === "Sent" && <Button size="sm" onClick={() => act.run(() => api.setMessageStatus(m.id, "Seen"), list.reload)}>{t("rec.messages.seen")}</Button>}
                 {m.status !== "Resolved" && <Button size="sm" variant="secondary" onClick={() => act.run(() => api.setMessageStatus(m.id, "Resolved"), list.reload)}>{t("rec.messages.resolve")}</Button>}

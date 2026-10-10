@@ -71,6 +71,12 @@ public static class Permissions
     public const string GuidanceRead = "guidance.read";
     public const string GuidanceUpdate = "guidance.update";
     public const string GuidanceProfessionalRead = "guidance.professional.read";
+    public const string SafetyAssessRun = "safety.assess.run";
+    public const string SafetyAssessRead = "safety.assess.read";
+    public const string ClinicalrulesRead = "clinicalrules.read";
+    public const string ClinicalrulesAuthor = "clinicalrules.author";
+    public const string ClinicalrulesReview = "clinicalrules.review";
+    public const string ClinicalrulesRetire = "clinicalrules.retire";
 }
 
 public static class RoleNames

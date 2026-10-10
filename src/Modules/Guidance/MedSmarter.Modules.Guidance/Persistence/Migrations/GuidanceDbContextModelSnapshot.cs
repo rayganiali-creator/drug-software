@@ -100,6 +100,33 @@ namespace MedSmarter.Modules.Guidance.Persistence.Migrations
                         .HasColumnType("character varying(8)")
                         .HasColumnName("locale");
 
+                    b.Property<Guid?>("OriginAssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("origin_assessment_id");
+
+                    b.Property<DateTimeOffset?>("OriginDataAsOf")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("origin_data_as_of");
+
+                    b.Property<string>("OriginFindingKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("origin_finding_key");
+
+                    b.Property<string>("OriginKind")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("origin_kind");
+
+                    b.Property<string>("OriginRuleId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("origin_rule_id");
+
+                    b.Property<int?>("OriginRuleVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("origin_rule_version");
+
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid")
                         .HasColumnName("patient_id");
@@ -152,6 +179,9 @@ namespace MedSmarter.Modules.Guidance.Persistence.Migrations
 
                     b.HasIndex("PatientId", "CreatedAt")
                         .HasDatabaseName("ix_guidance_message_patient_id_created_at");
+
+                    b.HasIndex("PatientId", "OriginFindingKey")
+                        .HasDatabaseName("ix_guidance_message_patient_id_origin_finding_key");
 
                     b.ToTable("guidance_message", "guidance");
                 });

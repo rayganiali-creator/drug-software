@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MedSmarter.Patients.Tests;
 
-public sealed class PatientsApiFactory : WebApplicationFactory<Program>
+public class PatientsApiFactory : WebApplicationFactory<Program>
 {
     private readonly Action? _drop;
     private readonly string? _pg;

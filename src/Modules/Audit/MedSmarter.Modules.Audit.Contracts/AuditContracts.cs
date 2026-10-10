@@ -61,6 +61,18 @@ public static class AuditActions
     public const string AiExternalBlocked = "AI_EXTERNAL_BLOCKED";
     /// <summary>A generated answer failed the safety policy and was withheld (reason codes only).</summary>
     public const string AiAnswerBlocked = "AI_ANSWER_BLOCKED";
+    /// <summary>A clinical safety assessment ran (ids, status and counts only; never medicine names or free text).</summary>
+    public const string SafetyAssessmentRun = "SAFETY_ASSESSMENT_RUN";
+    /// <summary>An assessment could not be completed or one of its safety invariants failed (reason codes only).</summary>
+    public const string SafetyAssessmentFailed = "SAFETY_ASSESSMENT_FAILED";
+    /// <summary>A category of patient data was withheld from an assessment because the requester may not read it (category only).</summary>
+    public const string SafetyInputBlocked = "SAFETY_INPUT_BLOCKED";
+    public const string ClinicalRuleCreated = "CLINICAL_RULE_CREATED";
+    public const string ClinicalRuleSubmitted = "CLINICAL_RULE_SUBMITTED";
+    public const string ClinicalRuleReviewed = "CLINICAL_RULE_REVIEWED";
+    public const string ClinicalRuleRetired = "CLINICAL_RULE_RETIRED";
+    /// <summary>A review or activation was refused by the rule policy (separation of duties, evidence, test cases).</summary>
+    public const string ClinicalRuleRefused = "CLINICAL_RULE_REFUSED";
 }
 
 /// <summary>

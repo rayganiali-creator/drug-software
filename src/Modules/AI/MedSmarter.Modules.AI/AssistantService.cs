@@ -166,6 +166,12 @@ public sealed class AssistantService(
             : evidence.Quality == EvidenceQuality.Validated ? "Based on validated sources. Not a substitute for professional advice."
             : "Based on information that is NOT fully validated.";
         var limitations = extraLimitations is null ? evidence.Limitations : [.. evidence.Limitations, .. extraLimitations];
+        if (status != AnswerStatus.Escalated)
+        {
+            // Phase 7: every non-emergency answer states what it is not. The assistant gives information from sources; it never sorts how urgent a person's situation is.
+            limitations = [.. limitations, "triage.not_performed"];
+        }
+
         return new AssistantAnswer(text, generation?.Provider ?? "none", generation?.IsMock ?? false, status == AnswerStatus.Answered, sources, notice, error, contextUsed, contextNote,
             status, reason, evidence, evidence.Quality, limitations, evidence.MissingInformation, next, generation);
     }

@@ -71,6 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ('batches', 'nav.batches', 'box'),
                 ('sharing', 'nav.sharing', 'shield'),
                 ('messages', 'nav.messages', 'message'),
+                ('safety', 'nav.safety', 'shield'),
               ])
                 AppListTile(
                   title: context.t(key),

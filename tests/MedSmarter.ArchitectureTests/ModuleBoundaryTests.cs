@@ -106,4 +106,25 @@ public class ModuleBoundaryTests
 
         Assert.DoesNotContain(projects.Keys, k => Visit(k));
     }
+
+    [Fact]
+    public void Phase7_the_clinical_safety_engine_depends_on_no_model_provider_or_network_client()
+    {
+        var all = LoadProjects();
+        var engine = all.Single(p => p.Name == "MedSmarter.Modules.ClinicalRules");
+        // Matching, urgency and safety are decided by fixed code: the module must not even be able to reach the AI module or the Identity internals.
+        Assert.DoesNotContain(engine.References, r => r.StartsWith("MedSmarter.Modules.AI", StringComparison.Ordinal));
+        Assert.DoesNotContain(engine.References, r => r == "MedSmarter.Modules.Identity");
+        var xml = XDocument.Load(engine.Path);
+        var packages = xml.Descendants("PackageReference").Select(e => (string?)e.Attribute("Include") ?? string.Empty).ToList();
+        Assert.DoesNotContain(packages, p => p.Contains("Http", StringComparison.OrdinalIgnoreCase) || p.Contains("OpenAI", StringComparison.OrdinalIgnoreCase) || p.Contains("Anthropic", StringComparison.OrdinalIgnoreCase));
+        // and no source file of the module opens a network connection
+        var dir = System.IO.Path.GetDirectoryName(engine.Path)!;
+        var code = string.Join('\n', Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories).Where(f => !f.Contains("/obj/") && !f.Contains("/Migrations/")).Select(File.ReadAllText));
+        Assert.DoesNotContain("HttpClient", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Net", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("Process.Start", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("FromSqlRaw", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("ExecuteSql", code, StringComparison.Ordinal);
+    }
 }

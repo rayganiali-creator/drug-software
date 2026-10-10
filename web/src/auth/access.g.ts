@@ -67,6 +67,12 @@ export const permissions = {
   guidanceRead: "guidance.read",
   guidanceUpdate: "guidance.update",
   guidanceProfessionalRead: "guidance.professional.read",
+  safetyAssessRun: "safety.assess.run",
+  safetyAssessRead: "safety.assess.read",
+  clinicalrulesRead: "clinicalrules.read",
+  clinicalrulesAuthor: "clinicalrules.author",
+  clinicalrulesReview: "clinicalrules.review",
+  clinicalrulesRetire: "clinicalrules.retire",
 } as const;
 export type Permission = (typeof permissions)[keyof typeof permissions];
 

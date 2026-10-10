@@ -2,5 +2,21 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\MedSmarter.BuildingBlocks\MedSmarter.BuildingBlocks.csproj" />
     <ProjectReference Include="..\MedSmarter.Modules.ClinicalRules.Contracts\MedSmarter.Modules.ClinicalRules.Contracts.csproj" />
+    <ProjectReference Include="..\..\Audit\MedSmarter.Modules.Audit.Contracts\MedSmarter.Modules.Audit.Contracts.csproj" />
+    <ProjectReference Include="..\..\Patients\MedSmarter.Modules.Patients.Contracts\MedSmarter.Modules.Patients.Contracts.csproj" />
+    <ProjectReference Include="..\..\Medications\MedSmarter.Modules.Medications.Contracts\MedSmarter.Modules.Medications.Contracts.csproj" />
+    <ProjectReference Include="..\..\Guidance\MedSmarter.Modules.Guidance.Contracts\MedSmarter.Modules.Guidance.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MedSmarter.Patients.Tests" />
   </ItemGroup>
 </Project>

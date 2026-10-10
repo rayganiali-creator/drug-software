@@ -3,6 +3,8 @@ using MedSmarter.BuildingBlocks;
 using MedSmarter.Modules.AI;
 using MedSmarter.Modules.Audit;
 using MedSmarter.Modules.Audit.Contracts;
+using MedSmarter.Modules.ClinicalRules;
+using MedSmarter.Modules.ClinicalRules.Contracts;
 using MedSmarter.Modules.Consent;
 using MedSmarter.Modules.Consent.Contracts;
 using MedSmarter.Modules.Guidance;
@@ -138,6 +140,7 @@ public sealed class PEnv : IDisposable
         new PatientsModule().Register(services, config);
         new ProductTraceModule().Register(services, config);
         new GuidanceModule().Register(services, config);
+        new ClinicalRulesModule().Register(services, config);
         new AIModule().Register(services, config);
     }
 
@@ -206,6 +209,8 @@ public sealed class PEnv : IDisposable
     public IManufacturerReportService Reports => Get<IManufacturerReportService>();
     public IManufacturerReportOutbox Outbox => Get<IManufacturerReportOutbox>();
     public IGuidanceService Guidance => Get<IGuidanceService>();
+    public IClinicalSafetyService Safety => Get<IClinicalSafetyService>();
+    public IClinicalRuleCatalog Rules => Get<IClinicalRuleCatalog>();
     public IAuditReader Audit => Get<IAuditReader>();
     public IAccessAuthorizer Authz => Get<IAccessAuthorizer>();
     public IMedicationService Reference => Get<IMedicationService>();

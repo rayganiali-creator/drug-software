@@ -24,6 +24,14 @@ public sealed class GuidanceMessageRow
     public DateTimeOffset? ResolvedAt { get; set; }
     public bool IsDemo { get; set; }
     public int Version { get; set; } = 1;
+
+    // Phase 7 (additive, all nullable): where an engine-raised message came from.
+    public string? OriginKind { get; set; }
+    public Guid? OriginAssessmentId { get; set; }
+    public string? OriginRuleId { get; set; }
+    public int? OriginRuleVersion { get; set; }
+    public string? OriginFindingKey { get; set; }
+    public DateTimeOffset? OriginDataAsOf { get; set; }
 }
 
 public sealed class GuidanceEventRow
@@ -63,6 +71,10 @@ public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> option
             e.Property(x => x.ProfessionalJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.Version).IsConcurrencyToken();
             e.HasIndex(x => new { x.PatientId, x.CreatedAt });
+            e.Property(x => x.OriginKind).HasMaxLength(32);
+            e.Property(x => x.OriginRuleId).HasMaxLength(64);
+            e.Property(x => x.OriginFindingKey).HasMaxLength(64);
+            e.HasIndex(x => new { x.PatientId, x.OriginFindingKey });
         });
         modelBuilder.Entity<GuidanceEventRow>(e =>
         {

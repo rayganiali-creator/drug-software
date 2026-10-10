@@ -542,6 +542,24 @@ public class SafetyTests
         Assert.Equal(AnswerStatus.Answered, a.Status);
     }
 
+    [Theory]
+    [InlineData("Tell me about Nocturin", "en")]
+    [InlineData("xyzzyqq nothing like this", "en")]
+    [InlineData("Should I stop taking Nocturin?", "en")]
+    [InlineData("Is Nocturin safe", "en")]
+    public async Task Phase7_every_non_emergency_answer_says_it_is_not_a_triage_and_an_emergency_answer_keeps_its_own_statement(string question, string locale)
+    {
+        using var h = new Harness(o => o.Provider = "Mock");
+        var a = await h.Ask(h.Build(null), question, locale);
+        Assert.NotEqual(AnswerStatus.Escalated, a.Status);
+        Assert.Contains("triage.not_performed", a.Limitations!);
+        Assert.DoesNotContain(a.Limitations!, l => l.Contains("safe", StringComparison.OrdinalIgnoreCase));
+
+        var e = await h.Ask(h.Build(null), "I can't breathe and my chest hurts", "en");
+        Assert.Equal(AnswerStatus.Escalated, e.Status);
+        Assert.DoesNotContain("triage.not_performed", e.Limitations!);
+    }
+
     [Fact]
     public async Task A_general_question_that_mentions_a_warning_sign_is_escalated_by_design()
     {

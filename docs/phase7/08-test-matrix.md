@@ -1,0 +1,17 @@
+# 8. Test matrix (exact results of the final run, 2026-10-10)
+
+| Check | Command | Result |
+|---|---|---|
+| .NET build, analyzers as errors | `dotnet build MedSmarter.sln -warnaserror` | **PASS** 0 warnings, 0 errors |
+| .NET, in memory | `dotnet test MedSmarter.sln` | **PASS** BuildingBlocks 4 · Architecture 6 · Api 8 · Patients 325 (4 skipped = PostgreSQL-only) · Knowledge 290 (15 skipped = PostgreSQL-only) · Security 133 · IntegrationTests 3 skipped (need the docker stack: **NOT RUN**) |
+| .NET on local PostgreSQL 16 (scratch databases) | `MEDSMARTER_PG_TEST=… dotnet test tests/MedSmarter.Patients.Tests` | **PASS** 329/329, 0 skipped |
+| PostgreSQL persistence (Knowledge) | `--filter PersistenceTests` / `--filter PostgresSchemaTests` (own empty database) | **PASS** 8/8 and 9/9 |
+| EF model drift, 7 module contexts | `dotnet ef migrations has-pending-model-changes` | **PASS** all "No changes" (incl. new `ClinicalRulesDbContext`, `GuidanceDbContext` after `AddGuidanceOrigin`) |
+| Fresh-database migration | `--migrate-and-exit` on an empty database | **PASS** all 7 module migrators applied; tables `clinical_rules.{rule,rule_event,assessment}` and the guidance origin columns exist |
+| Access catalog / design artefacts | `node security/build.mjs --check`, `node design/build.mjs --check` | **PASS** (73 permissions; 1451 i18n keys) |
+| Web | `eslint .` · `tsc -b --noEmit` · `vitest run` · `npm run build` | **PASS** 0 problems · clean · 249 tests (12 files; 25 new in `safety.test.tsx`) · built |
+| Flutter | `flutter analyze` · `flutter test` | **PASS** no issues · 145 tests (20 new in `safety_test.dart`) |
+| Browser QA, real API on PostgreSQL | `node web/scripts/safety-qa.mjs` | **PASS** 164 checks, 0 failures: en/fa × light/dark × desktop/phone, direction, no overflow, no untranslated keys, no reassurance/percent, axe WCAG 2.2 AA clean on empty, result, details-open, physician patient page and rules page; opening the page runs nothing, one click runs exactly once |
+
+New Phase 7 tests: `ClinicalEngineTests` 59 (determinism, rule order, 400-case randomised invariant run, missing/stale/unauthorized/unavailable, population, conflicts, rejected/unknown evidence, unregistered never matched by name, free-text allergies, duplicate by id, symptom window, activation policy cases, superseded versions, failing rule isolation, safety layer fail-closed, rule validation, text screen) · `ClinicalServiceTests` 30 (29 + 1 PostgreSQL restart test: two-person review and audit, evidence/test-case refusals, reject/retire, reserved prefix, demo seeding/guards, assessment end to end, guidance origin/idempotence/resolved/no-longer-matching, missing data, per-category withholding and filtered stored views, cross-patient 404, inactive patient, outdated flags, guidance failure and repair, persistence failure, gather failure, audit contains no names, templates pass the policy in fa/en) · `ClinicalApiTests` 18 + `ClinicalApiApprovalTests` 1 (401 on every route, own/other patient, uniform 403, relationship + narrowed consent, body cannot name a patient, coverage, role matrix for rules, malformed body, approved rule → finding → message → patient marks seen) · Knowledge: triage limitation (4) · Architecture: engine has no model/network/raw SQL (1).
+Tests contact no network and need no key. Nothing was skipped or loosened to pass; the only existing test whose expectation changed is none (Phase 6 suites pass unmodified). No flaky test was observed in these runs.

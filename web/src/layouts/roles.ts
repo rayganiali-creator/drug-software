@@ -22,6 +22,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("myreports", "fileText"),
     n("sharing", "shield"),
     n("messages", "message"),
+    n("safety", "shield"),
     n("drugs", "bookOpen"),
   ],
   physician: [
@@ -32,6 +33,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("reports", "fileText"),
     n("reportreviews", "inbox"),
     n("care", "users"),
+    n("rules", "clipboard"),
     n("drugs", "bookOpen"),
   ],
   pharmacist: [
@@ -44,6 +46,7 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("followups", "calendar"),
     n("reportreviews", "inbox"),
     n("care", "users"),
+    n("rules", "clipboard"),
     n("drugs", "bookOpen"),
   ],
   pharmacy: [

@@ -132,6 +132,176 @@
         "fa": { "summary": "بیمار علامت شدید «{symptom}» را گزارش کرده است.", "detail": "بیمار آن را شدید ارزیابی کرده است. بررسی و اولویت‌بندی توسط بالینی توصیه می‌شود؛ ارزیابی بالینی خودکار انجام نشده است." }
       },
       "severityLabel": { "en": "Severe (patient-rated)", "fa": "شدید (به گفته‌ی بیمار)" }
+    },
+    "safety.interaction": {
+      "patient": {
+        "en": {
+          "observed": "Two of your medicines, {medicationA} and {medicationB}, are listed together in the medication reference as worth checking.",
+          "why": "Some medicines can change how others work. A pharmacist or physician can tell whether this matters for you.",
+          "action": "Please do not change anything on your own. Write down your questions and any new effects you notice, and bring your medicine list to your pharmacist or physician.",
+          "consult": "Please ask a pharmacist or physician to review this combination soon, and contact them sooner if you feel different from usual.",
+          "urgent": "",
+          "basis": "The medication reference and the medicines you recorded. This check does not look at doses."
+        },
+        "fa": {
+          "observed": "دو داروی شما، {medicationA} و {medicationB}، در مرجع دارویی کنار هم به‌عنوان مورد قابل بررسی آمده‌اند.",
+          "why": "بعضی داروها می‌توانند اثر داروهای دیگر را تغییر دهند. داروساز یا پزشک می‌تواند بگوید این موضوع برای شما اهمیت دارد یا نه.",
+          "action": "لطفاً خودتان چیزی را تغییر ندهید. سؤال‌هایتان و هر اثر تازه‌ای را که حس کردید یادداشت کنید و فهرست داروهایتان را نزد داروساز یا پزشک ببرید.",
+          "consult": "لطفاً از داروساز یا پزشک بخواهید این ترکیب را به‌زودی بررسی کند؛ اگر حال شما با همیشه فرق کرد، زودتر با او تماس بگیرید.",
+          "urgent": "",
+          "basis": "مرجع دارویی و داروهایی که ثبت کرده‌اید. این بررسی دوز را در نظر نمی‌گیرد."
+        }
+      },
+      "professional": {
+        "en": {
+          "summary": "Reference interaction entry: {medicationA} + {medicationB}.",
+          "detail": "Matched on ingredient ids against the reference (entry severity {severity}). Clinical relevance for this patient was not assessed; dose, route and timing were not considered."
+        },
+        "fa": {
+          "summary": "مورد تداخل در مرجع: {medicationA} + {medicationB}.",
+          "detail": "بر اساس شناسه‌ی ماده‌ی مؤثر با مرجع تطبیق داده شد (شدت مورد: {severity}). ارتباط بالینی برای این بیمار ارزیابی نشده است؛ دوز، مسیر و زمان مصرف در نظر گرفته نشده است."
+        }
+      },
+      "severityLabel": {
+        "en": "Reference interaction entry: {severity}",
+        "fa": "مورد تداخل در مرجع: {severity}"
+      }
+    },
+    "safety.allergy_conflict": {
+      "patient": {
+        "en": {
+          "observed": "You recorded an allergy to {allergy}, and according to the medication reference one of your medicines, {medication}, is the same medicine or shares an ingredient with it.",
+          "why": "A recorded allergy and a medicine you take may be related. Only a pharmacist or physician can judge whether it matters for you.",
+          "action": "Please do not change anything on your own. Tell your pharmacist or physician about this soon and bring your medicine list.",
+          "consult": "Please contact a pharmacist or physician soon, and sooner if you notice a reaction.",
+          "urgent": "",
+          "basis": "Your recorded allergy, your medicine list and the medication reference."
+        },
+        "fa": {
+          "observed": "شما حساسیت به {allergy} را ثبت کرده‌اید و طبق مرجع دارویی یکی از داروهایتان، {medication}، همان دارو است یا ماده‌ی مؤثر مشترک دارد.",
+          "why": "حساسیت ثبت‌شده و داروی مصرفی ممکن است به هم مربوط باشند. فقط داروساز یا پزشک می‌تواند بگوید برای شما اهمیت دارد یا نه.",
+          "action": "لطفاً خودتان چیزی را تغییر ندهید. به‌زودی موضوع را با داروساز یا پزشک در میان بگذارید و فهرست داروهایتان را همراه ببرید.",
+          "consult": "لطفاً به‌زودی با داروساز یا پزشک تماس بگیرید؛ اگر واکنشی حس کردید، زودتر.",
+          "urgent": "",
+          "basis": "حساسیت ثبت‌شده، فهرست داروها و مرجع دارویی."
+        }
+      },
+      "professional": {
+        "en": {
+          "summary": "Recorded allergy linked to a medicine taken: {allergy} / {medication}.",
+          "detail": "Matched on the linked reference medicine or a shared ingredient id. Free-text allergies are not matched. Clinical relevance was not assessed."
+        },
+        "fa": {
+          "summary": "حساسیت ثبت‌شده مرتبط با داروی مصرفی: {allergy} / {medication}.",
+          "detail": "بر اساس داروی مرجع پیوندخورده یا شناسه‌ی ماده‌ی مؤثر مشترک تطبیق داده شد. حساسیت‌های متن آزاد تطبیق داده نمی‌شوند. ارتباط بالینی ارزیابی نشده است."
+        }
+      },
+      "severityLabel": {
+        "en": "Allergy / medicine match",
+        "fa": "تطبیق حساسیت و دارو"
+      }
+    },
+    "safety.duplicate_ingredient": {
+      "patient": {
+        "en": {
+          "observed": "According to the medication reference, your medicines {medicationA} and {medicationB} contain the same ingredient.",
+          "why": "Taking the same ingredient from two sources can add up. A pharmacist can check whether this applies to you.",
+          "action": "Please do not change anything on your own. Ask your pharmacist or physician to look at both medicines together.",
+          "consult": "Please raise this with a pharmacist or physician soon.",
+          "urgent": "",
+          "basis": "Your medicine list and the medication reference."
+        },
+        "fa": {
+          "observed": "طبق مرجع دارویی، داروهای شما {medicationA} و {medicationB} ماده‌ی مؤثر مشترک دارند.",
+          "why": "مصرف یک ماده‌ی مؤثر از دو منبع ممکن است روی هم جمع شود. داروساز می‌تواند بررسی کند این موضوع برای شما صدق می‌کند یا نه.",
+          "action": "لطفاً خودتان چیزی را تغییر ندهید. از داروساز یا پزشک بخواهید هر دو دارو را با هم بررسی کند.",
+          "consult": "لطفاً به‌زودی این موضوع را با داروساز یا پزشک در میان بگذارید.",
+          "urgent": "",
+          "basis": "فهرست داروها و مرجع دارویی."
+        }
+      },
+      "professional": {
+        "en": {
+          "summary": "Shared ingredient id: {medicationA} + {medicationB}.",
+          "detail": "Matched on reference ingredient ids only; names are never compared. Dose and timing were not considered."
+        },
+        "fa": {
+          "summary": "ماده‌ی مؤثر مشترک: {medicationA} + {medicationB}.",
+          "detail": "فقط بر اساس شناسه‌ی ماده‌ی مؤثر در مرجع تطبیق داده شد؛ نام‌ها هرگز مقایسه نمی‌شوند. دوز و زمان مصرف در نظر گرفته نشده است."
+        }
+      },
+      "severityLabel": {
+        "en": "Shared ingredient",
+        "fa": "ماده‌ی مؤثر مشترک"
+      }
+    },
+    "safety.unregistered_medication": {
+      "patient": {
+        "en": {
+          "observed": "{medication} is not in the medication reference, so it could not be included in the safety checks.",
+          "why": "Checks only cover medicines the reference knows. This says nothing about the medicine itself.",
+          "action": "If you like, pick the medicine from the list in the app so it can be included, or ask your pharmacist to help you identify it.",
+          "consult": "A pharmacist can help you identify and record this medicine.",
+          "urgent": "",
+          "basis": "Your medicine list compared with the medication reference."
+        },
+        "fa": {
+          "observed": "{medication} در مرجع دارویی نیست و به همین دلیل در بررسی‌های ایمنی وارد نشده است.",
+          "why": "بررسی‌ها فقط داروهایی را پوشش می‌دهند که مرجع می‌شناسد. این پیام درباره‌ی خود دارو چیزی نمی‌گوید.",
+          "action": "اگر مایل بودید، دارو را از فهرست داخل برنامه انتخاب کنید تا وارد بررسی شود، یا از داروساز بخواهید در شناسایی آن کمک کند.",
+          "consult": "داروساز می‌تواند در شناسایی و ثبت این دارو کمک کند.",
+          "urgent": "",
+          "basis": "فهرست داروهای شما در مقایسه با مرجع دارویی."
+        }
+      },
+      "professional": {
+        "en": {
+          "summary": "Medicine not in the reference: {medication}.",
+          "detail": "Not matched by name or guessed. It was excluded from interaction, duplicate and allergy checks."
+        },
+        "fa": {
+          "summary": "دارو در مرجع نیست: {medication}.",
+          "detail": "بر اساس نام تطبیق داده یا حدس زده نشد. از بررسی‌های تداخل، تکرار و حساسیت کنار گذاشته شد."
+        }
+      },
+      "severityLabel": {
+        "en": "Data-quality note",
+        "fa": "نکته‌ی کیفیت داده"
+      }
+    },
+    "safety.symptom_reported": {
+      "patient": {
+        "en": {
+          "observed": "You recorded a symptom that you rated as strong, and you have not marked it as resolved.",
+          "why": "Strong symptoms deserve attention from a professional, whatever the cause turns out to be. This check does not look for a cause.",
+          "action": "Please contact a pharmacist or physician soon and tell them what you recorded.",
+          "consult": "If you cannot reach a professional and you are worried, use your local urgent-care service.",
+          "urgent": "",
+          "basis": "Your own symptom record. Nothing here is a diagnosis or a triage."
+        },
+        "fa": {
+          "observed": "شما علامتی را ثبت کرده‌اید که آن را قوی ارزیابی کرده‌اید و هنوز برطرف‌شده علامت‌گذاری نکرده‌اید.",
+          "why": "علامت‌های قوی، هر علتی که داشته باشند، شایسته‌ی توجه یک متخصص هستند. این بررسی دنبال علت نمی‌گردد.",
+          "action": "لطفاً به‌زودی با داروساز یا پزشک تماس بگیرید و آنچه ثبت کرده‌اید را به او بگویید.",
+          "consult": "اگر به متخصص دسترسی نداشتید و نگران بودید، به مرکز درمانی اورژانسی نزدیک مراجعه کنید.",
+          "urgent": "",
+          "basis": "ثبت علامت توسط خودتان. این پیام نه تشخیص است و نه اولویت‌بندی درمانی."
+        }
+      },
+      "professional": {
+        "en": {
+          "summary": "Patient-rated strong symptom recorded and not resolved.",
+          "detail": "Reported from the patient's own record. No triage or cause assessment was performed."
+        },
+        "fa": {
+          "summary": "علامت قوی (به ارزیابی بیمار) ثبت شده و برطرف نشده است.",
+          "detail": "بر اساس ثبت خود بیمار. اولویت‌بندی یا ارزیابی علت انجام نشده است."
+        }
+      },
+      "severityLabel": {
+        "en": "Patient-rated, unresolved",
+        "fa": "ارزیابی بیمار، برطرف‌نشده"
+      }
     }
   }
 }

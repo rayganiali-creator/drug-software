@@ -3,11 +3,13 @@ using MedSmarter.BuildingBlocks;
 using MedSmarter.Api.Http;
 using MedSmarter.Api.Knowledge;
 using MedSmarter.Api.Patients;
+using MedSmarter.Api.Safety;
 using MedSmarter.Api.Security;
 using MedSmarter.Modules.AI;
 using MedSmarter.Modules.Medications;
 using MedSmarter.Modules.Patients;
 using MedSmarter.Modules.Patients.Contracts;
+using MedSmarter.Modules.ClinicalRules.Contracts;
 using MedSmarter.Modules.Guidance.Contracts;
 using MedSmarter.Modules.ProductTrace;
 using System.Threading.RateLimiting;
@@ -67,6 +69,11 @@ try
 
         PatientsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(PatientsOptions.Section).Get<PatientsOptions>() ?? new PatientsOptions());
         ManufacturerReportsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(ManufacturerReportsOptions.Section).Get<ManufacturerReportsOptions>() ?? new ManufacturerReportsOptions());
+        if (!PersistenceSettings.IsDevLike(builder.Environment.EnvironmentName) && (builder.Configuration.GetSection("ClinicalRules").GetValue<bool>("AllowDemonstrationRules") || builder.Configuration.GetSection("ClinicalRules").GetValue<bool>("SeedDemoRules")))
+        {
+            throw new InvalidOperationException("ClinicalRules:AllowDemonstrationRules and ClinicalRules:SeedDemoRules are only allowed in Development/Testing. Refusing to start.");
+        }
+
         if (!PersistenceSettings.IsDevLike(builder.Environment.EnvironmentName) && builder.Configuration.GetSection("Guidance").GetValue<bool>("SeedDemoData"))
         {
             throw new InvalidOperationException("Guidance:SeedDemoData is only allowed in Development/Testing. Refusing to start.");
@@ -161,8 +168,15 @@ try
         }
     }
 
+    if (app.Services.GetService<IDemoRuleSeeder>() is { } ruleSeeder)
+    {
+        await ruleSeeder.SeedAsync(); // DEMONSTRATION rules only (drafts, never approved); registered solely when ClinicalRules:SeedDemoRules is on
+        Log.Warning("DEV DATA: demonstration safety rules are loaded. They are NOT clinically validated.");
+    }
+
     app.MapKnowledge();
     app.MapPatientRecords();
+    app.MapSafety();
     app.MapSecurity(app.Services.GetService<IDemoAccountDirectory>() is not null);
     app.MapPlatformHealth();
     app.MapGet("/version", () => Results.Ok(new

@@ -69,6 +69,12 @@ abstract final class Permissions {
   static const guidanceRead = 'guidance.read';
   static const guidanceUpdate = 'guidance.update';
   static const guidanceProfessionalRead = 'guidance.professional.read';
+  static const safetyAssessRun = 'safety.assess.run';
+  static const safetyAssessRead = 'safety.assess.read';
+  static const clinicalrulesRead = 'clinicalrules.read';
+  static const clinicalrulesAuthor = 'clinicalrules.author';
+  static const clinicalrulesReview = 'clinicalrules.review';
+  static const clinicalrulesRetire = 'clinicalrules.retire';
 }
 
 abstract final class RoleNames {

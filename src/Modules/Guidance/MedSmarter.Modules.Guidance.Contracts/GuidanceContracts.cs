@@ -81,7 +81,17 @@ public sealed record GuidanceMessageDto(
     DateTimeOffset? ReferredAt,
     DateTimeOffset? ResolvedAt,
     bool IsDemo,
-    string? Notice);
+    string? Notice,
+    /// <summary>Where the message came from (for example a safety assessment). Null for messages that were not raised by an engine. Additive in Phase 7.</summary>
+    GuidanceOrigin? Origin = null);
+
+/// <summary>Traceability of an engine-raised message: which assessment, which rule version and finding, and how fresh the data was. Creation time is the message's own CreatedAt.</summary>
+public sealed record GuidanceOrigin(string Kind, Guid AssessmentId, string RuleId, int RuleVersion, string FindingKey, DateTimeOffset DataAsOf);
+
+/// <param name="Existing">True when an open message for the same finding already existed and no new one was created.</param>
+public sealed record GuidanceCreated(GuidanceMessageDto Message, bool Existing);
+
+public sealed record GuidanceOriginRef(Guid MessageId, GuidanceStatus Status, GuidanceOrigin Origin);
 
 public enum GuidanceError
 {
@@ -117,6 +127,15 @@ public interface IGuidanceService
 {
     /// <summary>Stores a composed message for a patient (used by the engines of later phases). A message that violates the policy is refused.</summary>
     Task<GuidanceOutcome<GuidanceMessageDto>> CreateAsync(Guid subjectId, GuidanceRequest request, bool isDemo, string source, string? correlationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Stores a message raised by an engine, tied to its origin. The same finding never produces a second OPEN message, and a finding the patient already resolved is
+    /// not raised again unless the patient's data changed after it was resolved. Creating the record does not mean the patient has seen it: only the patient's own action sets Seen.
+    /// </summary>
+    Task<GuidanceOutcome<GuidanceCreated>> CreateFromOriginAsync(Guid subjectId, GuidanceRequest request, GuidanceOrigin origin, bool isDemo, string source, string? correlationId, CancellationToken ct = default);
+
+    /// <summary>Messages of one origin kind that are not resolved yet (bounded). Used to tell which earlier findings no longer match, without ever closing them automatically.</summary>
+    Task<GuidanceOutcome<IReadOnlyList<GuidanceOriginRef>>> ListOpenByOriginAsync(Guid subjectId, string originKind, CancellationToken ct = default);
 
     Task<GuidanceOutcome<IReadOnlyList<GuidanceMessageDto>>> ListForPatientAsync(Guid subjectId, CancellationToken ct = default);
 
