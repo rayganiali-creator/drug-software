@@ -2,5 +2,18 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\MedSmarter.BuildingBlocks\MedSmarter.BuildingBlocks.csproj" />
     <ProjectReference Include="..\MedSmarter.Modules.ADR.Contracts\MedSmarter.Modules.ADR.Contracts.csproj" />
+    <ProjectReference Include="..\..\Audit\MedSmarter.Modules.Audit.Contracts\MedSmarter.Modules.Audit.Contracts.csproj" />
+    <ProjectReference Include="..\..\Patients\MedSmarter.Modules.Patients.Contracts\MedSmarter.Modules.Patients.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MedSmarter.Patients.Tests" />
   </ItemGroup>
 </Project>

@@ -73,6 +73,7 @@ export const permissions = {
   clinicalrulesAuthor: "clinicalrules.author",
   clinicalrulesReview: "clinicalrules.review",
   clinicalrulesRetire: "clinicalrules.retire",
+  adrRecordCreate: "adr.record.create",
 } as const;
 export type Permission = (typeof permissions)[keyof typeof permissions];
 

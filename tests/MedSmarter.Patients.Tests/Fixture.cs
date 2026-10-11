@@ -140,6 +140,7 @@ public sealed class PEnv : IDisposable
         new PatientsModule().Register(services, config);
         new ProductTraceModule().Register(services, config);
         new GuidanceModule().Register(services, config);
+        new MedSmarter.Modules.ADR.ADRModule().Register(services, config);
         new ClinicalRulesModule().Register(services, config);
         new AIModule().Register(services, config);
     }

@@ -420,6 +420,12 @@
       "name": "clinicalrules.retire",
       "kind": "global",
       "description": "Retire an approved clinical safety rule"
+    },
+    {
+      "name": "adr.record.create",
+      "kind": "subject",
+      "description": "Enter an internal adverse-event record for a patient (professional-entered, for human review; not a regulatory report)",
+      "dataScope": "adr"
     }
   ],
   "roles": [
@@ -499,7 +505,8 @@
         "safety.assess.run",
         "safety.assess.read",
         "clinicalrules.read",
-        "clinicalrules.review"
+        "clinicalrules.review",
+        "adr.record.create"
       ]
     },
     {
@@ -530,7 +537,8 @@
         "safety.assess.run",
         "safety.assess.read",
         "clinicalrules.read",
-        "clinicalrules.review"
+        "clinicalrules.review",
+        "adr.record.create"
       ]
     },
     {

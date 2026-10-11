@@ -27,6 +27,11 @@ public static class AuditActions
     public const string PatientDataUpdated = "PATIENT_DATA_UPDATED";
     public const string PrescriptionAccessed = "PRESCRIPTION_ACCESSED";
     public const string AdrAccessed = "ADR_ACCESSED";
+    public const string AdrRecordCreated = "ADR_RECORD_CREATED";
+    public const string AdrEntryAdded = "ADR_ENTRY_ADDED";
+    public const string AdrClassified = "ADR_CLASSIFIED";
+    public const string AdrStatusChanged = "ADR_STATUS_CHANGED";
+    public const string AdrAssistanceGenerated = "ADR_ASSISTANCE_GENERATED";
     public const string AccessDenied = "ACCESS_DENIED";
     public const string AdminAction = "ADMIN_ACTION";
     public const string AuditRead = "AUDIT_READ";

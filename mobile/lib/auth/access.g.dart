@@ -75,6 +75,7 @@ abstract final class Permissions {
   static const clinicalrulesAuthor = 'clinicalrules.author';
   static const clinicalrulesReview = 'clinicalrules.review';
   static const clinicalrulesRetire = 'clinicalrules.retire';
+  static const adrRecordCreate = 'adr.record.create';
 }
 
 abstract final class RoleNames {

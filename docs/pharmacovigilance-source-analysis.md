@@ -1,6 +1,8 @@
 # Pharmacovigilance source material — analysis for AI MedSmarter
 
-**Status: analysis only.** No application code, rules, migrations or existing documents were changed. Nothing in this file activates a clinical rule, authorizes an external report, or defines an official reporting pathway.
+> **Update (Phase 9):** the internal adverse-event record was implemented — see [`phase9/`](phase9/README.md) and the product-wide [traceability matrix](pharmacovigilance-traceability-matrix.md), which now carries each requirement's Phase 9 status. This analysis is otherwise unchanged and is still the record of what the sources do and do not say.
+
+**Status: analysis only (as of its writing).** No application code, rules, migrations or existing documents were changed. Nothing in this file activates a clinical rule, authorizes an external report, or defines an official reporting pathway.
 **Prepared:** 2026-10-11, from the eight files supplied in the session (see §1). No external service was contacted; no patient data was used.
 
 Labels used throughout:
