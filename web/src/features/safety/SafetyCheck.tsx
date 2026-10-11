@@ -13,7 +13,7 @@ const key = (code: string) => code.replace(/[.]/g, "_");
 const severityTone: Record<FindingSeverity, "info" | "warning" | "danger" | "neutral"> = { Informational: "neutral", Minor: "info", Moderate: "warning", Major: "warning", Critical: "danger" };
 
 /** Translate a machine code; an unknown code is shown as it is (never hidden, never guessed). */
-function useCode() {
+export function useCode() {
   const { t } = useI18n();
   return (prefix: string, code: string) => { const k = `${prefix}.${key(code)}`; const v = t(k); return v === k ? code : v; };
 }
@@ -184,7 +184,12 @@ export function AssessmentView({ a, onRerun, busy }: { a: Assessment; onRerun?()
           <div><dt>{t("sf.meta.engine")}</dt><dd dir="ltr">{r.engineVersion}</dd></div>
           <div><dt>{t("sf.meta.ruleSet")}</dt><dd dir="ltr">{r.ruleSetVersion}</dd></div>
           <div><dt>{t("sf.meta.guidance")}</dt><dd>{t(`sf.guidance.${a.guidanceState}`)}</dd></div>
+          <div><dt>{t("sf.meta.how")}</dt><dd>{a.trigger === "scheduled" ? t("sf.meta.byScheduled") : a.requestedByPatient ? t("sf.meta.byPatient") : t("sf.meta.byProfessional")}</dd></div>
+          {a.inputVersions && <div><dt>{t("sf.meta.inputs")}</dt><dd>{fmt.number(a.inputVersions.length)}</dd></div>}
         </dl>
+        {a.change && (
+          <p className="ms-muted">{a.change.firstAssessment ? t("sf.change.first") : t("sf.change.since", { added: a.change.added, removed: a.change.removed, changed: a.change.changed })}{a.change.ruleSetChanged ? ` ${t("sf.change.rules")}` : ""}</p>
+        )}
         <ul className="sf-list">{r.limitations.map((l) => <li key={l}>{code("sf.limit", l)}</li>)}</ul>
       </Card>
     </div>
@@ -194,7 +199,7 @@ export function AssessmentView({ a, onRerun, busy }: { a: Assessment; onRerun?()
 type LoadState<T> = { status: "loading" } | { status: "error"; error: unknown } | { status: "ready"; data: T };
 
 /** Loads once and again when the dependencies change or on demand. Late answers of an outdated request are ignored. */
-function useSafetyLoad<T>(fn: (api: SafetyApi, signal: AbortSignal) => Promise<T>, deps: unknown[] = []): { state: LoadState<T>; reload(): void } {
+export function useSafetyLoad<T>(fn: (api: SafetyApi, signal: AbortSignal) => Promise<T>, deps: unknown[] = []): { state: LoadState<T>; reload(): void } {
   const api = useSafetyApi();
   const [state, setState] = useState<LoadState<T>>({ status: "loading" });
   const [tick, setTick] = useState(0);
@@ -262,6 +267,66 @@ function SafetyBody({ subjectId }: { subjectId: string }) {
   );
 }
 
+/**
+ * Scheduled re-checks of a patient's own record. What this is and is not is stated in the card: a local schedule that looks again when the exact records or the
+ * rules changed (or a configured time passed) while the system is running. It is not continuous or real-time monitoring and it predicts nothing.
+ */
+export function MonitoringCard({ subjectId, canManage }: { subjectId: string; canManage: boolean }) {
+  const { t, fmt, locale } = useI18n();
+  const api = useSafetyApi();
+  const load = useSafetyLoad((a, s) => a.monitoring(subjectId, s), [subjectId]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const code = useCode();
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true); setError(null);
+    try { await fn(); load.reload(); } catch (e) { setError(e); } finally { setBusy(false); }
+  };
+  const when = (iso: string | null) => (iso ? fmt.date(new Date(iso), "short") : t("sf.mon.never"));
+  return (
+    <Card title={t("sf.mon.title")} subtitle={t("sf.mon.sub")}>
+      <div className="ms-stack">
+        {load.state.status === "loading" && <LoadingState label={t("common.loading")} rows={2} />}
+        {load.state.status === "error" && <p className="ms-muted" role="status">{t("sf.mon.cannotLoad")}</p>}
+        {load.state.status === "ready" && (() => {
+          const s = load.state.data;
+          return (
+            <>
+              <div className="sf-badges">
+                <Badge tone={s.enrolled ? "info" : "neutral"} icon={s.enrolled ? "clock" : "minus"}>{s.enrolled ? t("sf.mon.on") : t("sf.mon.off")}</Badge>
+                {s.enrolled && !s.workerEnabled && <Badge tone="warning" icon="alertTriangle">{t("sf.mon.workerOff")}</Badge>}
+                {s.state === "Exhausted" && <Badge tone="danger" icon="alertTriangle">{t("sf.mon.exhausted")}</Badge>}
+                {s.state === "Running" && <Badge tone="info" icon="clock">{t("sf.mon.running")}</Badge>}
+              </div>
+              {s.enrolled && (
+                <dl className="sf-facts">
+                  <div><dt>{t("sf.mon.lastAttempt")}</dt><dd>{when(s.lastAttemptAt)}</dd></div>
+                  <div><dt>{t("sf.mon.lastSuccess")}</dt><dd>{when(s.lastSuccessAt)}</dd></div>
+                  <div><dt>{t("sf.mon.lastOutcome")}</dt><dd>{s.lastOutcome ? code("sf.mon.outcome", s.lastOutcome) : t("sf.mon.never")}</dd></div>
+                  <div><dt>{t("sf.mon.next")}</dt><dd>{s.nextCheckAt ? fmt.date(new Date(s.nextCheckAt), "short") : "—"}</dd></div>
+                  {s.consecutiveFailures > 0 && <div><dt>{t("sf.mon.failures")}</dt><dd>{fmt.number(s.consecutiveFailures)}</dd></div>}
+                </dl>
+              )}
+              {s.lastErrorCode && <p className="ms-muted" role="status">{t("sf.mon.error", { code: code("sf.mon.errorCode", s.lastErrorCode) })}</p>}
+              <p className="ms-muted"><strong>{t("sf.mon.notContinuous")}</strong></p>
+              {canManage && (
+                <div>
+                  {s.enrolled
+                    ? <Button variant="secondary" loading={busy} onClick={() => void act(() => api.withdraw(subjectId))}>{t("sf.mon.withdraw")}</Button>
+                    : <Button loading={busy} onClick={() => void act(() => api.enrol(subjectId, locale))}>{t("sf.mon.enrol")}</Button>}
+                  {!s.enrolled && <p className="ms-muted">{t("sf.mon.consentNote")}</p>}
+                  {s.state === "Exhausted" && <Button variant="secondary" loading={busy} onClick={() => void act(() => api.enrol(subjectId, locale))}>{t("sf.mon.restart")}</Button>}
+                </div>
+              )}
+            </>
+          );
+        })()}
+        {error != null && <p className="ms-muted" role="alert">{t(error instanceof SafetyError && error.code === "consent.monitoring_required" ? "sf.mon.needConsent" : "sf.mon.cannotChange")}</p>}
+      </div>
+    </Card>
+  );
+}
+
 /** A patient's own check. */
 export function PatientSafety() {
   const { t } = useI18n();
@@ -269,7 +334,7 @@ export function PatientSafety() {
   return (
     <>
       <PageHeader title={t("sf.title")} subtitle={t("sf.sub")} />
-      {user ? <SafetyBody subjectId={user.id} /> : null}
+      {user ? <><SafetyBody subjectId={user.id} /><div className="sf-page"><MonitoringCard subjectId={user.id} canManage /></div></> : null}
     </>
   );
 }
@@ -281,7 +346,7 @@ export function ProSafety() {
   return (
     <>
       <PageHeader title={t("sf.pro.title")} subtitle={t("sf.pro.sub")} actions={<Link className="ms-link" to="../care">{t("sf.pro.back")}</Link>} />
-      {id ? <SafetyBody subjectId={id} /> : null}
+      {id ? <><SafetyBody subjectId={id} /><div className="sf-page"><MonitoringCard subjectId={id} canManage={false} /></div></> : null}
     </>
   );
 }
@@ -290,6 +355,7 @@ export function ProSafety() {
 export function RulesPage() {
   const { t } = useI18n();
   const code = useCode();
+  const { can } = useAuth();
   const cov = useSafetyLoad((a, s) => a.coverage(s));
   const rules = useSafetyLoad((a, s) => a.rules(s));
   const reload = () => { cov.reload(); rules.reload(); };
@@ -297,7 +363,7 @@ export function RulesPage() {
   const ready = cov.state.status === "ready" && rules.state.status === "ready";
   return (
     <>
-      <PageHeader title={t("sf.rulesPage.title")} subtitle={t("sf.rulesPage.sub")} />
+      <PageHeader title={t("sf.rulesPage.title")} subtitle={t("sf.rulesPage.sub")} actions={can("clinicalrules.author") ? <Link className="ms-link" to="new">{t("rv.new")}</Link> : undefined} />
       {!ready && failed == null && <LoadingState label={t("common.loading")} rows={3} />}
       {failed != null && <SafetyProblem error={failed} onRetry={reload} />}
       {ready && cov.state.status === "ready" && rules.state.status === "ready" && (
@@ -317,7 +383,7 @@ export function RulesPage() {
             <ul className="sf-rules" aria-label={t("sf.rulesPage.list")}>
               {rules.state.data.map((r: RuleSummary) => (
                 <li key={`${r.ruleId}-${r.version}`}>
-                  <span dir="ltr" className="sf-rules__id">{r.ruleId} v{r.version}</span> <span dir="auto">{r.title}</span>
+                  <Link className="sf-rules__id" dir="ltr" to={`${encodeURIComponent(r.ruleId)}/${r.version}`}>{r.ruleId} v{r.version}</Link> <span dir="auto">{r.title}</span>
                   <Badge tone="neutral">{t(`sf.ruleStatus.${r.status}`)}</Badge>
                   <Badge tone={r.activation === "Active" ? "success" : r.activation === "DemonstrationOnly" ? "warning" : "neutral"} icon={r.activation === "Active" ? "check" : "alertTriangle"}>{t(`sf.activation.${r.activation}`)}</Badge>
                   {r.isDemo && <Badge tone="warning" icon="alertTriangle">{t("sf.demo.badge")}</Badge>}

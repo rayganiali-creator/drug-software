@@ -6,6 +6,7 @@
     <ProjectReference Include="..\..\Patients\MedSmarter.Modules.Patients.Contracts\MedSmarter.Modules.Patients.Contracts.csproj" />
     <ProjectReference Include="..\..\Medications\MedSmarter.Modules.Medications.Contracts\MedSmarter.Modules.Medications.Contracts.csproj" />
     <ProjectReference Include="..\..\Guidance\MedSmarter.Modules.Guidance.Contracts\MedSmarter.Modules.Guidance.Contracts.csproj" />
+    <ProjectReference Include="..\..\Consent\MedSmarter.Modules.Consent.Contracts\MedSmarter.Modules.Consent.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

@@ -32,6 +32,26 @@ public sealed class GuidanceMessageRow
     public int? OriginRuleVersion { get; set; }
     public string? OriginFindingKey { get; set; }
     public DateTimeOffset? OriginDataAsOf { get; set; }
+    public string? OriginSubjectsFingerprint { get; set; }
+}
+
+/// <summary>Phase 8: how a notification for a message is going. One row per message and channel; holds ids, states and times only (no message text).</summary>
+public sealed class GuidanceDeliveryRow
+{
+    public Guid Id { get; set; }
+    public Guid MessageId { get; set; }
+    public Guid PatientId { get; set; }
+    public string Channel { get; set; } = string.Empty;
+    public DeliveryMode Mode { get; set; }
+    public DeliveryState State { get; set; }
+    public DateTimeOffset ScheduledAt { get; set; }
+    public DateTimeOffset NextAttemptAt { get; set; }
+    public DateTimeOffset? LastAttemptAt { get; set; }
+    public DateTimeOffset? ConfirmedAt { get; set; }
+    public DateTimeOffset? FailedAt { get; set; }
+    public int Attempts { get; set; }
+    public string? ErrorCode { get; set; }
+    public DateTimeOffset? LeaseUntil { get; set; }
 }
 
 public sealed class GuidanceEventRow
@@ -52,6 +72,7 @@ public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> option
 
     public DbSet<GuidanceMessageRow> Messages => Set<GuidanceMessageRow>();
     public DbSet<GuidanceEventRow> Events => Set<GuidanceEventRow>();
+    public DbSet<GuidanceDeliveryRow> Deliveries => Set<GuidanceDeliveryRow>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -74,6 +95,7 @@ public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> option
             e.Property(x => x.OriginKind).HasMaxLength(32);
             e.Property(x => x.OriginRuleId).HasMaxLength(64);
             e.Property(x => x.OriginFindingKey).HasMaxLength(64);
+            e.Property(x => x.OriginSubjectsFingerprint).HasMaxLength(64);
             e.HasIndex(x => new { x.PatientId, x.OriginFindingKey });
         });
         modelBuilder.Entity<GuidanceEventRow>(e =>
@@ -82,6 +104,16 @@ public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> option
             e.HasKey(x => x.Id);
             e.HasOne<GuidanceMessageRow>().WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => x.MessageId);
+        });
+        modelBuilder.Entity<GuidanceDeliveryRow>(e =>
+        {
+            e.ToTable("guidance_delivery");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Channel).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ErrorCode).HasMaxLength(64);
+            e.HasOne<GuidanceMessageRow>().WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.MessageId, x.Channel }).IsUnique();
+            e.HasIndex(x => new { x.State, x.NextAttemptAt });
         });
         SnakeCase.Apply(modelBuilder);
     }

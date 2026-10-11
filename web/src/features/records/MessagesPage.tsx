@@ -8,6 +8,25 @@ import { ActionError, DemoFlag, Loaded } from "./shared";
 
 const tone = { Information: "info", FollowUp: "info", ReviewSoon: "warning", Urgent: "warning" } as const;
 
+/** How a notification for this message is going, in words that never turn "scheduled" or "simulated" into "delivered". */
+export function DeliveryLine({ m }: { m: GuidanceMessage }) {
+  const { t, fmt } = useI18n();
+  const d = m.delivery;
+  const text = !d ? t("rec.deliv.none")
+    : d.state === "Scheduled" ? t("rec.deliv.scheduled")
+    : d.state === "Attempted" ? t("rec.deliv.attempted")
+    : d.state === "Failed" ? t("rec.deliv.failed")
+    : d.mode === "Simulated" ? t("rec.deliv.simulated") : t("rec.deliv.confirmed", { channel: d.channel });
+  return (
+    <div className="rec-badges">
+      {m.provenance === "AutomatedAssessment" && <Badge tone="info" icon="sparkles">{t("rec.prov.automated")}</Badge>}
+      <Badge tone={m.clinicianReviewed ? "success" : "neutral"} icon={m.clinicianReviewed ? "check" : "minus"}>{m.clinicianReviewed ? t("rec.prov.reviewed") : t("rec.prov.notReviewed")}</Badge>
+      <Badge tone={d?.state === "Failed" ? "warning" : "neutral"} icon={d?.mode === "Simulated" ? "alertTriangle" : "info"}>{text}</Badge>
+      {d?.confirmedAt && <span className="ms-muted">{fmt.date(new Date(d.confirmedAt), "short")}</span>}
+    </div>
+  );
+}
+
 /** The six parts of every patient message, always in the same order. */
 export function GuidanceBody({ g, level, pro }: { g: GuidancePatient; level: GuidanceLevel; pro?: GuidanceProfessional | null }) {
   const { t } = useI18n();
@@ -41,6 +60,7 @@ export function PatientMessages() {
             <li key={m.id}><Card>
               <div className="rec-badges"><Badge tone={tone[m.level]} icon={m.level === "Urgent" ? "alertTriangle" : "info"}>{t(`rec.level.${m.level}`)}</Badge><Badge tone="neutral">{t(`rec.msgStatus.${m.status}`)}</Badge><DemoFlag show={m.isDemo} /><span className="ms-muted">{fmt.date(new Date(m.createdAt), "short")}</span></div>
               <GuidanceBody g={m.patient} level={m.level} />
+              <DeliveryLine m={m} />
               {m.origin && <p className="ms-muted" dir="auto">{t("sf.origin", { rule: m.origin.ruleId, version: m.origin.ruleVersion })} · {fmt.date(new Date(m.origin.dataAsOf), "short")}</p>}
               <div className="rec-row__actions">
                 {m.status === "Sent" && <Button size="sm" onClick={() => act.run(() => api.setMessageStatus(m.id, "Seen"), list.reload)}>{t("rec.messages.seen")}</Button>}

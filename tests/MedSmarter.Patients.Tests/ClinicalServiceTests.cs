@@ -283,14 +283,14 @@ public class ClinicalServiceTests
         Assert.Single((await env.Guidance.ListForPatientAsync(subject)).Value!); // nothing changed: the patient's decision stands
 
         env.Clock.Advance(TimeSpan.FromHours(1));
-        await Unregistered(env, subject, "Otherol"); // the record changed
+        await Unregistered(env, subject, "Otherol"); // an unrelated record was added
         await Assess(env, subject);
         var all = (await env.Guidance.ListForPatientAsync(subject)).Value!;
-        // The record changed after the patient resolved it, so the situation may be different: the first finding is raised again (a new message) next to the new one.
-        // The resolved message itself is never reopened or deleted.
-        Assert.Equal(3, all.Count);
+        // Phase 8: reactivation is decided per finding by the exact records it is about. The resolved finding's own records did not change, so it stays resolved;
+        // only the new medicine's finding is new.
+        Assert.Equal(2, all.Count);
         Assert.Contains(all, m => m.Id == id && m.Status == GuidanceStatus.Resolved);
-        Assert.Equal(2, all.Count(m => m.Status == GuidanceStatus.Sent));
+        Assert.Single(all, m => m.Status == GuidanceStatus.Sent);
     }
 
     [Fact]

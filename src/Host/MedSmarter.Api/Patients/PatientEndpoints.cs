@@ -209,6 +209,9 @@ public static class PatientEndpoints
             : Results.Problem(title: "Invalid request", statusCode: StatusCodes.Status400BadRequest, extensions: Codes("date.invalid")));
         Route(app, "POST", "/patients/{id:guid}/intake", Permissions.PatientAdherenceLog, "adherence", false, async c =>
             await c.Body<LogIntakeCommand>() is { } b ? Map(await c.Svc<IPatientMedicationService>().LogIntakeAsync(c.Actor.UserId, c.Subject, b, c.Source, c.Corr, c.Ct)) : BadBody);
+        // Phase 8: adherence over a window as the patient reported it, with unknown instructions listed (never guessed). Professionals need the adherence scope.
+        Route(app, "GET", "/patients/{id:guid}/adherence/summary", Permissions.PatientAdherenceRead, "adherence", true, async c =>
+            Map(await c.Svc<IPatientMedicationService>().GetAdherenceSummaryAsync(c.Subject, int.TryParse(c.Ctx.Request.Query["days"], out var d) ? d : 14, c.Ct)));
         Route(app, "GET", "/patients/{id:guid}/adherence", Permissions.PatientAdherenceRead, "adherence", true, async c =>
         {
             var until = DateTimeOffset.TryParse(c.Ctx.Request.Query["to"], out var u) ? u : DateTimeOffset.UtcNow;

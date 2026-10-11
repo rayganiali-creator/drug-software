@@ -149,6 +149,7 @@ class RecordsClient {
         'endDate': _day(DateTime.now()),
         'expectedVersion': version,
       });
+  Future<Json> adherenceSummary([int days = 14]) => _obj('GET', _p('adherence/summary?days=$days'));
   Future<List<Json>> doses(DateTime day) => _list(_p('doses?date=${_day(day)}'));
   Future<void> logIntake(Json slot, String status) async {
     await _call('POST', _p('intake'), {

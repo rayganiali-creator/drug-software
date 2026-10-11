@@ -113,6 +113,7 @@ public sealed class PatientsDbContext(DbContextOptions<PatientsDbContext> option
             e.ToTable("medication_intake_log");
             e.HasKey(x => x.Id);
             e.Property(x => x.Note).HasMaxLength(300);
+            e.Property(x => x.Source).HasMaxLength(16);
             e.HasOne<MedicationRecord>().WithMany().HasForeignKey(x => x.PatientMedicationId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<ScheduleEntryRecord>().WithMany().HasForeignKey(x => x.ScheduleEntryId).OnDelete(DeleteBehavior.Restrict);
             // The same planned dose can be logged once; logging it again updates it (idempotent).

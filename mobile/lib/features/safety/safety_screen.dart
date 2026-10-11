@@ -178,6 +178,8 @@ class _SafetyScreenState extends State<SafetyScreen> {
           ),
         if (_phase == _Phase.ready && a != null)
           _AssessmentView(a: a, code: _code, onRerun: _run, busy: _running),
+        const SizedBox(height: Space.s4),
+        _MonitoringCard(code: _code),
       ],
     );
   }
@@ -498,6 +500,21 @@ class _AssessmentView extends StatelessWidget {
               '${context.t('sf.meta.guidance')}: ${context.t('sf.guidance.${a.guidanceState}')}',
               style: context.text.bodySmall,
             ),
+            Text(
+              '${context.t('sf.meta.how')}: ${a.trigger == 'scheduled' ? context.t('sf.meta.byScheduled') : context.t('sf.meta.byPatient')}',
+              style: context.text.bodySmall,
+            ),
+            if (a.change != null)
+              Text(
+                a.change!['firstAssessment'] == true
+                    ? context.t('sf.change.first')
+                    : context.t('sf.change.since', {
+                        'added': '${a.change!['added']}',
+                        'removed': '${a.change!['removed']}',
+                        'changed': '${a.change!['changed']}',
+                      }),
+                style: context.text.caption,
+              ),
             const SizedBox(height: Space.s2),
             for (final l in a.limitations)
               Text('• ${code('sf.limit', l)}', style: context.text.caption),
@@ -705,6 +722,196 @@ class _FindingTileState extends State<_FindingTile> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Scheduled re-checks of the patient's own record. A local schedule that looks again when the exact records or the rules changed, while the system is running.
+/// It is not continuous or real-time monitoring and it predicts nothing; the card says so.
+class _MonitoringCard extends StatefulWidget {
+  const _MonitoringCard({required this.code});
+  final String Function(String prefix, String code) code;
+  @override
+  State<_MonitoringCard> createState() => _MonitoringCardState();
+}
+
+class _MonitoringCardState extends State<_MonitoringCard> {
+  Map<String, dynamic>? _s;
+  bool _failed = false;
+  bool _busy = false;
+  String? _problem;
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    final c = context.app.safety;
+    try {
+      final id = c.selfId;
+      if (id == null) throw const SafetyException(SafetyErrorKind.notConnected);
+      final s = await c.monitoring(id);
+      if (!mounted) return;
+      setState(() {
+        _s = s;
+        _failed = false;
+      });
+    } on SafetyException {
+      if (!mounted) return;
+      setState(() => _failed = true);
+    }
+  }
+
+  Future<void> _change(
+    Future<Map<String, dynamic>> Function(SafetyClient c, String id) fn,
+  ) async {
+    final c = context.app.safety;
+    final id = c.selfId;
+    if (id == null) return;
+    setState(() {
+      _busy = true;
+      _problem = null;
+    });
+    try {
+      final s = await fn(c, id);
+      if (!mounted) return;
+      setState(() {
+        _s = s;
+        _busy = false;
+      });
+    } on SafetyException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _problem = e.kind == SafetyErrorKind.invalid
+            ? 'sf.mon.needConsent'
+            : 'sf.mon.cannotChange';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _s;
+    final enrolled = s?['enrolled'] == true;
+    final state = '${s?['state']}';
+    final locale = context.app.locale.languageCode;
+    String when(Object? iso) {
+      final d = DateTime.tryParse('$iso');
+      return d == null
+          ? context.t('sf.mon.never')
+          : context.fmt.date(d.toLocal());
+    }
+
+    return AppCard(
+      title: context.t('sf.mon.title'),
+      subtitle: context.t('sf.mon.sub'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_failed)
+            Text(context.t('sf.mon.cannotLoad'), style: context.text.caption),
+          if (s != null) ...[
+            Wrap(
+              spacing: Space.s2,
+              runSpacing: Space.s1,
+              children: [
+                AppBadge(
+                  text: enrolled
+                      ? context.t('sf.mon.on')
+                      : context.t('sf.mon.off'),
+                  tone: enrolled ? Tone.info : Tone.neutral,
+                  icon: enrolled ? 'clock' : 'minus',
+                ),
+                if (enrolled && s['workerEnabled'] != true)
+                  AppBadge(
+                    text: context.t('sf.mon.workerOff'),
+                    tone: Tone.warning,
+                    icon: 'alertTriangle',
+                  ),
+                if (state == 'Exhausted')
+                  AppBadge(
+                    text: context.t('sf.mon.exhausted'),
+                    tone: Tone.danger,
+                    icon: 'alertTriangle',
+                  ),
+                if (state == 'Running')
+                  AppBadge(
+                    text: context.t('sf.mon.running'),
+                    tone: Tone.info,
+                    icon: 'clock',
+                  ),
+              ],
+            ),
+            if (enrolled) ...[
+              const SizedBox(height: Space.s2),
+              Text(
+                '${context.t('sf.mon.lastAttempt')}: ${when(s['lastAttemptAt'])}',
+                style: context.text.bodySmall,
+              ),
+              Text(
+                '${context.t('sf.mon.lastSuccess')}: ${when(s['lastSuccessAt'])}',
+                style: context.text.bodySmall,
+              ),
+              Text(
+                '${context.t('sf.mon.lastOutcome')}: ${s['lastOutcome'] == null ? context.t('sf.mon.never') : widget.code('sf.mon.outcome', '${s['lastOutcome']}')}',
+                style: context.text.bodySmall,
+              ),
+              if (s['nextCheckAt'] != null)
+                Text(
+                  '${context.t('sf.mon.next')}: ${when(s['nextCheckAt'])}',
+                  style: context.text.bodySmall,
+                ),
+              if (s['lastErrorCode'] != null)
+                Text(
+                  context.t('sf.mon.error', {
+                    'code': widget.code(
+                      'sf.mon.errorCode',
+                      '${s['lastErrorCode']}',
+                    ),
+                  }),
+                  style: context.text.caption,
+                ),
+            ],
+            const SizedBox(height: Space.s2),
+            Text(context.t('sf.mon.notContinuous'), style: context.text.label),
+            const SizedBox(height: Space.s3),
+            if (enrolled)
+              AppButton(
+                label: context.t('sf.mon.withdraw'),
+                variant: ButtonVariant.secondary,
+                loading: _busy,
+                onPressed: () => _change((c, id) => c.withdraw(id)),
+              )
+            else ...[
+              AppButton(
+                label: context.t('sf.mon.enrol'),
+                loading: _busy,
+                onPressed: () => _change((c, id) => c.enrol(id, locale)),
+              ),
+              Text(
+                context.t('sf.mon.consentNote'),
+                style: context.text.caption,
+              ),
+            ],
+            if (state == 'Exhausted')
+              AppButton(
+                label: context.t('sf.mon.restart'),
+                variant: ButtonVariant.secondary,
+                loading: _busy,
+                onPressed: () => _change((c, id) => c.enrol(id, locale)),
+              ),
+          ],
+          if (_problem != null)
+            Text(context.t(_problem!), style: context.text.caption),
+        ],
       ),
     );
   }

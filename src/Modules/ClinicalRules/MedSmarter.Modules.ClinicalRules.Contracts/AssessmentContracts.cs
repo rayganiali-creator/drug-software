@@ -160,7 +160,18 @@ public sealed record AssessmentDto(
     IReadOnlyList<string> OpenGuidanceNoLongerMatching,
     bool Outdated,
     IReadOnlyList<string> OutdatedReasons,
-    string Notice);
+    string Notice,
+    /// <summary>Phase 8: stable hash of the exact record versions and availability this assessment used.</summary>
+    string InputFingerprint = "",
+    /// <summary>Phase 8: which record versions produced this assessment (ids and version tokens only; no names, no text).</summary>
+    IReadOnlyList<InputVersionRef>? InputVersions = null,
+    /// <summary>Phase 8: what changed since the previous assessment (counts only). Null when unknown.</summary>
+    InputChangeSummary? Change = null);
+
+/// <param name="Kind">medication, reference, allergy, symptom or profile.</param>
+public sealed record InputVersionRef(string Kind, Guid Id, string Version);
+
+public sealed record InputChangeSummary(bool FirstAssessment, int Added, int Removed, int Changed, bool RuleSetChanged);
 
 public sealed record AssessmentSummaryDto(Guid Id, DateTimeOffset EvaluatedAt, AssessmentStatus Status, bool Complete, int FindingCount, int ActionableFindingCount, string RuleSetVersion, string Trigger, bool ContainsDemonstration);
 
@@ -200,5 +211,72 @@ public interface IClinicalSafetyService
     Task<SafetyOutcome<AssessmentDto>> GetAsync(Guid subjectId, Guid assessmentId, IReadOnlyCollection<string> readableCategories, CancellationToken ct = default);
 
     /// <summary>The newest stored assessment, with an honest statement of whether the data or the rules changed since. Nothing re-runs by itself.</summary>
+    /// <summary>
+    /// Change-aware re-evaluation for the scheduled worker. Runs the engine only if the exact record versions or the rule set differ from the latest assessment, or if
+    /// the latest assessment is older than <paramref name="reassessAtLeastEvery"/> (a configured reassessment is due). Equal inputs never create another assessment; an earlier incomplete guidance step is repaired idempotently.
+    /// </summary>
+    Task<SafetyOutcome<ReassessmentOutcome>> ReassessIfNeededAsync(Guid subjectId, IReadOnlyCollection<string> readableCategories, string locale, TimeSpan? reassessAtLeastEvery, string? correlationId, CancellationToken ct = default);
+
     Task<SafetyOutcome<AssessmentDto>> LatestAsync(Guid subjectId, IReadOnlyCollection<string> readableCategories, CancellationToken ct = default);
+}
+
+// ---------- Phase 8: scheduled, change-aware reassessment ----------
+
+public enum MonitoringJobState
+{
+    /// <summary>Enrolled and waiting for its next check.</summary>
+    Idle,
+
+    /// <summary>A pass has claimed it. A lease protects against two workers; an interrupted claim is recovered, never assumed to have succeeded.</summary>
+    Running,
+
+    /// <summary>Stopped after repeated failures. It does not retry by itself any more; re-enrolling resets it.</summary>
+    Exhausted,
+
+    Withdrawn,
+}
+
+/// <summary>Status of a patient's scheduled checks. Holds no clinical content.</summary>
+public sealed record MonitoringStatusDto(
+    bool Enrolled,
+    MonitoringJobState State,
+    DateTimeOffset? EnrolledAt,
+    DateTimeOffset? LastAttemptAt,
+    DateTimeOffset? LastSuccessAt,
+    /// <summary>reassessed, unchanged, skipped.no_consent, failed.transient, failed.permanent, failed.exhausted, interrupted, cancelled.</summary>
+    string? LastOutcome,
+    string? LastErrorCode,
+    int ConsecutiveFailures,
+    DateTimeOffset? NextCheckAt,
+    Guid? LastAssessmentId,
+    bool WorkerEnabled,
+    string Notice);
+
+public sealed record MonitoringRunResult(int Recovered, int Claimed, int Reassessed, int Unchanged, int Skipped, int Failed, int Exhausted);
+
+public enum ReassessmentKind
+{
+    /// <summary>Inputs and rule set equal to the latest assessment, nothing due: no new assessment.</summary>
+    Unchanged,
+
+    /// <summary>A new assessment was stored.</summary>
+    Reassessed,
+
+    /// <summary>Same inputs, but an earlier run left guidance incomplete: guidance was re-raised without a new assessment.</summary>
+    GuidanceRepaired,
+}
+
+public sealed record ReassessmentOutcome(ReassessmentKind Kind, Guid? AssessmentId, AssessmentStatus? Status, string Reason, GuidanceLinkState Guidance = GuidanceLinkState.NotApplicable);
+
+public interface IMonitoringService
+{
+    /// <summary>Patient only (the caller authorizes). Needs an active Monitoring consent covering medications.</summary>
+    Task<SafetyOutcome<MonitoringStatusDto>> EnrolAsync(Guid actorUserId, Guid subjectId, string locale, string source, string? correlationId, CancellationToken ct = default);
+
+    Task<SafetyOutcome<MonitoringStatusDto>> WithdrawAsync(Guid actorUserId, Guid subjectId, string source, string? correlationId, CancellationToken ct = default);
+
+    Task<SafetyOutcome<MonitoringStatusDto>> StatusAsync(Guid subjectId, CancellationToken ct = default);
+
+    /// <summary>One bounded pass: recover interrupted claims, claim due jobs, check each. Idempotent; safe to cancel at any point.</summary>
+    Task<MonitoringRunResult> RunOnceAsync(CancellationToken ct);
 }

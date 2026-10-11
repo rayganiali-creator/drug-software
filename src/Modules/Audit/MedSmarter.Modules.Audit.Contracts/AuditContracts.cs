@@ -73,6 +73,18 @@ public static class AuditActions
     public const string ClinicalRuleRetired = "CLINICAL_RULE_RETIRED";
     /// <summary>A review or activation was refused by the rule policy (separation of duties, evidence, test cases).</summary>
     public const string ClinicalRuleRefused = "CLINICAL_RULE_REFUSED";
+    public const string GuidanceDeliveryScheduled = "GUIDANCE_DELIVERY_SCHEDULED";
+    /// <summary>Delivery state changes: confirmed (by the channel; simulated channels say so in the metadata), failed, or recovered after an interruption. Codes only.</summary>
+    public const string GuidanceDeliveryConfirmed = "GUIDANCE_DELIVERY_CONFIRMED";
+    public const string GuidanceDeliveryFailed = "GUIDANCE_DELIVERY_FAILED";
+    public const string GuidanceDeliveryRecovered = "GUIDANCE_DELIVERY_RECOVERED";
+    /// <summary>A scheduled reassessment pass: patient subject, outcome code, counts (never findings or names).</summary>
+    public const string MonitoringReassessed = "MONITORING_REASSESSED";
+    public const string MonitoringSkipped = "MONITORING_SKIPPED";
+    public const string MonitoringFailed = "MONITORING_FAILED";
+    public const string MonitoringEnrolled = "MONITORING_ENROLLED";
+    public const string MonitoringWithdrawn = "MONITORING_WITHDRAWN";
+    public const string ClinicalRuleDraftUpdated = "CLINICAL_RULE_DRAFT_UPDATED";
 }
 
 /// <summary>

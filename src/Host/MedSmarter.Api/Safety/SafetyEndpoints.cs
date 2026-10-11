@@ -1,6 +1,8 @@
 using System.Text.Json;
 using MedSmarter.Api.Security;
 using MedSmarter.Modules.Audit.Contracts;
+using MedSmarter.Modules.ClinicalRules;
+using MedSmarter.Modules.Guidance.Contracts;
 using MedSmarter.Modules.ClinicalRules.Contracts;
 using MedSmarter.Modules.Identity.Contracts;
 using MedSmarter.Modules.Patients.Contracts;
@@ -21,6 +23,8 @@ public static class SafetyEndpoints
     private static CurrentUser Actor(HttpContext ctx) => (CurrentUser)ctx.Items[BearerDefaults.CurrentUserItem]!;
     private static string SourceOf(HttpContext ctx) => ctx.Request.Headers["X-Client"].FirstOrDefault() is { } c && c is "web" or "android" or "ios" or "windows" or "macos" or "linux" ? c : "api";
     private static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };
+
+    private static readonly string[] MinReferenceSeverities = ["Minor", "Moderate", "Major", "Contraindicated"];
 
     private static readonly (string Category, string Permission)[] Extras =
     [
@@ -114,6 +118,13 @@ public static class SafetyEndpoints
             Map(await c.Svc<IClinicalSafetyService>().AssessAsync(c.Actor.UserId, c.Subject, new AssessCommand(c.Readable, c.Locale), c.Source, c.Corr, c.Ct), StatusCodes.Status201Created));
         PatientRoute(app, "GET", "/patients/{id:guid}/safety/assessments", Permissions.SafetyAssessRead, true, async c =>
             Map(await c.Svc<IClinicalSafetyService>().ListAsync(c.Subject, int.TryParse(c.Ctx.Request.Query["take"], out var take) ? take : 20, c.Readable, c.Ct)));
+        // Scheduled checks (Phase 8). Enrolling is the patient's own act and needs a Monitoring consent; a professional can read the status (no clinical content) but never start or stop it.
+        PatientRoute(app, "POST", "/patients/{id:guid}/safety/monitoring", Permissions.SafetyAssessRun, false, async c =>
+            Map(await c.Svc<IMonitoringService>().EnrolAsync(c.Actor.UserId, c.Subject, c.Locale, c.Source, c.Corr, c.Ct)));
+        PatientRoute(app, "DELETE", "/patients/{id:guid}/safety/monitoring", Permissions.SafetyAssessRun, false, async c =>
+            Map(await c.Svc<IMonitoringService>().WithdrawAsync(c.Actor.UserId, c.Subject, c.Source, c.Corr, c.Ct)));
+        PatientRoute(app, "GET", "/patients/{id:guid}/safety/monitoring", Permissions.SafetyAssessRead, true, async c =>
+            Map(await c.Svc<IMonitoringService>().StatusAsync(c.Subject, c.Ct)));
         PatientRoute(app, "GET", "/patients/{id:guid}/safety/assessments/latest", Permissions.SafetyAssessRead, true, async c =>
             Map(await c.Svc<IClinicalSafetyService>().LatestAsync(c.Subject, c.Readable, c.Ct)));
         app.MapGet("/patients/{id:guid}/safety/assessments/{aid:guid}", async (Guid id, Guid aid, HttpContext ctx) =>
@@ -170,6 +181,38 @@ public static class SafetyEndpoints
         g.MapGet("{ruleId}/versions/{version:int}", async (string ruleId, int version, IClinicalRuleCatalog catalog, HttpContext ctx) => Map(await catalog.GetAsync(ruleId, version, ctx.RequestAborted)))
             .RequireAuthorization(Perm(Permissions.ClinicalrulesRead));
 
+        // What the authoring form may offer: derived from the same tables the validator uses, so the UI cannot drift from the server's rules.
+        g.MapGet("options", (IGuidanceComposer composer) => Results.Json(new
+        {
+            domains = Enum.GetValues<RuleDomain>().Select(d => new { domain = d, criteria = RuleValidator.KindOf(d), requiredInputs = RuleValidator.RequiredFor(RuleValidator.KindOf(d)) }),
+            templateKeys = composer.TemplateKeys.Where(k => k.StartsWith("safety.", StringComparison.Ordinal)),
+            severities = Enum.GetNames<FindingSeverity>(), urgencies = Enum.GetNames<FindingUrgency>(), validations = Enum.GetNames<EvidenceValidation>(),
+            minReferenceSeverities = MinReferenceSeverities,
+            outcomes = Enum.GetNames<RuleOutcome>(),
+        }, Web)).RequireAuthorization(Perm(Permissions.ClinicalrulesRead));
+        g.MapGet("{ruleId}/versions/{version:int}/history", async (string ruleId, int version, IClinicalRuleCatalog catalog, IUserIdentityService users, HttpContext ctx) =>
+        {
+            var detail = await catalog.GetAsync(ruleId, version, ctx.RequestAborted);
+            if (!detail.Succeeded)
+            {
+                return Map(detail);
+            }
+
+            async Task<string?> NameOf(string? id) => Guid.TryParse(id, out var g2) ? (await users.GetSummaryAsync(g2, ctx.RequestAborted))?.DisplayName : id; // "demo-seed" and similar stay as written
+            var events = await catalog.HistoryAsync(ruleId, version, ctx.RequestAborted);
+            var lifecycle = detail.Value!.Record.Lifecycle;
+            var blockers = await catalog.ApprovalBlockersAsync(Actor(ctx).UserId, ruleId, version, ctx.RequestAborted);
+            return Results.Json(new
+            {
+                authorName = await NameOf(lifecycle.Author), reviewerName = await NameOf(lifecycle.Reviewer),
+                authorIsYou = lifecycle.Author == Actor(ctx).UserId.ToString(),
+                approvalBlockers = blockers.Value ?? [],
+                events = await Task.WhenAll(events.Select(async e => new { e.Action, e.From, e.To, actor = await NameOf(e.Actor), e.At })),
+            }, Web);
+        }).RequireAuthorization(Perm(Permissions.ClinicalrulesRead));
+        g.MapPut("{ruleId}/versions/{version:int}", async (string ruleId, int version, HttpContext ctx, IClinicalRuleCatalog catalog) =>
+            await Body<RuleDefinition>(ctx) is { } body ? Map(await catalog.UpdateDraftAsync(Actor(ctx).UserId, ruleId, version, body, SourceOf(ctx), ctx.TraceIdentifier, ctx.RequestAborted)) : Invalid())
+            .RequireAuthorization(Perm(Permissions.ClinicalrulesAuthor)).RequireRateLimiting(Knowledge.KnowledgeEndpoints.WriteLimiter);
         g.MapPost("", async (HttpContext ctx, IClinicalRuleCatalog catalog) =>
             await Body<RuleDefinition>(ctx) is { } body ? Map(await catalog.CreateDraftAsync(Actor(ctx).UserId, body, SourceOf(ctx), ctx.TraceIdentifier, ctx.RequestAborted), StatusCodes.Status201Created) : Invalid())
             .RequireAuthorization(Perm(Permissions.ClinicalrulesAuthor)).RequireRateLimiting(Knowledge.KnowledgeEndpoints.WriteLimiter);

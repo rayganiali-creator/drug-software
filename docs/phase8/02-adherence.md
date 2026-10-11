@@ -1,0 +1,10 @@
+# 2. Adherence
+
+* Source of truth: the existing schedule (`ScheduleEntry`) and intake log. Nothing new is invented: no dose, route or frequency is ever inferred.
+* **Patient-reported only.** Every record carries `Provenance = PatientReported` and the client that recorded it (`Source`). Professionals see the same, labelled "reported by the patient"; it is not a verified clinical fact and not a measure of treatment effect. No percentage or score is shown.
+* Statuses: `Taken`, `Skipped` (chose not to), `Missed` (reports it was not taken). `Missed`/`Skipped` need a planned dose, no taken time, and for `Missed` the dose must already have come. A planned dose with **no record is "not recorded", never "missed"**. A reminder, assessment or message never writes an intake record (tested).
+* Recording requires defined instructions: a slot-linked record needs a known dose (`instructions.dose_unknown` otherwise). Unplanned extra intake stays allowed and is flagged `Unplanned`.
+* Safe retries: same slot + same content ⇒ the stored record is returned unchanged (no new version, no audit line, timestamp and original source unchanged). A real correction (e.g. Taken → Missed) is versioned and audited. The unique (entry, planned time) index and an optimistic conflict answer cover two devices.
+* `GET /patients/{id}/adherence/summary?days=1..31` → per medicine: planned/taken/skipped/missed/not-recorded/unplanned counts, the schedule, `instructionGaps` (`dose.unknown`, `dose.unit_missing`, `frequency.unspecified`, `route.unknown`, `schedule.none`, `medication.not_in_reference`, `source.self_reported`), `recordingAllowed`, freshness. Future doses are not counted.
+* Access: the existing route policy — patient owner, or a professional with an active care relationship **and** consent for the `adherence` scope; uniform 403 otherwise; professionals are read-only.
+* **No compensatory-dose advice.** The UI says "please do not take an extra dose to make up for it on your own; check the leaflet or ask a pharmacist or physician". The system never changes a prescription.

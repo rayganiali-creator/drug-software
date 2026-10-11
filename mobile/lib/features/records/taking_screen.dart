@@ -46,7 +46,8 @@ class _TakingScreenState extends State<TakingScreen> {
                   )
                 : Column(
                     children: [
-                      for (final s in slots) _DoseRow(slot: s, onDone: _refresh),
+                      for (final s in slots)
+                        _DoseRow(slot: s, onDone: _refresh),
                     ],
                   ),
           ),
@@ -64,9 +65,19 @@ class _TakingScreenState extends State<TakingScreen> {
                   )
                 : Column(
                     children: [
-                      for (final m in meds) _MedRow(med: m, onChanged: _refresh),
+                      for (final m in meds)
+                        _MedRow(med: m, onChanged: _refresh),
                     ],
                   ),
+          ),
+        ),
+        RecordsLoader<Json>(
+          key: ValueKey('adh$_gen'),
+          load: api.adherenceSummary,
+          builder: (context, s, _) => RecSection(
+            title: context.t('adh.title'),
+            subtitle: context.t('adh.sub', {'n': context.fmt.number(14)}),
+            child: _AdherenceView(summary: s),
           ),
         ),
         _AddMedicine(onAdded: _refresh),
@@ -118,8 +129,10 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
                     ? ButtonVariant.tonal
                     : ButtonVariant.primary,
                 loading: busy,
-                onPressed: () =>
-                    act(() => context.app.records.logIntake(s, 'Taken'), widget.onDone),
+                onPressed: () => act(
+                  () => context.app.records.logIntake(s, 'Taken'),
+                  widget.onDone,
+                ),
               ),
               AppButton(
                 label: context.t('rec.intake.markSkipped'),
@@ -132,9 +145,33 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
                         widget.onDone,
                       ),
               ),
+              if ((DateTime.tryParse('${s['scheduledFor']}') ?? DateTime.now())
+                  .isBefore(DateTime.now()))
+                AppButton(
+                  label: context.t('rec.intake.markMissed'),
+                  size: ButtonSize.sm,
+                  variant: ButtonVariant.secondary,
+                  onPressed: busy
+                      ? null
+                      : () => act(
+                          () => context.app.records.logIntake(s, 'Missed'),
+                          widget.onDone,
+                        ),
+                ),
             ],
           ),
         ),
+        if (status == 'Missed')
+          Padding(
+            padding: const EdgeInsetsDirectional.only(
+              start: Space.s4,
+              bottom: Space.s2,
+            ),
+            child: Text(
+              context.t('adh.missedDose.short'),
+              style: context.text.caption,
+            ),
+          ),
         failureAlert(),
       ],
     );
@@ -181,7 +218,9 @@ class _MedRowState extends State<_MedRow> with ActionRunner {
         ),
         if (!registered)
           Padding(
-            padding: const EdgeInsetsDirectional.symmetric(horizontal: Space.s4),
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: Space.s4,
+            ),
             child: Text(
               context.t('rec.meds.unregisteredNote'),
               style: context.text.caption,
@@ -289,4 +328,91 @@ class _AddMedicineState extends State<_AddMedicine> with ActionRunner {
       ],
     ),
   );
+}
+
+/// What the patient reported, per medicine. Unknown instructions are listed (never guessed); a planned dose with no record is "not recorded", never "missed".
+class _AdherenceView extends StatelessWidget {
+  const _AdherenceView({required this.summary});
+  final Json summary;
+
+  String _gap(BuildContext context, String g) {
+    final key = 'adh.gap.${g.replaceAll('.', '_')}';
+    return context.app.strings.has(key) ? context.t(key) : g;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final meds = [
+      for (final m in (summary['medications'] as List? ?? const [])) m as Json,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: Space.s2,
+          children: [
+            AppBadge(
+              text: context.t('adh.patientReported'),
+              tone: Tone.info,
+              icon: 'user',
+            ),
+            if (summary['intakeStale'] == true)
+              AppBadge(
+                text: context.t('adh.stale'),
+                tone: Tone.warning,
+                icon: 'clock',
+              ),
+          ],
+        ),
+        const SizedBox(height: Space.s2),
+        Text(context.t('adh.notice'), style: context.text.caption),
+        const SizedBox(height: Space.s3),
+        if (meds.isEmpty)
+          EmptyState(
+            icon: 'pill',
+            title: context.t('adh.none'),
+            body: context.t('adh.noneBody'),
+          )
+        else
+          for (final m in meds)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Space.s3),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${m['medicationName']}', style: context.text.label),
+                  if (m['recordingAllowed'] != true)
+                    AppBadge(
+                      text: context.t('adh.cannotRecord'),
+                      tone: Tone.warning,
+                      icon: 'alertTriangle',
+                    ),
+                  Text(
+                    '${context.t('adh.planned')}: ${context.fmt.number((m['plannedDoses'] as num?) ?? 0)} · '
+                    '${context.t('adh.taken')}: ${context.fmt.number((m['taken'] as num?) ?? 0)} · '
+                    '${context.t('adh.skipped')}: ${context.fmt.number((m['skipped'] as num?) ?? 0)} · '
+                    '${context.t('adh.missed')}: ${context.fmt.number((m['missed'] as num?) ?? 0)} · '
+                    '${context.t('adh.notRecorded')}: ${context.fmt.number((m['notRecorded'] as num?) ?? 0)}',
+                    style: context.text.bodySmall,
+                  ),
+                  if (((m['instructionGaps'] as List?) ?? const [])
+                      .isNotEmpty) ...[
+                    Text(context.t('adh.gaps'), style: context.text.caption),
+                    for (final g in (m['instructionGaps'] as List))
+                      Text(
+                        '• ${_gap(context, '$g')}',
+                        style: context.text.bodySmall,
+                      ),
+                  ],
+                ],
+              ),
+            ),
+        AlertCard(
+          title: context.t('adh.missedDose.title'),
+          body: context.t('adh.missedDose.body'),
+          tone: Tone.info,
+        ),
+      ],
+    );
+  }
 }

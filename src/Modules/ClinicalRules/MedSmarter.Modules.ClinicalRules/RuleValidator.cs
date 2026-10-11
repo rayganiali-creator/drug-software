@@ -12,7 +12,7 @@ public static partial class RuleValidator
     [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9._-]{2,63}$")]
     private static partial Regex Id();
 
-    private static RuleCriteriaKind KindOf(RuleDomain d) => d switch
+    public static RuleCriteriaKind KindOf(RuleDomain d) => d switch
     {
         RuleDomain.Interaction => RuleCriteriaKind.ReferenceInteraction,
         RuleDomain.AllergyConflict => RuleCriteriaKind.AllergyMedicationMatch,
@@ -21,7 +21,7 @@ public static partial class RuleValidator
         _ => RuleCriteriaKind.SevereSymptomRecent,
     };
 
-    private static string[] RequiredFor(RuleCriteriaKind k) => k switch
+    public static string[] RequiredFor(RuleCriteriaKind k) => k switch
     {
         RuleCriteriaKind.AllergyMedicationMatch => ["allergies", "medications"],
         RuleCriteriaKind.SevereSymptomRecent => ["symptoms"],

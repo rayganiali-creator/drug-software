@@ -6,10 +6,11 @@ using MedSmarter.Modules.Guidance.Contracts;
 using MedSmarter.Modules.Guidance.Persistence;
 using MedSmarter.Modules.Patients.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace MedSmarter.Modules.Guidance;
 
-public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory, IClock clock, IAuditWriter audit, IGuidanceComposer composer, IPatientDirectory patients) : IGuidanceService
+public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory, IClock clock, IAuditWriter audit, IGuidanceComposer composer, IPatientDirectory patients, IEnumerable<IGuidanceDeliveryChannel>? channels = null, IOptions<GuidanceDeliveryOptions>? deliveryOptions = null) : IGuidanceService
 {
     public const string DemoNotice = "DEMO DATA - NOT FOR CLINICAL USE";
 
@@ -83,9 +84,9 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
         {
             // One open message per finding; a resolved one stays resolved unless the data changed after it was resolved.
             var existing = await db.Messages.AsNoTracking().Where(m => m.PatientId == patient.PatientId && m.OriginFindingKey == origin.FindingKey).OrderByDescending(m => m.CreatedAt).FirstOrDefaultAsync(ct);
-            if (existing is not null && (existing.Status != GuidanceStatus.Resolved || (existing.ResolvedAt is { } resolvedAt && origin.DataAsOf <= resolvedAt)))
+            if (existing is not null && (existing.Status != GuidanceStatus.Resolved || ReactivationBlocked(existing, origin)))
             {
-                return GuidanceOutcome.Ok(new GuidanceCreated(ToDto(existing, includeProfessional: false), true));
+                return GuidanceOutcome.Ok(new GuidanceCreated(ToDto(existing, includeProfessional: false, ToDelivery(await DeliveryOfAsync(db, existing.Id, ct))), true));
             }
         }
 
@@ -94,15 +95,39 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
             Id = Guid.CreateVersion7(), PatientId = patient.PatientId, TemplateKey = request.HasSufficientData ? request.TemplateKey : "data.insufficient", Level = composition.Level, Status = GuidanceStatus.Sent,
             Locale = request.Locale.StartsWith("fa", StringComparison.OrdinalIgnoreCase) ? "fa" : "en", Confidence = composition.Professional.Confidence,
             PatientJson = JsonSerializer.Serialize(composition.Patient, Json), ProfessionalJson = JsonSerializer.Serialize(composition.Professional, Json), CreatedAt = clock.UtcNow, IsDemo = isDemo,
-            OriginKind = origin?.Kind, OriginAssessmentId = origin?.AssessmentId, OriginRuleId = origin?.RuleId, OriginRuleVersion = origin?.RuleVersion, OriginFindingKey = origin?.FindingKey, OriginDataAsOf = origin?.DataAsOf,
+            OriginKind = origin?.Kind, OriginAssessmentId = origin?.AssessmentId, OriginRuleId = origin?.RuleId, OriginRuleVersion = origin?.RuleVersion, OriginFindingKey = origin?.FindingKey, OriginDataAsOf = origin?.DataAsOf, OriginSubjectsFingerprint = origin?.SubjectsFingerprint,
         };
         db.Messages.Add(row);
+        GuidanceDeliveryRow? delivery = null;
+        var opts = deliveryOptions?.Value ?? new GuidanceDeliveryOptions();
+        if (origin is not null && opts.Enabled && (channels ?? []).FirstOrDefault(c => c.Name == opts.Channel) is { } channel)
+        {
+            // Scheduling is only a record that a delivery should be attempted. It is not an attempt and not a confirmation.
+            delivery = new GuidanceDeliveryRow { Id = Guid.CreateVersion7(), MessageId = row.Id, PatientId = patient.PatientId, Channel = channel.Name, Mode = channel.Mode, State = DeliveryState.Scheduled, ScheduledAt = clock.UtcNow, NextAttemptAt = clock.UtcNow };
+            db.Deliveries.Add(delivery);
+        }
+
         await db.SaveChangesAsync(ct);
-        return GuidanceOutcome.Ok(new GuidanceCreated(ToDto(row, includeProfessional: false), false));
+        if (delivery is not null)
+        {
+            await audit.WriteAsync(new AuditEvent(AuditActions.GuidanceDeliveryScheduled, AuditResult.Success, null, "guidance-delivery", row.Id.ToString(), subjectId, "system", null, delivery.Mode.ToString()), ct);
+        }
+
+        return GuidanceOutcome.Ok(new GuidanceCreated(ToDto(row, includeProfessional: false, ToDelivery(delivery)), false));
     }
 
+    /// <summary>A resolved finding stays resolved while the exact records it is about are unchanged (compared by fingerprint). Without a fingerprint the older data-as-of rule applies.</summary>
+    private static bool ReactivationBlocked(GuidanceMessageRow resolved, GuidanceOrigin origin) =>
+        resolved.OriginSubjectsFingerprint is { } was && origin.SubjectsFingerprint is { } now ? was == now : resolved.ResolvedAt is { } at && origin.DataAsOf <= at;
+
+    private static async Task<GuidanceDeliveryRow?> DeliveryOfAsync(GuidanceDbContext db, Guid messageId, CancellationToken ct) =>
+        await db.Deliveries.AsNoTracking().Where(d => d.MessageId == messageId).OrderBy(d => d.ScheduledAt).FirstOrDefaultAsync(ct);
+
+    private static GuidanceDeliveryDto? ToDelivery(GuidanceDeliveryRow? d) =>
+        d is null ? null : new GuidanceDeliveryDto(d.State, d.Mode, d.Channel, d.ScheduledAt, d.LastAttemptAt, d.ConfirmedAt, d.FailedAt, d.Attempts, d.ErrorCode);
+
     private static GuidanceOrigin? OriginOf(GuidanceMessageRow r) =>
-        r.OriginKind is null ? null : new GuidanceOrigin(r.OriginKind, r.OriginAssessmentId ?? Guid.Empty, r.OriginRuleId ?? string.Empty, r.OriginRuleVersion ?? 0, r.OriginFindingKey ?? string.Empty, r.OriginDataAsOf ?? r.CreatedAt);
+        r.OriginKind is null ? null : new GuidanceOrigin(r.OriginKind, r.OriginAssessmentId ?? Guid.Empty, r.OriginRuleId ?? string.Empty, r.OriginRuleVersion ?? 0, r.OriginFindingKey ?? string.Empty, r.OriginDataAsOf ?? r.CreatedAt, r.OriginSubjectsFingerprint);
 
     public async Task<GuidanceOutcome<IReadOnlyList<GuidanceMessageDto>>> ListForPatientAsync(Guid subjectId, CancellationToken ct = default)
     {
@@ -114,7 +139,9 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
 
         await using var db = await factory.CreateDbContextAsync(ct);
         var rows = await db.Messages.AsNoTracking().Where(m => m.PatientId == patient.PatientId).OrderByDescending(m => m.CreatedAt).Take(200).ToListAsync(ct);
-        return GuidanceOutcome.Ok<IReadOnlyList<GuidanceMessageDto>>([.. rows.Select(r => ToDto(r, includeProfessional: false))]); // patients never receive the professional view
+        var ids = rows.Select(r => r.Id).ToList();
+        var deliveries = (await db.Deliveries.AsNoTracking().Where(d => ids.Contains(d.MessageId)).ToListAsync(ct)).GroupBy(d => d.MessageId).ToDictionary(g => g.Key, g => g.OrderBy(d => d.ScheduledAt).First());
+        return GuidanceOutcome.Ok<IReadOnlyList<GuidanceMessageDto>>([.. rows.Select(r => ToDto(r, includeProfessional: false, ToDelivery(deliveries.GetValueOrDefault(r.Id))))]); // patients never receive the professional view
     }
 
     public async Task<GuidanceOutcome<GuidanceMessageDto>> SetStatusAsync(Guid actorUserId, Guid subjectId, Guid id, GuidanceStatus target, bool actorIsProfessional, string source, string? correlationId, CancellationToken ct = default)
@@ -159,7 +186,7 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
         }
 
         await audit.WriteAsync(new AuditEvent(AuditActions.GuidanceStatusChanged, AuditResult.Success, actorUserId, "guidance-message", row.Id.ToString(), subjectId, source, correlationId, target.ToString()), ct);
-        return GuidanceOutcome.Ok(ToDto(row, includeProfessional: actorIsProfessional));
+        return GuidanceOutcome.Ok(ToDto(row, includeProfessional: actorIsProfessional, ToDelivery(await DeliveryOfAsync(db, row.Id, ct))));
     }
 
     public IReadOnlyList<GuidanceComposition> Samples(string locale)
@@ -175,8 +202,8 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
         return [.. requests.Select(composer.Compose)];
     }
 
-    private static GuidanceMessageDto ToDto(GuidanceMessageRow r, bool includeProfessional) => new(
+    private static GuidanceMessageDto ToDto(GuidanceMessageRow r, bool includeProfessional, GuidanceDeliveryDto? delivery = null) => new(
         r.Id, r.TemplateKey, r.Level, r.Status, r.Locale, JsonSerializer.Deserialize<PatientGuidanceContent>(r.PatientJson, Json)!,
         includeProfessional ? JsonSerializer.Deserialize<ProfessionalGuidanceContent>(r.ProfessionalJson, Json) : null,
-        r.CreatedAt, r.SeenAt, r.ReviewedAt, r.ReferredAt, r.ResolvedAt, r.IsDemo, r.IsDemo ? DemoNotice : null, OriginOf(r));
+        r.CreatedAt, r.SeenAt, r.ReviewedAt, r.ReferredAt, r.ResolvedAt, r.IsDemo, r.IsDemo ? DemoNotice : null, OriginOf(r), delivery, r.OriginKind == "safety" ? "AutomatedAssessment" : "Unspecified", r.ReviewedAt is not null);
 }

@@ -38,7 +38,10 @@ public sealed class ClinicalSafetyService(
 
     private static readonly string[] Categories = ["profile", "medications", "allergies", "symptoms"];
 
-    public async Task<SafetyOutcome<AssessmentDto>> AssessAsync(Guid actorUserId, Guid subjectId, AssessCommand command, string source, string? correlationId, CancellationToken ct = default)
+    public Task<SafetyOutcome<AssessmentDto>> AssessAsync(Guid actorUserId, Guid subjectId, AssessCommand command, string source, string? correlationId, CancellationToken ct = default) =>
+        RunAsync(actorUserId, subjectId, command.ReadableCategories, command.Locale, command.Trigger is "manual" or "reassessment" ? command.Trigger : "manual", source, correlationId, null, ct);
+
+    private async Task<SafetyOutcome<AssessmentDto>> RunAsync(Guid actorUserId, Guid subjectId, IReadOnlyCollection<string> readableCategories, string localeIn, string trigger, string source, string? correlationId, Built? prebuilt, CancellationToken ct)
     {
         var patient = await directory.FindBySubjectAsync(subjectId, ct);
         if (patient is null || patient.Status != PatientStatus.Active)
@@ -46,21 +49,22 @@ public sealed class ClinicalSafetyService(
             return SafetyResult.Fail<AssessmentDto>(SafetyError.NotFound, "patient.not_found");
         }
 
-        var readable = Readable(command.ReadableCategories);
+        var readable = Readable(readableCategories);
         if (!readable.Contains("medications"))
         {
             return SafetyResult.Fail<AssessmentDto>(SafetyError.Forbidden, "input.medications.not_authorized"); // nothing can be assessed without them
         }
 
-        var locale = command.Locale is "fa" ? "fa" : "en";
+        var locale = localeIn is "fa" ? "fa" : "en";
         AssessmentSnapshot snapshot;
+        Built built;
         EngineResult result;
         try
         {
-            var built = await BuildSnapshotAsync(subjectId, readable, ct);
+            built = prebuilt ?? await BuildSnapshotAsync(subjectId, readable, ct);
             if (built.Error is { } err)
             {
-                await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentFailed, AuditResult.Failure, actorUserId, "safety-assessment", null, subjectId, source, correlationId, err), ct);
+                await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentFailed, AuditResult.Failure, Who(actorUserId), "safety-assessment", null, subjectId, source, correlationId, err), ct);
                 return SafetyResult.Fail<AssessmentDto>(SafetyError.Validation, err);
             }
 
@@ -72,13 +76,13 @@ public sealed class ClinicalSafetyService(
         catch (Exception ex) when (ex is not OperationCanceledException)
 #pragma warning restore CA1031
         {
-            await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentFailed, AuditResult.Failure, actorUserId, "safety-assessment", null, subjectId, source, correlationId, "assessment.unavailable"), ct);
+            await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentFailed, AuditResult.Failure, Who(actorUserId), "safety-assessment", null, subjectId, source, correlationId, "assessment.unavailable"), ct);
             return SafetyResult.Fail<AssessmentDto>(SafetyError.Unavailable, "assessment.unavailable");
         }
 
         foreach (var blocked in Categories.Except(readable))
         {
-            await audit.WriteAsync(new AuditEvent(AuditActions.SafetyInputBlocked, AuditResult.Denied, actorUserId, "safety-assessment", blocked, subjectId, source, correlationId, "input.not_authorized"), ct);
+            await audit.WriteAsync(new AuditEvent(AuditActions.SafetyInputBlocked, AuditResult.Denied, Who(actorUserId), "safety-assessment", blocked, subjectId, source, correlationId, "input.not_authorized"), ct);
         }
 
         var id = Guid.CreateVersion7();
@@ -86,7 +90,7 @@ public sealed class ClinicalSafetyService(
         var actionable = result.Findings.Where(f => f.Actionable).ToList();
         var row = new AssessmentRow
         {
-            Id = id, PatientId = patient.PatientId, RequestedByUserId = actorUserId, RequestedByPatient = actorUserId == subjectId, Trigger = command.Trigger is "manual" or "reassessment" ? command.Trigger : "manual",
+            Id = id, PatientId = patient.PatientId, RequestedByUserId = actorUserId, RequestedByPatient = actorUserId == subjectId, Trigger = trigger, Locale = locale, InputFingerprint = built.Fingerprint, InputRefsJson = JsonSerializer.Serialize(built.Refs, RuleJson.Options),
             CreatedAt = snapshot.At, Status = result.Status, Complete = result.Complete, RuleSetVersion = result.RuleSetVersion, EngineVersion = result.EngineVersion, DataAsOf = dataAsOf,
             FindingCount = result.Findings.Count, ActionableFindingCount = actionable.Count, ContainsDemonstration = result.ContainsDemonstration,
             // Pessimistic until guidance is confirmed: the row never claims messages exist that were not created.
@@ -97,6 +101,8 @@ public sealed class ClinicalSafetyService(
         try
         {
             await using var db = await factory.CreateDbContextAsync(ct);
+            var previous = await db.Assessments.AsNoTracking().Where(a => a.PatientId == patient.PatientId).OrderByDescending(a => a.CreatedAt).Select(a => new { a.InputRefsJson, a.RuleSetVersion }).FirstOrDefaultAsync(ct);
+            row.ChangeJson = JsonSerializer.Serialize(Diff(previous is null ? null : JsonSerializer.Deserialize<List<InputVersionRef>>(previous.InputRefsJson, RuleJson.Options), previous?.RuleSetVersion, built.Refs, result.RuleSetVersion), RuleJson.Options);
             db.Assessments.Add(row);
             await db.SaveChangesAsync(ct);
         }
@@ -104,7 +110,7 @@ public sealed class ClinicalSafetyService(
         catch (Exception ex) when (ex is not OperationCanceledException)
 #pragma warning restore CA1031
         {
-            await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentFailed, AuditResult.Failure, actorUserId, "safety-assessment", id.ToString(), subjectId, source, correlationId, "persistence.failed"), ct);
+            await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentFailed, AuditResult.Failure, Who(actorUserId), "safety-assessment", id.ToString(), subjectId, source, correlationId, "persistence.failed"), ct);
             return SafetyResult.Fail<AssessmentDto>(SafetyError.Unavailable, "persistence.failed"); // no guidance was created: no contradictory state
         }
 
@@ -112,11 +118,11 @@ public sealed class ClinicalSafetyService(
         var state = row.GuidanceState;
         if (state == GuidanceLinkState.Failed)
         {
-            (state, links) = await RaiseGuidanceAsync(subjectId, id, actionable, locale, dataAsOf, source, correlationId, ct);
+            (state, links) = await RaiseGuidanceAsync(subjectId, id, actionable, locale, dataAsOf, built.RecordVersions, source, correlationId, ct);
             await SaveGuidanceStateAsync(id, state, links, ct);
         }
 
-        await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentRun, result.Status == AssessmentStatus.Failed ? AuditResult.Failure : AuditResult.Success, actorUserId, "safety-assessment", id.ToString(), subjectId, source, correlationId,
+        await audit.WriteAsync(new AuditEvent(AuditActions.SafetyAssessmentRun, result.Status == AssessmentStatus.Failed ? AuditResult.Failure : AuditResult.Success, Who(actorUserId), "safety-assessment", id.ToString(), subjectId, source, correlationId,
             result.Status.ToString(), new Dictionary<string, string>
             {
                 ["findings"] = result.Findings.Count.ToString(CultureInfo.InvariantCulture),
@@ -178,13 +184,15 @@ public sealed class ClinicalSafetyService(
 
     // ---------- snapshot ----------
 
-    private sealed record Built(AssessmentSnapshot? Snapshot, string? Error);
+    private sealed record Built(AssessmentSnapshot? Snapshot, string? Error, IReadOnlyList<InputVersionRef> Refs, string Fingerprint, IReadOnlyDictionary<string, string> RecordVersions);
 
     private async Task<Built> BuildSnapshotAsync(Guid subjectId, HashSet<string> readable, CancellationToken ct)
     {
         var now = clock.UtcNow;
         var freshness = (await patients.GetFreshnessAsync(subjectId, ct)) is { Succeeded: true } f ? f.Value! : [];
         var inputs = new List<InputState>();
+        var refs = new List<InputVersionRef>();
+        var versions = new Dictionary<string, string>();
         foreach (var (category, key) in new[] { ("profile", PatientDataCategory.Profile), ("medications", PatientDataCategory.Medications), ("allergies", PatientDataCategory.Allergies), ("symptoms", PatientDataCategory.Symptoms) })
         {
             if (!readable.Contains(category))
@@ -203,6 +211,7 @@ public sealed class ClinicalSafetyService(
         if (readable.Contains("profile") && await patients.GetProfileAsync(subjectId, ct) is { Succeeded: true } profile)
         {
             age = profile.Value!.AgeYears;
+            refs.Add(new InputVersionRef("profile", subjectId, string.Create(CultureInfo.InvariantCulture, $"v{profile.Value.Version}|age{age}")));
         }
 
         var meds = new List<SnapshotMedication>();
@@ -238,12 +247,20 @@ public sealed class ClinicalSafetyService(
                 var active = listed.Value!.Where(m => m.Status == PatientMedicationStatus.Active).ToList();
                 if (active.Count > MaxActiveMedications)
                 {
-                    return new Built(null, "medications.too_many");
+                    return new Built(null, "medications.too_many", [], string.Empty, new Dictionary<string, string>());
                 }
 
                 foreach (var m in active.OrderBy(m => m.Id))
                 {
                     var detail = m.IsRegistered && m.MedicationId is { } mid ? await Reference(mid) : null;
+                    var refToken = detail is null ? "r-" : string.Create(CultureInfo.InvariantCulture, $"r{detail.Version}");
+                    refs.Add(new InputVersionRef("medication", m.Id, string.Create(CultureInfo.InvariantCulture, $"v{m.Version}")));
+                    if (detail is not null && m.MedicationId is { } refId)
+                    {
+                        refs.Add(new InputVersionRef("reference", refId, refToken));
+                    }
+
+                    versions[m.Id.ToString("N")] = string.Create(CultureInfo.InvariantCulture, $"v{m.Version}|{refToken}");
                     meds.Add(new SnapshotMedication(m.Id, m.MedicationId, m.DisplayName, m.IsRegistered, true, detail is not null, [.. detail?.Ingredients.Select(i => i.IngredientId).Distinct() ?? []]));
                     foreach (var x in detail?.Interactions ?? [])
                     {
@@ -266,6 +283,14 @@ public sealed class ClinicalSafetyService(
                 foreach (var a in listed.Value!.OrderBy(a => a.Id))
                 {
                     var detail = a.Kind == AllergenKind.Medication && a.MedicationId is { } mid ? await Reference(mid) : null;
+                    var allergyRef = detail is null ? "r-" : string.Create(CultureInfo.InvariantCulture, $"r{detail.Version}");
+                    refs.Add(new InputVersionRef("allergy", a.Id, string.Create(CultureInfo.InvariantCulture, $"v{a.Version}")));
+                    if (detail is not null && a.MedicationId is { } allergyRefId)
+                    {
+                        refs.Add(new InputVersionRef("reference", allergyRefId, allergyRef));
+                    }
+
+                    versions[a.Id.ToString("N")] = string.Create(CultureInfo.InvariantCulture, $"v{a.Version}|{allergyRef}");
                     allergies.Add(new SnapshotAllergy(a.Id, a.Kind.ToString(), a.MedicationId, detail is not null, [.. detail?.Ingredients.Select(i => i.IngredientId).Distinct() ?? []], a.Substance, a.Severity.ToString()));
                 }
             }
@@ -281,11 +306,22 @@ public sealed class ClinicalSafetyService(
             }
             else
             {
-                symptoms.AddRange(listed.Value!.Select(s => new SnapshotSymptom(s.Id, s.Severity.ToString(), s.OnsetAt, s.ResolvedAt)));
+                foreach (var s in listed.Value!)
+                {
+                    var token = string.Create(CultureInfo.InvariantCulture, $"{s.Severity}|{s.ResolvedAt:O}|{s.OnsetAt:O}");
+                    refs.Add(new InputVersionRef("symptom", s.Id, token));
+                    versions[s.Id.ToString("N")] = token;
+                    symptoms.Add(new SnapshotSymptom(s.Id, s.Severity.ToString(), s.OnsetAt, s.ResolvedAt));
+                }
             }
         }
 
-        return new Built(new AssessmentSnapshot(now, age, inputs, meds, allergies, symptoms, [.. interactions.Values.OrderBy(i => i.IngredientA).ThenBy(i => i.IngredientB)]), null);
+        var distinct = refs.DistinctBy(r => (r.Kind, r.Id)).OrderBy(r => r.Kind, StringComparer.Ordinal).ThenBy(r => r.Id).ToList();
+        // Fingerprint of the INPUTS only: exact record versions, per-category availability and staleness, and age. The rule set is compared separately.
+        var lines = distinct.Select(r => string.Create(CultureInfo.InvariantCulture, $"{r.Kind}:{r.Id:N}:{r.Version}"))
+            .Concat(inputs.OrderBy(i => i.Category, StringComparer.Ordinal).Select(i => string.Create(CultureInfo.InvariantCulture, $"in:{i.Category}:{i.Availability}:{i.IsStale}")));
+        var fingerprint = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', lines))))[..32];
+        return new Built(new AssessmentSnapshot(now, age, inputs, meds, allergies, symptoms, [.. interactions.Values.OrderBy(i => i.IngredientA).ThenBy(i => i.IngredientB)]), null, distinct, fingerprint, versions);
     }
 
     private static EvidenceRef EvidenceOf(InteractionDto x, MedicationDetailDto detail)
@@ -304,7 +340,7 @@ public sealed class ClinicalSafetyService(
 
     // ---------- guidance ----------
 
-    private async Task<(GuidanceLinkState State, List<GuidanceLink> Links)> RaiseGuidanceAsync(Guid subjectId, Guid assessmentId, IReadOnlyList<Finding> actionable, string locale, DateTimeOffset dataAsOf, string source, string? correlationId, CancellationToken ct)
+    private async Task<(GuidanceLinkState State, List<GuidanceLink> Links)> RaiseGuidanceAsync(Guid subjectId, Guid assessmentId, IReadOnlyList<Finding> actionable, string locale, DateTimeOffset dataAsOf, IReadOnlyDictionary<string, string> recordVersions, string source, string? correlationId, CancellationToken ct)
     {
         var links = new List<GuidanceLink>();
         foreach (var f in actionable)
@@ -312,7 +348,7 @@ public sealed class ClinicalSafetyService(
             try
             {
                 var request = GuidanceFor(f, locale);
-                var origin = new GuidanceOrigin("safety", assessmentId, f.RuleId, f.RuleVersion, f.Key, dataAsOf);
+                var origin = new GuidanceOrigin("safety", assessmentId, f.RuleId, f.RuleVersion, f.Key, dataAsOf, SubjectsFingerprint(f, recordVersions));
                 var made = await guidance.CreateFromOriginAsync(subjectId, request, origin, false, source, correlationId, ct);
                 links.Add(new GuidanceLink(f.Key, made.Succeeded ? made.Value!.Message.Id : null, made.Succeeded ? (made.Value!.Existing ? "existing" : "created") : "failed:" + (made.Detail ?? "unknown")));
             }
@@ -394,6 +430,89 @@ public sealed class ClinicalSafetyService(
         }
     }
 
+
+    // ---------- Phase 8: change awareness ----------
+
+    private static InputChangeSummary Diff(IReadOnlyList<InputVersionRef>? before, string? ruleSetBefore, IReadOnlyList<InputVersionRef> after, string ruleSetAfter)
+    {
+        if (before is null)
+        {
+            return new InputChangeSummary(true, after.Count, 0, 0, false);
+        }
+
+        var was = before.ToDictionary(r => (r.Kind, r.Id), r => r.Version);
+        var now = after.ToDictionary(r => (r.Kind, r.Id), r => r.Version);
+        return new InputChangeSummary(false, now.Keys.Count(k => !was.ContainsKey(k)), was.Keys.Count(k => !now.ContainsKey(k)), now.Count(kv => was.TryGetValue(kv.Key, out var v) && v != kv.Value), ruleSetBefore != ruleSetAfter);
+    }
+
+    /// <summary>Hash of the exact record versions a finding is about. A resolved finding is raised again only when this changes.</summary>
+    internal static string SubjectsFingerprint(Finding f, IReadOnlyDictionary<string, string> recordVersions)
+    {
+        var lines = f.Subjects.OrderBy(s => s.RecordId).Select(s => $"{s.Kind}:{s.RecordId:N}:{recordVersions.GetValueOrDefault(s.RecordId.ToString("N"), "?")}");
+        return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', lines))))[..32];
+    }
+
+    public async Task<SafetyOutcome<ReassessmentOutcome>> ReassessIfNeededAsync(Guid subjectId, IReadOnlyCollection<string> readableCategories, string locale, TimeSpan? reassessAtLeastEvery, string? correlationId, CancellationToken ct = default)
+    {
+        var patient = await directory.FindBySubjectAsync(subjectId, ct);
+        if (patient is null || patient.Status != PatientStatus.Active)
+        {
+            return SafetyResult.Fail<ReassessmentOutcome>(SafetyError.NotFound, "patient.not_found");
+        }
+
+        var readable = Readable(readableCategories);
+        if (!readable.Contains("medications"))
+        {
+            return SafetyResult.Fail<ReassessmentOutcome>(SafetyError.Forbidden, "input.medications.not_authorized");
+        }
+
+        Built built;
+        string ruleSet;
+        try
+        {
+            built = await BuildSnapshotAsync(subjectId, readable, ct);
+            var rules = await store.LoadAllAsync(ct);
+            ruleSet = ActivationPolicy.RuleSetVersion(rules.Select(r => (r, ActivationPolicy.Evaluate(r, clock.UtcNow, options.Value.AllowDemonstrationRules))), options.Value.AllowDemonstrationRules);
+        }
+#pragma warning disable CA1031 // technical failure: report unavailable so the job can retry
+        catch (Exception ex) when (ex is not OperationCanceledException)
+#pragma warning restore CA1031
+        {
+            return SafetyResult.Fail<ReassessmentOutcome>(SafetyError.Unavailable, "assessment.unavailable");
+        }
+
+        if (built.Error is { } err)
+        {
+            return SafetyResult.Fail<ReassessmentOutcome>(SafetyError.Validation, err);
+        }
+
+        AssessmentRow? latest;
+        await using (var db = await factory.CreateDbContextAsync(ct))
+        {
+            latest = await db.Assessments.AsNoTracking().Where(a => a.PatientId == patient.PatientId).OrderByDescending(a => a.CreatedAt).FirstOrDefaultAsync(ct);
+        }
+
+        var due = reassessAtLeastEvery is { } span && (latest is null || latest.CreatedAt + span <= clock.UtcNow);
+        if (latest is not null && latest.InputFingerprint == built.Fingerprint && latest.RuleSetVersion == ruleSet && !due)
+        {
+            if (latest.GuidanceState is GuidanceLinkState.Failed or GuidanceLinkState.Partial)
+            {
+                // An earlier run stored the assessment but could not confirm its guidance. Re-raise it (idempotent per finding); no new assessment.
+                var stored = Deserialize(latest);
+                var (state, links) = await RaiseGuidanceAsync(subjectId, latest.Id, [.. stored.Findings.Where(f => f.Actionable)], latest.Locale, latest.DataAsOf, built.RecordVersions, "worker", correlationId, ct);
+                await SaveGuidanceStateAsync(latest.Id, state, links, ct);
+                return SafetyResult.Ok(new ReassessmentOutcome(ReassessmentKind.GuidanceRepaired, latest.Id, stored.Status, "guidance." + state.ToString().ToLowerInvariant(), state));
+            }
+
+            return SafetyResult.Ok(new ReassessmentOutcome(ReassessmentKind.Unchanged, latest.Id, latest.Status, "inputs_and_rules_equal", latest.GuidanceState));
+        }
+
+        var run = await RunAsync(Guid.Empty, subjectId, readable, locale, "scheduled", "worker", correlationId, built, ct);
+        return run.Succeeded
+            ? SafetyResult.Ok(new ReassessmentOutcome(ReassessmentKind.Reassessed, run.Value!.Id, run.Value.Result.Status, latest is null ? "first_assessment" : latest.RuleSetVersion != ruleSet ? "rules_changed" : latest.InputFingerprint != built.Fingerprint ? "inputs_changed" : "due", run.Value.GuidanceState))
+            : SafetyResult.Fail<ReassessmentOutcome>(run.Error, run.Detail);
+    }
+
     // ---------- reading stored assessments ----------
 
     private async Task<AssessmentDto> WithFreshnessAsync(Guid subjectId, AssessmentRow row, IReadOnlyCollection<string> readableCategories, CancellationToken ct)
@@ -470,8 +589,11 @@ public sealed class ClinicalSafetyService(
     {
         var visible = result.Findings.Select(f => f.Key).ToHashSet(StringComparer.Ordinal);
         return new AssessmentDto(row.Id, subjectId, Filter(result, readable), row.Trigger, row.RequestedByPatient, row.GuidanceState, [.. links.Where(l => visible.Contains(l.FindingKey))], noLonger, outdated.Count > 0, outdated,
-            result.ContainsDemonstration ? "DEMO: includes demonstration rules that are NOT clinically validated. This is not medical advice." : "Based on the rules listed. Not a diagnosis, not a triage and not medical advice.");
+            result.ContainsDemonstration ? "DEMO: includes demonstration rules that are NOT clinically validated. This is not medical advice." : "Based on the rules listed. Not a diagnosis, not a triage and not medical advice.",
+            row.InputFingerprint, JsonSerializer.Deserialize<List<InputVersionRef>>(row.InputRefsJson, RuleJson.Options) ?? [], JsonSerializer.Deserialize<InputChangeSummary>(row.ChangeJson, RuleJson.Options));
     }
+
+    private static Guid? Who(Guid actor) => actor == Guid.Empty ? null : actor; // the scheduled worker has no user
 
     private static HashSet<string> Readable(IEnumerable<string> categories) => [.. categories.Where(Categories.Contains)];
 }

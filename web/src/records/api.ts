@@ -1,4 +1,4 @@
-import { RecordsError, type AiContext, type Allergy, type CareRow, type Condition, type ConsentEvent, type ConsentRow, type DoseSlot, type Freshness, type GuidanceMessage, type GuidanceSamples, type GuidanceStatus,
+import { RecordsError, type AdherenceSummary, type AiContext, type Allergy, type CareRow, type Condition, type ConsentEvent, type ConsentRow, type DoseSlot, type Freshness, type GuidanceMessage, type GuidanceSamples, type GuidanceStatus,
   type MedicationInput, type PatientDto, type PatientMedication, type ProcessResult, type ProductRecord, type Profile, type Provider, type Queue, type RecordVersion, type Report, type ScheduleEntry, type Symptom } from "./types";
 
 /** An authorised fetch relative to the API base URL (supplied by the auth backend, which owns the token). */
@@ -64,7 +64,8 @@ export class RecordsApi {
   addSchedule = (id: string, mid: string, body: { timeOfDay: string; days: number[] | null }) => this.call<ScheduleEntry>("POST", this.p(id, `medications/${mid}/schedule`), body);
   removeSchedule = (id: string, eid: string) => this.call<void>("DELETE", this.p(id, `schedule/${eid}`));
   doses = (id: string, date: string, s?: AbortSignal) => this.call<DoseSlot[]>("GET", this.p(id, `doses?date=${date}`), undefined, s);
-  logIntake = (id: string, body: { patientMedicationId: string; scheduleEntryId: string | null; scheduledFor: string | null; status: "Taken" | "Skipped"; takenAt: string | null; note: string | null }) => this.call<unknown>("POST", this.p(id, "intake"), body);
+  adherence = (id: string, days = 14, s?: AbortSignal) => this.call<AdherenceSummary>("GET", this.p(id, `adherence/summary?days=${days}`), undefined, s);
+  logIntake = (id: string, body: { patientMedicationId: string; scheduleEntryId: string | null; scheduledFor: string | null; status: "Taken" | "Skipped" | "Missed"; takenAt: string | null; note: string | null }) => this.call<unknown>("POST", this.p(id, "intake"), body);
 
   // ---- batch / lot records
   products = (id: string, s?: AbortSignal) => this.call<ProductRecord[]>("GET", this.p(id, "products"), undefined, s);

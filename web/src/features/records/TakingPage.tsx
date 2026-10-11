@@ -6,6 +6,7 @@ import type { MedicationSummary } from "../../knowledge/types";
 import { PageHeader } from "../../layouts/PageHeader";
 import { useAction, useLoad, useRecordsApi, useSelfId } from "../../records/hooks";
 import type { DoseSlot, PatientMedication, ScheduleEntry } from "../../records/types";
+import { AdherenceCard } from "./Adherence";
 import { ActionError, DemoFlag, Form, Loaded, dayKey, toNumber } from "./shared";
 
 const UNITS = ["mg", "mcg", "g", "ml", "iu", "unit", "tablet", "capsule", "puff", "drop", "patch", "sachet", "ampoule"];
@@ -28,6 +29,7 @@ export function PatientTaking() {
               <ul className="rec-list" aria-label={t("rec.doses.title")}>{slots.map((s) => <DoseRow key={`${s.scheduleEntryId}-${s.scheduledFor}`} slot={s} onLogged={doses.reload} />)}</ul>)}
             </Loaded>
           </Card>
+          <AdherenceCard subjectId={id} />
           <Card title={t("rec.meds.title")}>
             <Loaded load={meds.state} reload={meds.reload}>{(rows: PatientMedication[]) => rows.length === 0 ? <EmptyState icon="pill" title={t("rec.meds.empty")} body={t("rec.meds.emptyBody")} /> : (
               <ul className="rec-list" aria-label={t("rec.meds.title")}>{rows.map((m) => <MedicineRow key={m.id} med={m} onChanged={refresh} />)}</ul>)}
@@ -45,15 +47,18 @@ function DoseRow({ slot, onLogged }: { slot: DoseSlot; onLogged(): void }) {
   const api = useRecordsApi();
   const id = useSelfId();
   const act = useAction();
-  const log = (status: "Taken" | "Skipped") => act.run(() => api.logIntake(id, { patientMedicationId: slot.patientMedicationId, scheduleEntryId: slot.scheduleEntryId, scheduledFor: slot.scheduledFor, status, takenAt: status === "Taken" ? new Date().toISOString() : null, note: null }), onLogged);
+  const log = (status: "Taken" | "Skipped" | "Missed") => act.run(() => api.logIntake(id, { patientMedicationId: slot.patientMedicationId, scheduleEntryId: slot.scheduleEntryId, scheduledFor: slot.scheduledFor, status, takenAt: status === "Taken" ? new Date().toISOString() : null, note: null }), onLogged);
   return (
     <li className="rec-dose">
       <div className="rec-row__main"><span className="rec-row__title">{slot.medicationName}</span><span className="rec-row__meta rec-times">{fmt.time(slot.localTime.slice(0, 5))}</span></div>
       <div className="rec-row__actions">
         {slot.status && <Badge tone={slot.status === "Taken" ? "success" : "neutral"} icon={slot.status === "Taken" ? "check" : "minus"}>{t(`rec.intake.${slot.status}`)}</Badge>}
+        {slot.status && <span className="ms-muted">{t("adh.reportedByYou")}</span>}
         <Button size="sm" variant={slot.status === "Taken" ? "tonal" : "primary"} loading={act.busy} onClick={() => log("Taken")}>{t("rec.intake.markTaken")}</Button>
         <Button size="sm" variant="secondary" onClick={() => log("Skipped")}>{t("rec.intake.markSkipped")}</Button>
+        {new Date(slot.scheduledFor) <= new Date() && <Button size="sm" variant="secondary" onClick={() => log("Missed")}>{t("rec.intake.markMissed")}</Button>}
       </div>
+      {slot.status === "Missed" && <p className="ms-muted" role="note">{t("adh.missedDose.short")}</p>}
       <ActionError error={act.error} />
     </li>
   );

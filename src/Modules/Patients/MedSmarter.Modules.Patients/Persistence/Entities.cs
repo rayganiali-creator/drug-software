@@ -113,6 +113,9 @@ public sealed class IntakeLogRecord
     public string? Note { get; set; }
     public DateTimeOffset RecordedAt { get; set; }
     public Guid? RecordedBy { get; set; }
+
+    /// <summary>Phase 8: which client recorded the event (web, android, ios, api...). Null on rows recorded before Phase 8.</summary>
+    public string? Source { get; set; }
 }
 
 public sealed class SymptomRecord

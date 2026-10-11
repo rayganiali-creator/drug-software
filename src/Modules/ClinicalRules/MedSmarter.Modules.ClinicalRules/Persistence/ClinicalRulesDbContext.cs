@@ -57,6 +57,35 @@ public sealed class AssessmentRow
     public GuidanceLinkState GuidanceState { get; set; }
     public string ResultJson { get; set; } = "{}";
     public string GuidanceLinksJson { get; set; } = "[]";
+
+    // Phase 8 (additive): which record versions produced this assessment, and what changed since the previous one.
+    public string InputFingerprint { get; set; } = string.Empty;
+    public string InputRefsJson { get; set; } = "[]";
+    public string ChangeJson { get; set; } = "null";
+    public string Locale { get; set; } = "en";
+}
+
+/// <summary>
+/// A patient's scheduled-check enrolment and the state of the last pass. Durable, so an interrupted worker can recover. It holds NO clinical content:
+/// ids, states, times and outcome codes only (the generic job record is never a place for health data).
+/// </summary>
+public sealed class MonitoringJobRow
+{
+    public Guid PatientId { get; set; }
+    public Guid SubjectId { get; set; }
+    public MonitoringJobState State { get; set; }
+    public DateTimeOffset EnrolledAt { get; set; }
+    public DateTimeOffset? WithdrawnAt { get; set; }
+    public DateTimeOffset NextCheckAt { get; set; }
+    public DateTimeOffset? LastAttemptAt { get; set; }
+    public DateTimeOffset? LastSuccessAt { get; set; }
+    public string? LastOutcome { get; set; }
+    public string? LastErrorCode { get; set; }
+    public int ConsecutiveFailures { get; set; }
+    public Guid? LastAssessmentId { get; set; }
+    public DateTimeOffset? LeaseUntil { get; set; }
+    public string Locale { get; set; } = "en";
+    public int RowVersion { get; set; } = 1;
 }
 
 /// <summary>PostgreSQL model of rule versions, their history and stored assessments (schema <c>clinical_rules</c>).</summary>
@@ -67,6 +96,7 @@ public sealed class ClinicalRulesDbContext(DbContextOptions<ClinicalRulesDbConte
     public DbSet<RuleRow> Rules => Set<RuleRow>();
     public DbSet<RuleEventRow> RuleEvents => Set<RuleEventRow>();
     public DbSet<AssessmentRow> Assessments => Set<AssessmentRow>();
+    public DbSet<MonitoringJobRow> MonitoringJobs => Set<MonitoringJobRow>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -107,6 +137,20 @@ public sealed class ClinicalRulesDbContext(DbContextOptions<ClinicalRulesDbConte
             e.Property(x => x.ResultJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.GuidanceLinksJson).HasColumnType("jsonb").IsRequired();
             e.HasIndex(x => new { x.PatientId, x.CreatedAt });
+            e.Property(x => x.InputFingerprint).HasMaxLength(64).IsRequired();
+            e.Property(x => x.InputRefsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.ChangeJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.Locale).HasMaxLength(8).IsRequired();
+        });
+        modelBuilder.Entity<MonitoringJobRow>(e =>
+        {
+            e.ToTable("monitoring_job");
+            e.HasKey(x => x.PatientId);
+            e.Property(x => x.LastOutcome).HasMaxLength(48);
+            e.Property(x => x.LastErrorCode).HasMaxLength(64);
+            e.Property(x => x.Locale).HasMaxLength(8).IsRequired();
+            e.Property(x => x.RowVersion).IsConcurrencyToken();
+            e.HasIndex(x => new { x.State, x.NextCheckAt });
         });
         SnakeCase.Apply(modelBuilder);
     }

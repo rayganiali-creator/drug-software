@@ -98,6 +98,100 @@ public sealed class RuleCatalogService(IDbContextFactory<ClinicalRulesDbContext>
         return RuleResult.Ok(Detail(RuleStore.ToRecord(row)));
     }
 
+    public async Task<RuleOutcomeResult<RuleDetailDto>> UpdateDraftAsync(Guid actorUserId, string ruleId, int version, RuleDefinition definition, string source, string? correlationId, CancellationToken ct = default)
+    {
+        if (!string.Equals(definition.RuleId, ruleId, StringComparison.Ordinal) || definition.Version != version)
+        {
+            return RuleResult.Fail<RuleDetailDto>(RuleError.Validation, "rule.identity_changed"); // id and version are the identity of the draft
+        }
+
+        var errors = RuleValidator.Validate(definition, DateOnly.FromDateTime(clock.UtcNow.UtcDateTime), composer.TemplateKeys);
+        if (errors.Count > 0)
+        {
+            return RuleResult.Fail<RuleDetailDto>(RuleError.Validation, string.Join(';', errors));
+        }
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var row = await db.Rules.FirstOrDefaultAsync(r => r.RuleId == ruleId && r.Version == version, ct);
+        if (row is null)
+        {
+            return RuleResult.Fail<RuleDetailDto>(RuleError.NotFound, "rule.not_found");
+        }
+
+        if (row.IsDemo || row.Status != RuleStatus.Draft)
+        {
+            return RuleResult.Fail<RuleDetailDto>(RuleError.Conflict, "rule.status_transition_not_allowed");
+        }
+
+        if (!string.Equals(row.Author, actorUserId.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            await Audit(AuditActions.ClinicalRuleRefused, AuditResult.Denied, actorUserId, row, source, correlationId, "draft.author_only", ct);
+            return RuleResult.Fail<RuleDetailDto>(RuleError.Forbidden, "draft.author_only");
+        }
+
+        row.DefinitionJson = JsonSerializer.Serialize(definition, RuleJson.Options);
+        row.RowVersion++;
+        db.RuleEvents.Add(Event(row, "draft_updated", RuleStatus.Draft, RuleStatus.Draft, actorUserId.ToString(), clock.UtcNow));
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return RuleResult.Fail<RuleDetailDto>(RuleError.Conflict, "version.mismatch");
+        }
+
+        await Audit(AuditActions.ClinicalRuleDraftUpdated, AuditResult.Success, actorUserId, row, source, correlationId, null, ct);
+        return RuleResult.Ok(Detail(RuleStore.ToRecord(row)));
+    }
+
+    public async Task<IReadOnlyList<RuleEventDto>> HistoryAsync(string ruleId, int version, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var rows = await db.RuleEvents.AsNoTracking().Where(e => e.RuleId == ruleId && e.Version == version).OrderBy(e => e.At).Take(200).ToListAsync(ct);
+        return [.. rows.Select(e => new RuleEventDto(e.Action, e.FromStatus, e.ToStatus, e.Actor, e.At))];
+    }
+
+    public async Task<RuleOutcomeResult<IReadOnlyList<string>>> ApprovalBlockersAsync(Guid actorUserId, string ruleId, int version, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var row = await db.Rules.AsNoTracking().FirstOrDefaultAsync(r => r.RuleId == ruleId && r.Version == version, ct);
+        if (row is null)
+        {
+            return RuleResult.Fail<IReadOnlyList<string>>(RuleError.NotFound, "rule.not_found");
+        }
+
+        var blockers = new List<string>();
+        if (row.IsDemo)
+        {
+            blockers.Add("policy.demo_rule_cannot_be_approved");
+        }
+
+        if (row.Status != RuleStatus.UnderReview)
+        {
+            blockers.Add($"status.{row.Status.ToString().ToLowerInvariant()}");
+        }
+
+        if (string.Equals(row.Author, actorUserId.ToString(), StringComparison.OrdinalIgnoreCase))
+        {
+            blockers.Add("review.separation_of_duties");
+        }
+
+        var now = clock.UtcNow;
+        var record = RuleStore.ToRecord(row);
+        var candidate = record with { Lifecycle = record.Lifecycle with { Status = RuleStatus.Approved, Reviewer = actorUserId.ToString(), ReviewedAt = now, EffectiveFrom = now } };
+        if (!row.IsDemo)
+        {
+            blockers.AddRange(ActivationPolicy.Evaluate(candidate, now, false).Reasons.Where(r => r != "policy.reviewer_is_author"));
+            if (RuleValidator.RunTestCases(record.Definition).Count > 0)
+            {
+                blockers.Add("tests.failed");
+            }
+        }
+
+        return RuleResult.Ok<IReadOnlyList<string>>([.. blockers.Distinct()]);
+    }
+
     public async Task<RuleOutcomeResult<RuleDetailDto>> SubmitForReviewAsync(Guid actorUserId, string ruleId, int version, string source, string? correlationId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

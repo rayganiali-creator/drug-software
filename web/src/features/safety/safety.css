@@ -16,3 +16,7 @@
 .sf-rules__id { font-family: ui-monospace, monospace; }
 .sf-signs { border: 1px solid currentColor; border-radius: .5rem; padding: .5rem .75rem; }
 @media (max-width: 600px) { .sf-facts { grid-template-columns: 1fr 1fr; } }
+.sf-json { max-block-size: 24rem; overflow: auto; padding: .75rem; border: 1px solid var(--ms-color-border, currentColor); border-radius: .5rem; font-size: .85rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sf-diff { inline-size: 100%; border-collapse: collapse; }
+.sf-diff th, .sf-diff td { text-align: start; padding: .35rem .5rem; border-bottom: 1px solid var(--ms-color-border, currentColor); vertical-align: top; overflow-wrap: anywhere; }
+.sf-fieldset { border: 1px solid var(--ms-color-border, currentColor); border-radius: .5rem; padding: .75rem; margin: 0 0 .75rem; display: grid; gap: .5rem; }

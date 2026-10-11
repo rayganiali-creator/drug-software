@@ -34,6 +34,11 @@ namespace MedSmarter.Modules.ClinicalRules.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("actionable_finding_count");
 
+                    b.Property<string>("ChangeJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("change_json");
+
                     b.Property<bool>("Complete")
                         .HasColumnType("boolean")
                         .HasColumnName("complete");
@@ -70,6 +75,23 @@ namespace MedSmarter.Modules.ClinicalRules.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("guidance_state");
+
+                    b.Property<string>("InputFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("input_fingerprint");
+
+                    b.Property<string>("InputRefsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("input_refs_json");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("locale");
 
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid")
@@ -113,6 +135,85 @@ namespace MedSmarter.Modules.ClinicalRules.Persistence.Migrations
                         .HasDatabaseName("ix_assessment_patient_id_created_at");
 
                     b.ToTable("assessment", "clinical_rules");
+                });
+
+            modelBuilder.Entity("MedSmarter.Modules.ClinicalRules.Persistence.MonitoringJobRow", b =>
+                {
+                    b.Property<Guid>("PatientId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("integer")
+                        .HasColumnName("consecutive_failures");
+
+                    b.Property<DateTimeOffset>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enrolled_at");
+
+                    b.Property<Guid?>("LastAssessmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_assessment_id");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<string>("LastOutcome")
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)")
+                        .HasColumnName("last_outcome");
+
+                    b.Property<DateTimeOffset?>("LastSuccessAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_success_at");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_until");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("locale");
+
+                    b.Property<DateTimeOffset>("NextCheckAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_check_at");
+
+                    b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("row_version");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("state");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<DateTimeOffset?>("WithdrawnAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("withdrawn_at");
+
+                    b.HasKey("PatientId")
+                        .HasName("pk_monitoring_job");
+
+                    b.HasIndex("State", "NextCheckAt")
+                        .HasDatabaseName("ix_monitoring_job_state_next_check_at");
+
+                    b.ToTable("monitoring_job", "clinical_rules");
                 });
 
             modelBuilder.Entity("MedSmarter.Modules.ClinicalRules.Persistence.RuleEventRow", b =>

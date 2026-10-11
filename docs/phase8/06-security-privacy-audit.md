@@ -1,0 +1,8 @@
+# 6. Security, privacy, audit
+
+* Every new route is authenticated (fallback) and carries a catalog permission; patient routes use the Phase 5 route policy (ownership or care relationship + per-scope consent, uniform 403, active record). New routes: adherence summary, monitoring status/enrol/withdraw, rule options/history/edit — all covered by the 401 theory and the route-inventory test.
+* Monitoring: enrol/withdraw only by the patient themself (service-enforced, tested with a physician actor); a professional may read the status (ids and codes only). The job's subject id comes from its own row, never from a request. Each scheduled check re-evaluates the Monitoring consent per category; a category not covered is withheld exactly as in Phase 7.
+* Privacy of generic records: job rows, delivery rows and channel requests hold ids, states, times and codes only. Tests assert a distinctive medicine name appears in no job row and no audit line, and that the worker log contains the exception **type** but not its message.
+* Audit (hash-chained, tamper-evident only): `MONITORING_ENROLLED/WITHDRAWN/REASSESSED/SKIPPED/FAILED`, `GUIDANCE_DELIVERY_SCHEDULED/CONFIRMED(simulated|real)/FAILED/RECOVERED`, `CLINICAL_RULE_DRAFT_UPDATED/REFUSED/…`, plus the Phase 7 safety actions; scheduled work has no user actor (`source=worker`).
+* Idempotence: equal inputs ⇒ no second assessment; one open message per finding; delivery never repeated after `Confirmed`; intake retries return the stored record.
+* No external call exists anywhere in the new code (architecture test); insurer data and manufacturer reporting are untouched.

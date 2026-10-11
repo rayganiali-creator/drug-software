@@ -176,6 +176,8 @@ public static class RuleResult
 
 public sealed record RuleSummaryDto(string RuleId, int Version, string Title, RuleDomain Domain, RuleStatus Status, bool IsDemo, ActivationState Activation, IReadOnlyList<string> ActivationReasons, DateTimeOffset AuthoredAt);
 
+public sealed record RuleEventDto(string Action, RuleStatus From, RuleStatus To, string Actor, DateTimeOffset At);
+
 public sealed record RuleDetailDto(RuleRecord Record, ActivationDecision Activation);
 
 public sealed record RuleCoverageDto(
@@ -197,6 +199,14 @@ public interface IClinicalRuleCatalog
 
     /// <summary>Creates a new DRAFT version. Never approved on creation, whatever the input says.</summary>
     Task<RuleOutcomeResult<RuleDetailDto>> CreateDraftAsync(Guid actorUserId, RuleDefinition definition, string source, string? correlationId, CancellationToken ct = default);
+
+    /// <summary>Edits a DRAFT in place. Only its author may, and only before submission; a submitted, approved, rejected or retired version is never edited (a change is a new version).</summary>
+    Task<RuleOutcomeResult<RuleDetailDto>> UpdateDraftAsync(Guid actorUserId, string ruleId, int version, RuleDefinition definition, string source, string? correlationId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<RuleEventDto>> HistoryAsync(string ruleId, int version, CancellationToken ct = default);
+
+    /// <summary>What would stop THIS person from approving this version right now (codes). Informational only: the review call re-checks everything.</summary>
+    Task<RuleOutcomeResult<IReadOnlyList<string>>> ApprovalBlockersAsync(Guid actorUserId, string ruleId, int version, CancellationToken ct = default);
 
     Task<RuleOutcomeResult<RuleDetailDto>> SubmitForReviewAsync(Guid actorUserId, string ruleId, int version, string source, string? correlationId, CancellationToken ct = default);
 

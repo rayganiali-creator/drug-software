@@ -23,6 +23,85 @@ namespace MedSmarter.Modules.Guidance.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MedSmarter.Modules.Guidance.Persistence.GuidanceDeliveryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("channel");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("error_code");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_until");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("mode");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<DateTimeOffset>("ScheduledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_at");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_guidance_delivery");
+
+                    b.HasIndex("MessageId", "Channel")
+                        .IsUnique()
+                        .HasDatabaseName("ux_guidance_delivery_message_id_channel");
+
+                    b.HasIndex("State", "NextAttemptAt")
+                        .HasDatabaseName("ix_guidance_delivery_state_next_attempt_at");
+
+                    b.ToTable("guidance_delivery", "guidance");
+                });
+
             modelBuilder.Entity("MedSmarter.Modules.Guidance.Persistence.GuidanceEventRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -127,6 +206,11 @@ namespace MedSmarter.Modules.Guidance.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("origin_rule_version");
 
+                    b.Property<string>("OriginSubjectsFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("origin_subjects_fingerprint");
+
                     b.Property<Guid>("PatientId")
                         .HasColumnType("uuid")
                         .HasColumnName("patient_id");
@@ -184,6 +268,16 @@ namespace MedSmarter.Modules.Guidance.Persistence.Migrations
                         .HasDatabaseName("ix_guidance_message_patient_id_origin_finding_key");
 
                     b.ToTable("guidance_message", "guidance");
+                });
+
+            modelBuilder.Entity("MedSmarter.Modules.Guidance.Persistence.GuidanceDeliveryRow", b =>
+                {
+                    b.HasOne("MedSmarter.Modules.Guidance.Persistence.GuidanceMessageRow", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_guidance_delivery_guidance_message_message_id");
                 });
 
             modelBuilder.Entity("MedSmarter.Modules.Guidance.Persistence.GuidanceEventRow", b =>

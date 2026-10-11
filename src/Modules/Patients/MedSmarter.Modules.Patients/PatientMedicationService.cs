@@ -361,9 +361,19 @@ public sealed class PatientMedicationService(IDbContextFactory<PatientsDbContext
             errors.Add("status.invalid");
         }
 
-        if (command.Status == IntakeStatus.Skipped && command.TakenAt is not null)
+        if (command.Status is IntakeStatus.Skipped or IntakeStatus.Missed && command.TakenAt is not null)
         {
             errors.Add("taken_at.not_allowed");
+        }
+
+        if (command.Status is IntakeStatus.Skipped or IntakeStatus.Missed && command.ScheduleEntryId is null)
+        {
+            errors.Add("schedule_entry.required"); // a dose can only be skipped or missed against a planned dose
+        }
+
+        if (command.Status == IntakeStatus.Missed && command.ScheduledFor is { } plannedFor && plannedFor > now)
+        {
+            errors.Add("scheduled_for.in_future"); // a dose that has not come yet cannot have been missed
         }
 
         if (command.TakenAt is { } taken && (taken > now.AddMinutes(5) || taken < now.AddDays(-31)))
@@ -404,6 +414,12 @@ public sealed class PatientMedicationService(IDbContextFactory<PatientsDbContext
             return PatientOutcome.Fail<IntakeLogDto>(PatientError.NotFound, "medication.not_found");
         }
 
+        if (command.ScheduleEntryId is not null && med.DoseAmount is null && string.IsNullOrWhiteSpace(med.DoseText))
+        {
+            // Adherence is only recorded against instructions that are defined. Nothing is guessed: the dose has to be known first.
+            return Support.Invalid<IntakeLogDto>(["instructions.dose_unknown"]);
+        }
+
         if (command.ScheduleEntryId is { } entryId)
         {
             var entry = await db.ScheduleEntries.AsNoTracking().FirstOrDefaultAsync(x => x.Id == entryId && x.PatientId == patient!.Id && x.PatientMedicationId == med.Id && x.DeletedAt == null, ct);
@@ -424,12 +440,20 @@ public sealed class PatientMedicationService(IDbContextFactory<PatientsDbContext
         var scheduledUtc = command.ScheduledFor?.ToUniversalTime();
         var existing = command.ScheduleEntryId is { } eid ? await db.IntakeLogs.FirstOrDefaultAsync(x => x.ScheduleEntryId == eid && x.ScheduledFor == scheduledUtc, ct) : null;
         var isUpdate = existing is not null;
+        if (existing is not null && existing.Status == command.Status && existing.Note == FreeTextGuard.Clean(command.Note)
+            && (command.Status != IntakeStatus.Taken || command.TakenAt is null || existing.TakenAt == command.TakenAt))
+        {
+            // A retry of the same report (lost response, double tap, second device): the stored record is returned unchanged. No new version, no audit line, no changed timestamp.
+            return PatientOutcome.Ok(ToDto(existing));
+        }
+
         var log = existing ?? new IntakeLogRecord { Id = Guid.CreateVersion7(), PatientId = patient!.Id, PatientMedicationId = med.Id, ScheduleEntryId = command.ScheduleEntryId, ScheduledFor = scheduledUtc };
         log.Status = command.Status;
         log.TakenAt = command.Status == IntakeStatus.Taken ? command.TakenAt ?? now : null;
         log.Note = FreeTextGuard.Clean(command.Note);
         log.RecordedAt = now;
         log.RecordedBy = actorUserId;
+        log.Source = source.Length > 16 ? source[..16] : source;
         if (!isUpdate)
         {
             db.IntakeLogs.Add(log);
@@ -448,6 +472,126 @@ public sealed class PatientMedicationService(IDbContextFactory<PatientsDbContext
         await Support.TouchAsync(db, patient.Id, PatientDataCategory.Intake, actorUserId, now, await db.IntakeLogs.CountAsync(x => x.PatientId == patient.Id, ct), ct);
         await Support.AuditAsync(audit, AuditActions.PatientDataUpdated, AuditResult.Success, actorUserId, "intake-log", log.Id, subjectId, source, correlationId, isUpdate ? "updated" : "created");
         return PatientOutcome.Ok(ToDto(log));
+    }
+
+
+    // ---------- adherence summary ----------
+
+    public async Task<PatientOutcome<AdherenceSummaryDto>> GetAdherenceSummaryAsync(Guid subjectId, int days, CancellationToken ct = default)
+    {
+        if (days is < 1 or > 31)
+        {
+            return Support.Invalid<AdherenceSummaryDto>(["days.invalid"]);
+        }
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var patient = await Support.FindPatientAsync(db, subjectId, ct);
+        if (patient is null)
+        {
+            return PatientOutcome.Fail<AdherenceSummaryDto>(PatientError.NotFound, "patient.not_found");
+        }
+
+        var now = clock.UtcNow;
+        var from = now.AddDays(-days);
+        var zone = await ZoneAsync(db, patient.Id, ct);
+        var meds = await db.Medications.AsNoTracking().Where(x => x.PatientId == patient.Id && x.DeletedAt == null && x.Status == PatientMedicationStatus.Active).ToListAsync(ct);
+        var dtos = (await ToDtosAsync(meds, ct)).ToDictionary(d => d.Id);
+        var entries = await db.ScheduleEntries.AsNoTracking().Where(x => x.PatientId == patient.Id && x.DeletedAt == null).ToListAsync(ct);
+        var logs = await db.IntakeLogs.AsNoTracking().Where(x => x.PatientId == patient.Id && (x.ScheduledFor ?? x.RecordedAt) >= from.AddDays(-1) && (x.ScheduledFor ?? x.RecordedAt) <= now.AddDays(1)).ToListAsync(ct);
+        var firstDay = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(from, zone).DateTime);
+        var lastDay = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, zone).DateTime);
+        var result = new List<AdherenceMedicationDto>();
+        foreach (var m in meds.OrderBy(x => x.Id))
+        {
+            var dto = dtos[m.Id];
+            var mine = entries.Where(e => e.PatientMedicationId == m.Id).OrderBy(e => e.TimeOfDay).ToList();
+            var gaps = InstructionGaps(dto, mine.Count);
+            var byKey = logs.Where(l => l.PatientMedicationId == m.Id && l.ScheduleEntryId != null && l.ScheduledFor != null).ToDictionary(l => (l.ScheduleEntryId!.Value, l.ScheduledFor!.Value), l => l);
+            int planned = 0, taken = 0, skipped = 0, missed = 0, notRecorded = 0;
+            foreach (var e in mine)
+            {
+                for (var d = firstDay; d <= lastDay; d = d.AddDays(1))
+                {
+                    if (!ActiveOn(e, m, d))
+                    {
+                        continue;
+                    }
+
+                    var at = ToUtc(d, e.TimeOfDay, zone);
+                    if (at < from || at > now)
+                    {
+                        continue; // future doses are not counted: nothing can have happened yet
+                    }
+
+                    planned++;
+                    if (byKey.TryGetValue((e.Id, at), out var log))
+                    {
+                        switch (log.Status)
+                        {
+                            case IntakeStatus.Taken: taken++; break;
+                            case IntakeStatus.Skipped: skipped++; break;
+                            default: missed++; break;
+                        }
+                    }
+                    else
+                    {
+                        notRecorded++;
+                    }
+                }
+            }
+
+            var unplanned = logs.Count(l => l.PatientMedicationId == m.Id && l.ScheduleEntryId is null && l.RecordedAt >= from);
+            var last = logs.Where(l => l.PatientMedicationId == m.Id).Select(l => (DateTimeOffset?)l.RecordedAt).Max();
+            result.Add(new AdherenceMedicationDto(m.Id, dto.ReferenceName?.En ?? dto.ReferenceName?.Fa ?? dto.DisplayName, dto.IsRegistered, [.. mine.Select(ToDto)], gaps,
+                !gaps.Contains("dose.unknown") && mine.Count > 0, planned, taken, skipped, missed, notRecorded, unplanned, last));
+        }
+
+        var freshness = await db.DataCategories.AsNoTracking().FirstOrDefaultAsync(x => x.PatientId == patient.Id && x.Category == PatientDataCategory.Intake, ct);
+        var staleDays = 14;
+        var stale = freshness is null || freshness.LastUpdatedAt < now.AddDays(-staleDays);
+        return PatientOutcome.Ok(new AdherenceSummaryDto(from, now, days, "PatientReported", result, freshness?.LastUpdatedAt, stale,
+            "Reported by the patient. It is not verified, it is not a measure of how well a treatment works, and a planned dose with no record is not counted as missed."));
+    }
+
+    /// <summary>Instruction facts that are unknown or incomplete. Nothing is inferred: an unknown stays unknown.</summary>
+    internal static IReadOnlyList<string> InstructionGaps(PatientMedicationDto m, int scheduleCount)
+    {
+        var gaps = new List<string>();
+        if (m.DoseAmount is null && string.IsNullOrWhiteSpace(m.DoseText))
+        {
+            gaps.Add("dose.unknown");
+        }
+        else if (m.DoseAmount is not null && string.IsNullOrWhiteSpace(m.DoseUnit))
+        {
+            gaps.Add("dose.unit_missing");
+        }
+
+        if (m.Frequency == FrequencyKind.Other && m.FrequencyValue is null)
+        {
+            gaps.Add("frequency.unspecified");
+        }
+
+        if (string.IsNullOrWhiteSpace(m.Route))
+        {
+            gaps.Add("route.unknown");
+        }
+
+        if (scheduleCount == 0 && m.Frequency != FrequencyKind.AsNeeded)
+        {
+            gaps.Add("schedule.none");
+        }
+
+        if (!m.IsRegistered)
+        {
+            gaps.Add("medication.not_in_reference");
+        }
+
+        if (m.Source is PrescriberSource.SelfReported or PrescriberSource.Unknown)
+        {
+            gaps.Add("source.self_reported");
+        }
+
+        return gaps;
     }
 
     public async Task<PatientOutcome<IReadOnlyList<IntakeLogDto>>> ListIntakeAsync(Guid subjectId, DateTimeOffset fromTime, DateTimeOffset untilTime, CancellationToken ct = default)
@@ -537,7 +681,7 @@ public sealed class PatientMedicationService(IDbContextFactory<PatientsDbContext
 
     private static ScheduleEntryDto ToDto(ScheduleEntryRecord r) => new(r.Id, r.PatientMedicationId, r.TimeOfDay, PatientValidator.MaskToDays(r.DaysMask), r.StartDate, r.EndDate, r.DeletedAt is null);
 
-    private static IntakeLogDto ToDto(IntakeLogRecord r) => new(r.Id, r.PatientMedicationId, r.ScheduleEntryId, r.ScheduledFor, r.Status, r.TakenAt, r.Note, r.RecordedAt);
+    private static IntakeLogDto ToDto(IntakeLogRecord r) => new(r.Id, r.PatientMedicationId, r.ScheduleEntryId, r.ScheduledFor, r.Status, r.TakenAt, r.Note, r.RecordedAt, r.Source ?? "unknown", "PatientReported", r.ScheduleEntryId is null);
 
     private async Task<IReadOnlyList<PatientMedicationDto>> ToDtosAsync(IReadOnlyList<MedicationRecord> rows, CancellationToken ct)
     {

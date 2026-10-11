@@ -83,10 +83,80 @@ public sealed record GuidanceMessageDto(
     bool IsDemo,
     string? Notice,
     /// <summary>Where the message came from (for example a safety assessment). Null for messages that were not raised by an engine. Additive in Phase 7.</summary>
-    GuidanceOrigin? Origin = null);
+    GuidanceOrigin? Origin = null,
+    /// <summary>Phase 8: how a notification for this message is going. Null = no delivery was ever scheduled (the message is only in the app). Record creation is NOT delivery.</summary>
+    GuidanceDeliveryDto? Delivery = null,
+    /// <summary>Where the content came from: AutomatedAssessment (an engine matched a rule), PatientReported, or Unspecified. A clinician's review is the separate flag below.</summary>
+    string Provenance = "Unspecified",
+    /// <summary>True once a professional has moved the message to Reviewed (or beyond). Automated findings are not clinician-reviewed until then.</summary>
+    bool ClinicianReviewed = false);
+
+public enum DeliveryState
+{
+    /// <summary>Waiting for the next delivery pass.</summary>
+    Scheduled,
+
+    /// <summary>An attempt started and its outcome is not known yet (or the worker was interrupted). Never shown as delivered.</summary>
+    Attempted,
+
+    /// <summary>The delivery mechanism confirmed. For a simulated mechanism this only means the simulation accepted it.</summary>
+    Confirmed,
+
+    /// <summary>Gave up after the allowed attempts or a permanent refusal.</summary>
+    Failed,
+}
+
+public enum DeliveryMode
+{
+    /// <summary>A local stand-in. No real push, SMS, e-mail or device notification exists in this system.</summary>
+    Simulated,
+    Real,
+}
+
+public sealed record GuidanceDeliveryDto(
+    DeliveryState State,
+    DeliveryMode Mode,
+    string Channel,
+    DateTimeOffset ScheduledAt,
+    DateTimeOffset? LastAttemptAt,
+    DateTimeOffset? ConfirmedAt,
+    DateTimeOffset? FailedAt,
+    int Attempts,
+    string? ErrorCode);
+
+public sealed record DeliveryRunResult(int Considered, int Confirmed, int Retrying, int Failed, int Recovered);
+
+/// <summary>What a channel gets: ids only. Message text and health details never travel to a channel in Phase 8.</summary>
+public sealed record DeliveryRequest(Guid MessageId, Guid PatientId, GuidanceLevel Level, string Locale);
+
+public enum ChannelOutcome
+{
+    Confirmed,
+    TransientFailure,
+    PermanentFailure,
+}
+
+public interface IGuidanceDeliveryChannel
+{
+    string Name { get; }
+
+    DeliveryMode Mode { get; }
+
+    Task<ChannelOutcome> DeliverAsync(DeliveryRequest request, CancellationToken ct);
+}
+
+/// <summary>Schedules and performs delivery passes. Bounded, idempotent, and honest: a state advances only on a recorded fact.</summary>
+public interface IGuidanceDeliveryService
+{
+    bool Enabled { get; }
+
+    /// <summary>One bounded pass over due deliveries (and recovery of interrupted attempts).</summary>
+    Task<DeliveryRunResult> RunDueAsync(int batchSize, CancellationToken ct);
+}
 
 /// <summary>Traceability of an engine-raised message: which assessment, which rule version and finding, and how fresh the data was. Creation time is the message's own CreatedAt.</summary>
-public sealed record GuidanceOrigin(string Kind, Guid AssessmentId, string RuleId, int RuleVersion, string FindingKey, DateTimeOffset DataAsOf);
+/// <param name="SubjectsFingerprint">Phase 8: stable hash of the exact records (id + version) the finding is about. A resolved finding is raised again only when this changes (null = fall back to DataAsOf).</param>
+public sealed record GuidanceOrigin(string Kind, Guid AssessmentId, string RuleId, int RuleVersion, string FindingKey, DateTimeOffset DataAsOf, string? SubjectsFingerprint = null);
 
 /// <param name="Existing">True when an open message for the same finding already existed and no new one was created.</param>
 public sealed record GuidanceCreated(GuidanceMessageDto Message, bool Existing);

@@ -24,7 +24,12 @@ export interface MedicationInput {
   route: string | null; startDate: string; endDate: string | null; source: PrescriberSource; prescriberNote: string | null; expectedVersion?: number | null;
 }
 export interface ScheduleEntry { id: string; patientMedicationId: string; timeOfDay: string; days: number[]; startDate: string; endDate: string | null; active: boolean }
-export interface DoseSlot { scheduleEntryId: string; patientMedicationId: string; medicationName: string; localDate: string; localTime: string; scheduledFor: string; status: "Taken" | "Skipped" | null; logId: string | null }
+export interface AdherenceMedication {
+  patientMedicationId: string; medicationName: string; isRegistered: boolean; schedule: { id: string; timeOfDay: string; days: string[] }[]; instructionGaps: string[]; recordingAllowed: boolean;
+  plannedDoses: number; taken: number; skipped: number; missed: number; notRecorded: number; unplanned: number; lastRecordedAt: string | null;
+}
+export interface AdherenceSummary { from: string; until: string; days: number; provenance: string; medications: AdherenceMedication[]; intakeLastUpdatedAt: string | null; intakeStale: boolean; notice: string }
+export interface DoseSlot { scheduleEntryId: string; patientMedicationId: string; medicationName: string; localDate: string; localTime: string; scheduledFor: string; status: "Taken" | "Skipped" | "Missed" | null; logId: string | null }
 export interface RecordVersion { version: number; at: string; changedBy: string | null; reason: string }
 
 export interface ProductRecord {
@@ -67,7 +72,7 @@ export interface GuidancePatient { observed: string; whyItMatters: string; sugge
 export interface GuidanceProfessional { summary: string; technicalDetail: string; severityLabel: string; basis: string; confidence: string }
 export type GuidanceLevel = "Information" | "FollowUp" | "ReviewSoon" | "Urgent";
 export type GuidanceStatus = "Sent" | "Seen" | "Reviewed" | "Referred" | "Resolved";
-export interface GuidanceMessage { id: string; templateKey: string; level: GuidanceLevel; status: GuidanceStatus; locale: string; patient: GuidancePatient; professional: GuidanceProfessional | null; createdAt: string; isDemo: boolean; notice: string | null; origin?: { kind: string; assessmentId: string; ruleId: string; ruleVersion: number; findingKey: string; dataAsOf: string } | null }
+export interface GuidanceMessage { id: string; templateKey: string; level: GuidanceLevel; status: GuidanceStatus; locale: string; patient: GuidancePatient; professional: GuidanceProfessional | null; createdAt: string; isDemo: boolean; notice: string | null; delivery?: { state: "Scheduled" | "Attempted" | "Confirmed" | "Failed"; mode: "Simulated" | "Real"; channel: string; scheduledAt: string; lastAttemptAt: string | null; confirmedAt: string | null; failedAt: string | null; attempts: number; errorCode: string | null } | null; provenance?: string; clinicianReviewed?: boolean; origin?: { kind: string; assessmentId: string; ruleId: string; ruleVersion: number; findingKey: string; dataAsOf: string } | null }
 export interface GuidanceSamples { demo: boolean; notice: string; samples: { level: GuidanceLevel; patient: GuidancePatient; professional: GuidanceProfessional | null }[] }
 export interface AiContext {
   ageGroup: string; sexGroup: string; medications: { name: string; dose: string | null; frequency: string; status: string; isRegistered: boolean }[]; allergies: { substance: string; severity: string; reaction: string | null }[];

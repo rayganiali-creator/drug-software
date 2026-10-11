@@ -103,6 +103,7 @@ class _MessageState extends State<_Message> with ActionRunner {
             part('consult', p['whenToConsult']),
             if (p['urgentSigns'] != null) part('urgent', p['urgentSigns']),
             part('basis', p['basisAndConfidence']),
+            _DeliveryLine(m: m),
             Wrap(
               spacing: Space.s2,
               children: [
@@ -133,6 +134,50 @@ class _MessageState extends State<_Message> with ActionRunner {
             failureAlert(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Where a message came from and how its notification is going, in words that never turn "scheduled" or "simulated" into "delivered".
+class _DeliveryLine extends StatelessWidget {
+  const _DeliveryLine({required this.m});
+  final Json m;
+  @override
+  Widget build(BuildContext context) {
+    final d = m['delivery'] as Json?;
+    final state = d?['state'] as String?;
+    final simulated = d?['mode'] == 'Simulated';
+    final text = d == null
+        ? context.t('rec.deliv.none')
+        : switch (state) {
+            'Scheduled' => context.t('rec.deliv.scheduled'),
+            'Attempted' => context.t('rec.deliv.attempted'),
+            'Failed' => context.t('rec.deliv.failed'),
+            _ => simulated
+                ? context.t('rec.deliv.simulated')
+                : context.t('rec.deliv.confirmed', {'channel': '${d['channel']}'}),
+          };
+    final reviewed = m['clinicianReviewed'] == true;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Space.s2),
+      child: Wrap(
+        spacing: Space.s2,
+        runSpacing: Space.s1,
+        children: [
+          if (m['provenance'] == 'AutomatedAssessment')
+            AppBadge(text: context.t('rec.prov.automated'), tone: Tone.info, icon: 'sparkles'),
+          AppBadge(
+            text: reviewed ? context.t('rec.prov.reviewed') : context.t('rec.prov.notReviewed'),
+            tone: reviewed ? Tone.success : Tone.neutral,
+            icon: reviewed ? 'check' : 'minus',
+          ),
+          AppBadge(
+            text: text,
+            tone: state == 'Failed' ? Tone.warning : Tone.neutral,
+            icon: simulated ? 'alertTriangle' : 'info',
+          ),
+        ],
       ),
     );
   }

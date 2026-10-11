@@ -103,7 +103,12 @@ public enum PatientMedicationStatus
 public enum IntakeStatus
 {
     Taken,
+
+    /// <summary>The patient chose not to take this planned dose.</summary>
     Skipped,
+
+    /// <summary>The patient reports the planned dose was not taken (forgotten, unavailable...). Never inferred from silence.</summary>
+    Missed,
 }
 
 public enum SymptomSeverity
@@ -207,7 +212,29 @@ public sealed record DoseSlotDto(
     IntakeStatus? Status,
     Guid? LogId);
 
-public sealed record IntakeLogDto(Guid Id, Guid PatientMedicationId, Guid? ScheduleEntryId, DateTimeOffset? ScheduledFor, IntakeStatus Status, DateTimeOffset? TakenAt, string? Note, DateTimeOffset RecordedAt);
+/// <param name="Source">Which client recorded the event (web, android, ios, api...). Provenance is always "PatientReported": adherence is what the patient says, not a verified fact.</param>
+public sealed record IntakeLogDto(Guid Id, Guid PatientMedicationId, Guid? ScheduleEntryId, DateTimeOffset? ScheduledFor, IntakeStatus Status, DateTimeOffset? TakenAt, string? Note, DateTimeOffset RecordedAt, string Source = "unknown", string Provenance = "PatientReported", bool Unplanned = false);
+
+/// <summary>Per-medicine adherence over a window. Counts come only from what the patient recorded against the schedule they or their professional entered.</summary>
+/// <param name="InstructionGaps">Machine codes for instructions that are unknown or incomplete (never guessed): dose.unknown, dose.unit_missing, frequency.unspecified, route.unknown, schedule.none, medication.not_in_reference, source.self_reported.</param>
+/// <param name="RecordingAllowed">Whether planned doses of this medicine can be recorded (dose known and a schedule exists).</param>
+/// <param name="NotRecorded">Planned doses in the past with no record. This is NOT "missed": silence is not evidence.</param>
+public sealed record AdherenceMedicationDto(
+    Guid PatientMedicationId,
+    string MedicationName,
+    bool IsRegistered,
+    IReadOnlyList<ScheduleEntryDto> Schedule,
+    IReadOnlyList<string> InstructionGaps,
+    bool RecordingAllowed,
+    int PlannedDoses,
+    int Taken,
+    int Skipped,
+    int Missed,
+    int NotRecorded,
+    int Unplanned,
+    DateTimeOffset? LastRecordedAt);
+
+public sealed record AdherenceSummaryDto(DateTimeOffset From, DateTimeOffset Until, int Days, string Provenance, IReadOnlyList<AdherenceMedicationDto> Medications, DateTimeOffset? IntakeLastUpdatedAt, bool IntakeStale, string Notice);
 
 public sealed record LogIntakeCommand(Guid PatientMedicationId, Guid? ScheduleEntryId, DateTimeOffset? ScheduledFor, IntakeStatus Status, DateTimeOffset? TakenAt, string? Note);
 
@@ -297,6 +324,9 @@ public interface IPatientMedicationService
 
     /// <summary>Records a taken/skipped dose. Idempotent per (schedule entry, scheduled time): logging the same dose again updates it.</summary>
     Task<PatientOutcome<IntakeLogDto>> LogIntakeAsync(Guid actorUserId, Guid subjectId, LogIntakeCommand command, string source, string? correlationId, CancellationToken ct = default);
+    /// <summary>Adherence over the last <paramref name="days"/> days (1-31) as the patient reported it, with unknown instructions listed instead of guessed.</summary>
+    Task<PatientOutcome<AdherenceSummaryDto>> GetAdherenceSummaryAsync(Guid subjectId, int days, CancellationToken ct = default);
+
     Task<PatientOutcome<IReadOnlyList<IntakeLogDto>>> ListIntakeAsync(Guid subjectId, DateTimeOffset fromTime, DateTimeOffset untilTime, CancellationToken ct = default);
 }
 

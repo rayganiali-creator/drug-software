@@ -41,6 +41,8 @@ class Assessment {
   List<String> get outdatedReasons => _strings(json['outdatedReasons']);
   int get noLongerMatching =>
       (json['openGuidanceNoLongerMatching'] as List? ?? const []).length;
+  String get trigger => (json['trigger'] as String?) ?? 'manual';
+  Json? get change => json['change'] as Json?;
   List<Json> get findings => _maps(result['findings']);
   List<Json> get evaluations => _maps(result['evaluations']);
   List<Json> get inputs => _maps(result['inputs']);
@@ -102,6 +104,11 @@ class SafetyClient {
 
   Future<Assessment> latest(String id) async =>
       Assessment(await _call('GET', _p(id, 'assessments/latest')));
+
+  Future<Json> monitoring(String id) => _call('GET', _p(id, 'monitoring'));
+  Future<Json> enrol(String id, String locale) =>
+      _call('POST', _p(id, 'monitoring?locale=$locale'));
+  Future<Json> withdraw(String id) => _call('DELETE', _p(id, 'monitoring'));
 
   Future<Assessment> run(String id, String locale) async =>
       Assessment(await _call('POST', _p(id, 'assessments?locale=$locale')));
