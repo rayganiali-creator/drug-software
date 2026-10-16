@@ -66,7 +66,7 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         }
 
         var errors = new List<string>();
-        foreach (var e in new[] { CheckText(input.EventDescription, MaxText, "description", true), CheckText(input.AdditionalDetails, MaxText, "details", false), CheckText(input.OutcomeAsStated, MaxOutcome, "outcome", false) })
+        foreach (var e in new[] { CheckText(input.EventDescription, MaxText, "description", true), CheckText(input.AdditionalDetails, MaxText, "details", false), CheckText(input.OutcomeAsStated, MaxOutcome, "outcome", false), CheckText(input.DoseAndAdministrationAsReported, MaxOutcome, "dose", false) })
         {
             if (e is not null)
             {
@@ -91,9 +91,15 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         }
 
         var requested = input.SuspectedMedications ?? [];
+        var concomitant = input.ConcomitantMedications ?? [];
         if (requested.Count > MaxMedications)
         {
             errors.Add("medications.too_many");
+        }
+
+        if (concomitant.Count > MaxMedications)
+        {
+            errors.Add("concomitant.too_many");
         }
 
         if (errors.Count > 0)
@@ -107,39 +113,16 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
             return AdrOutcome.Fail<AdverseEventDetailDto>(AdrError.NotFound, "patient.not_found");
         }
 
-        var stored = new List<StoredMedication>();
-        foreach (var m in requested)
+        var (stored, failure) = await ResolveInputsAsync(subjectId, requested, ct);
+        if (failure is not null)
         {
-            var name = Clean(m.NameAsReported);
-            if (name is { Length: > 200 } || (m.PatientMedicationId is null && name is null) || (name is not null && HasControlCharacters(name)))
-            {
-                return AdrOutcome.Fail<AdverseEventDetailDto>(AdrError.Validation, "medication.invalid");
-            }
+            return AdrOutcome.Fail<AdverseEventDetailDto>(AdrError.Validation, failure);
+        }
 
-            if (m.PatientMedicationId is { } mid)
-            {
-                // A link is only made to the patient's own record, and only after it was found. If it cannot be checked, nothing is linked on a guess.
-                PatientOutcome<PatientMedicationDto> found;
-                try
-                {
-                    found = await medications.GetAsync(subjectId, mid, ct);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    return AdrOutcome.Fail<AdverseEventDetailDto>(AdrError.Validation, "medication.lookup_unavailable");
-                }
-
-                if (!found.Succeeded)
-                {
-                    return AdrOutcome.Fail<AdverseEventDetailDto>(AdrError.Validation, "medication.not_found");
-                }
-
-                stored.Add(new StoredMedication(mid, found.Value!.DisplayName));
-            }
-            else
-            {
-                stored.Add(new StoredMedication(null, name));
-            }
+        var (storedConcomitant, failure2) = await ResolveInputsAsync(subjectId, concomitant, ct);
+        if (failure2 is not null)
+        {
+            return AdrOutcome.Fail<AdverseEventDetailDto>(AdrError.Validation, failure2);
         }
 
         var clientRequestId = Clean(input.ClientRequestId);
@@ -173,6 +156,8 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
             OutcomeAsStated = Clean(input.OutcomeAsStated),
             AdditionalDetails = Clean(input.AdditionalDetails),
             SuspectedMedicationsJson = JsonSerializer.Serialize(stored, Json),
+            DoseAndAdministrationAsReported = Clean(input.DoseAndAdministrationAsReported),
+            ConcomitantMedicationsJson = JsonSerializer.Serialize(storedConcomitant, Json),
             Category = EventCategory.Unclassified,
             Status = ReviewStatus.Submitted,
             LastActivityAt = now,
@@ -182,6 +167,46 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         await db.SaveChangesAsync(ct);
         await AuditAsync(AuditActions.AdrRecordCreated, actorUserId, row, source, correlationId, new Dictionary<string, string> { ["role"] = role.ToString(), ["medications"] = stored.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) }, ct);
         return await DetailAsync(db, row, role, ct);
+    }
+
+    /// <summary>A link is only made to the patient's own record, and only after it was found. If it cannot be checked, nothing is linked on a guess.</summary>
+    private async Task<(List<StoredMedication> Stored, string? Failure)> ResolveInputsAsync(Guid subjectId, IReadOnlyList<SuspectedMedicationInput> requested, CancellationToken ct)
+    {
+        var stored = new List<StoredMedication>();
+        foreach (var m in requested)
+        {
+            var name = Clean(m.NameAsReported);
+            if (name is { Length: > 200 } || (m.PatientMedicationId is null && name is null) || (name is not null && HasControlCharacters(name)))
+            {
+                return (stored, "medication.invalid");
+            }
+
+            if (m.PatientMedicationId is { } mid)
+            {
+                PatientOutcome<PatientMedicationDto> found;
+                try
+                {
+                    found = await medications.GetAsync(subjectId, mid, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    return (stored, "medication.lookup_unavailable");
+                }
+
+                if (!found.Succeeded)
+                {
+                    return (stored, "medication.not_found");
+                }
+
+                stored.Add(new StoredMedication(mid, found.Value!.DisplayName));
+            }
+            else
+            {
+                stored.Add(new StoredMedication(null, name));
+            }
+        }
+
+        return (stored, null);
     }
 
     public async Task<AdrOutcome<IReadOnlyList<AdverseEventSummaryDto>>> ListForSubjectAsync(Guid subjectId, ReporterRole viewerRole, int take, CancellationToken ct = default)
@@ -453,7 +478,7 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         var entries = await db.Entries.AsNoTracking().Where(x => x.EventId == id).OrderBy(x => x.At).ToListAsync(ct);
         var meds = await ResolveMedicationsAsync(row, ct);
         var now = clock.UtcNow;
-        var dto = AdverseEventAssistance.Build(ToDto(row, entries, meds, true), entries.Count, entries.Count == 0 ? null : entries[^1].At, now);
+        var dto = AdverseEventAssistance.Build(ToDto(row, entries, meds, await ResolveMedicationsAsync(row, ct, true), true), entries.Count, entries.Count == 0 ? null : entries[^1].At, now);
         await AuditAsync(AuditActions.AdrAssistanceGenerated, actorUserId, row, source, correlationId, new Dictionary<string, string> { ["role"] = role.ToString(), ["origin"] = dto.Origin }, ct);
         return AdrOutcome.Ok(dto);
     }
@@ -514,7 +539,7 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         var professional = IsProfessional(viewer);
         var entries = await db.Entries.AsNoTracking().Where(x => x.EventId == row.Id).OrderBy(x => x.At).ToListAsync(ct);
         var meds = await ResolveMedicationsAsync(row, ct);
-        var dto = ToDto(row, entries, meds, professional);
+        var dto = ToDto(row, entries, meds, await ResolveMedicationsAsync(row, ct, true), professional);
         var visible = entries.Where(e => professional || e.Visibility == EntryVisibility.PatientVisible).Select(e => new AdverseEventEntryDto(
             e.Id, e.Kind, e.AuthorRole, professional ? e.AuthorUserId : null, e.At, e.Text, e.Visibility,
             e.AuthorRole == ReporterRole.Patient ? "PatientReported" : "ProfessionalReview",
@@ -523,9 +548,9 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         return AdrOutcome.Ok(new AdverseEventDetailDto(dto, visible));
     }
 
-    private async Task<List<SuspectedMedicationDto>> ResolveMedicationsAsync(AdverseEventRow row, CancellationToken ct)
+    private async Task<List<SuspectedMedicationDto>> ResolveMedicationsAsync(AdverseEventRow row, CancellationToken ct, bool concomitant = false)
     {
-        var stored = JsonSerializer.Deserialize<List<StoredMedication>>(row.SuspectedMedicationsJson, Json) ?? [];
+        var stored = JsonSerializer.Deserialize<List<StoredMedication>>(concomitant ? row.ConcomitantMedicationsJson : row.SuspectedMedicationsJson, Json) ?? [];
         var result = new List<SuspectedMedicationDto>();
         foreach (var m in stored)
         {
@@ -611,14 +636,24 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
             m.Add("details.none");
         }
 
+        if (row.DoseAndAdministrationAsReported is null)
+        {
+            m.Add("dose.not_stated");
+        }
+
+        if (JsonSerializer.Deserialize<List<StoredMedication>>(row.ConcomitantMedicationsJson, Json)?.Count is null or 0)
+        {
+            m.Add("concomitant.not_stated"); // "not stated" is not "none taken"
+        }
+
         return m;
     }
 
-    private static AdverseEventDto ToDto(AdverseEventRow r, IReadOnlyList<AdverseEventEntryRow> entries, IReadOnlyList<SuspectedMedicationDto> meds, bool professional)
+    private static AdverseEventDto ToDto(AdverseEventRow r, IReadOnlyList<AdverseEventEntryRow> entries, IReadOnlyList<SuspectedMedicationDto> meds, IReadOnlyList<SuspectedMedicationDto> concomitant, bool professional)
     {
         var eff = Effective(r, entries);
         return new AdverseEventDto(r.Id, r.SubjectId, r.ReporterRole, r.Origin, r.ReportedAt,
-            new AdverseEventOriginal(r.EventDescription, r.OnsetAt, r.ResolvedAt, r.OutcomeAsStated, r.AdditionalDetails), eff, meds,
+            new AdverseEventOriginal(r.EventDescription, r.OnsetAt, r.ResolvedAt, r.OutcomeAsStated, r.AdditionalDetails, r.DoseAndAdministrationAsReported), eff, meds, concomitant,
             professional ? r.Category : null, r.Status, Missing(r, eff, meds), r.LastActivityAt, r.Version,
             AdrNotices.Signal, AdrNotices.InternalRecord, AdrNotices.ExternalNotSubmitted, WordingStatus.AwaitingClinicalReview);
     }
@@ -657,6 +692,8 @@ public static class AdverseEventAssistance
             lines.Add(new($"Medicine named: {name} — {how}.", "suspectedMedications"));
         }
 
+        lines.Add(new($"Dose and how it was taken, as reported: {(e.Original.DoseAndAdministrationAsReported is { } dose ? "\"" + dose + "\"" : "not stated")}.", "original.doseAndAdministrationAsReported"));
+        lines.Add(new(e.ConcomitantMedications.Count == 0 ? "Other medicines at the time: none named (this is not the same as none taken)." : $"Other medicines named at the time: {string.Join(", ", e.ConcomitantMedications.Select(c => c.DisplayName ?? c.NameAsReported ?? "unnamed"))}.", "concomitantMedications"));
         lines.Add(new($"Review status: {e.Status}. Category: {(e.Category is null or EventCategory.Unclassified ? "not classified" : e.Category.ToString())}.", "review"));
         lines.Add(new($"{entryCount} entr{(entryCount == 1 ? "y" : "ies")} after the original report; latest: {Date(lastEntryAt)}.", "history"));
         var uncertainty = new List<string>

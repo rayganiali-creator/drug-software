@@ -123,7 +123,11 @@ public sealed record CreateAdverseEventInput(
     IReadOnlyList<SuspectedMedicationInput> SuspectedMedications,
     string? OutcomeAsStated,
     string? AdditionalDetails,
-    string? ClientRequestId = null);
+    string? ClientRequestId = null,
+    /// <summary>Dose, route and how it was taken, exactly as the reporter described it. Never completed or corrected by the system.</summary>
+    string? DoseAndAdministrationAsReported = null,
+    /// <summary>Other medicines the reporter says were taken at the time (own record or a name as given). Not assessed.</summary>
+    IReadOnlyList<SuspectedMedicationInput>? ConcomitantMedications = null);
 
 /// <summary>Immutable: exactly what was reported, never edited afterwards.</summary>
 public sealed record AdverseEventOriginal(
@@ -131,7 +135,8 @@ public sealed record AdverseEventOriginal(
     DateTimeOffset? OnsetAt,
     DateTimeOffset? ResolvedAt,
     string? OutcomeAsStated,
-    string? AdditionalDetails);
+    string? AdditionalDetails,
+    string? DoseAndAdministrationAsReported = null);
 
 /// <summary>One value with where it came from, so a later supplement never hides the original.</summary>
 public sealed record FieldValue<T>(T Value, string Provenance, Guid? EntryId);
@@ -180,6 +185,8 @@ public sealed record AdverseEventDto(
     AdverseEventOriginal Original,
     AdverseEventEffective Effective,
     IReadOnlyList<SuspectedMedicationDto> SuspectedMedications,
+    /// <summary>Other medicines named by the reporter. They are not "suspected"; nothing is concluded about them.</summary>
+    IReadOnlyList<SuspectedMedicationDto> ConcomitantMedications,
     /// <summary>Null when the viewer is the patient: the category is a professional label and is not shown to the patient.</summary>
     EventCategory? Category,
     ReviewStatus Status,

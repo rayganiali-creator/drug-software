@@ -55,6 +55,30 @@ function RecordList({ rows, empty }: { rows: Summary[]; empty?: boolean }) {
   );
 }
 
+
+/** One list of medicines: either one of the patient's own records or a name as given. Never matched or guessed. */
+function MedChooser({ legend, hint, own, items, setItems }: { legend: string; hint: string; own: PatientMedication[]; items: SuspectedMedicationInput[]; setItems(next: SuspectedMedicationInput[]): void }) {
+  const { t } = useI18n();
+  const [pick, setPick] = useState("");
+  const [name, setName] = useState("");
+  const label = (m: SuspectedMedicationInput) => m.patientMedicationId ? own.find((x) => x.id === m.patientMedicationId)?.displayName ?? "…" : m.nameAsReported ?? "";
+  const add = () => {
+    if (pick) setItems([...items, { patientMedicationId: pick, nameAsReported: null }]);
+    else if (name.trim()) setItems([...items, { patientMedicationId: null, nameAsReported: name.trim() }]);
+    setPick(""); setName("");
+  };
+  return (
+    <fieldset className="adr-form">
+      <legend>{legend}</legend>
+      <p className="ms-muted">{hint}</p>
+      {items.length > 0 && <ul className="adr-meds">{items.map((m, i) => <li key={i} className="adr-row"><span dir="auto">{label(m)}</span><Button size="sm" variant="secondary" type="button" onClick={() => setItems(items.filter((_, j) => j !== i))}>{t("adr.form.remove")}</Button></li>)}</ul>}
+      {own.length > 0 && <Select label={t("adr.form.medPick")} value={pick} onValueChange={setPick} options={[{ value: "", label: "—" }, ...own.map((m) => ({ value: m.id, label: m.displayName }))]} />}
+      <TextField label={t("adr.form.medName")} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
+      <div><Button type="button" variant="secondary" onClick={add} disabled={!pick && !name.trim()}>{t("adr.form.add")}</Button></div>
+    </fieldset>
+  );
+}
+
 /** The entry form. A date left empty stays unknown; a medicine is either one of the patient's own records or a name as given, and is never matched or guessed. */
 function CreateForm({ subjectId, pro, onSaved }: { subjectId: string; pro: boolean; onSaved(): void }) {
   const { t } = useI18n();
@@ -67,20 +91,14 @@ function CreateForm({ subjectId, pro, onSaved }: { subjectId: string; pro: boole
   const [outcome, setOutcome] = useState("");
   const [details, setDetails] = useState("");
   const [chosen, setChosen] = useState<SuspectedMedicationInput[]>([]);
-  const [pick, setPick] = useState("");
-  const [name, setName] = useState("");
+  const [dose, setDose] = useState("");
+  const [other, setOther] = useState<SuspectedMedicationInput[]>([]);
   const [rid, setRid] = useState(() => crypto.randomUUID());
   const own: PatientMedication[] = meds.state.status === "ready" ? meds.state.data : [];
-  const label = (m: SuspectedMedicationInput) => m.patientMedicationId ? own.find((x) => x.id === m.patientMedicationId)?.displayName ?? "…" : m.nameAsReported ?? "";
-  const addMed = () => {
-    if (pick) setChosen((c) => [...c, { patientMedicationId: pick, nameAsReported: null }]);
-    else if (name.trim()) setChosen((c) => [...c, { patientMedicationId: null, nameAsReported: name.trim() }]);
-    setPick(""); setName("");
-  };
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const body: CreateInput = { eventDescription: what.trim(), onsetAt: dayToInstant(onset), resolvedAt: dayToInstant(ended), suspectedMedications: chosen, outcomeAsStated: outcome.trim() || null, additionalDetails: details.trim() || null, clientRequestId: rid };
-    void act.run(() => api.create(subjectId, body), () => { setWhat(""); setOnset(""); setEnded(""); setOutcome(""); setDetails(""); setChosen([]); setRid(crypto.randomUUID()); onSaved(); });
+    const body: CreateInput = { eventDescription: what.trim(), onsetAt: dayToInstant(onset), resolvedAt: dayToInstant(ended), suspectedMedications: chosen, outcomeAsStated: outcome.trim() || null, additionalDetails: details.trim() || null, clientRequestId: rid, doseAndAdministrationAsReported: dose.trim() || null, concomitantMedications: other };
+    void act.run(() => api.create(subjectId, body), () => { setWhat(""); setOnset(""); setEnded(""); setOutcome(""); setDetails(""); setChosen([]); setOther([]); setDose(""); setRid(crypto.randomUUID()); onSaved(); });
   };
   return (
     <Card title={t("adr.form.formTitle")}>
@@ -90,14 +108,9 @@ function CreateForm({ subjectId, pro, onSaved }: { subjectId: string; pro: boole
         <TextField label={t("adr.form.ended")} type="date" value={ended} onChange={(e) => setEnded(e.target.value)} />
         <TextField label={t("adr.form.outcome")} value={outcome} onChange={(e) => setOutcome(e.target.value)} maxLength={500} />
         <TextArea label={t("adr.form.details")} value={details} onChange={(e) => setDetails(e.target.value)} maxLength={2000} rows={3} />
-        <fieldset className="adr-form">
-          <legend>{t("adr.form.meds")}</legend>
-          <p className="ms-muted">{t("adr.form.medsHint")}</p>
-          {chosen.length > 0 && <ul className="adr-meds">{chosen.map((m, i) => <li key={i} className="adr-row"><span dir="auto">{label(m)}</span><Button size="sm" variant="secondary" type="button" onClick={() => setChosen((c) => c.filter((_, j) => j !== i))}>{t("adr.form.remove")}</Button></li>)}</ul>}
-          {own.length > 0 && <Select label={t("adr.form.medPick")} value={pick} onValueChange={setPick} options={[{ value: "", label: "—" }, ...own.map((m) => ({ value: m.id, label: m.displayName }))]} />}
-          <TextField label={t("adr.form.medName")} value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
-          <div><Button type="button" variant="secondary" onClick={addMed} disabled={!pick && !name.trim()}>{t("adr.form.add")}</Button></div>
-        </fieldset>
+        <MedChooser legend={t("adr.form.meds")} hint={t("adr.form.medsHint")} own={own} items={chosen} setItems={setChosen} />
+        <TextField label={t("adr.form.dose")} value={dose} onChange={(e) => setDose(e.target.value)} maxLength={500} />
+        <MedChooser legend={t("adr.form.concomitant")} hint={t("adr.form.concomitantHint")} own={own} items={other} setItems={setOther} />
         <div><Button type="submit" loading={act.busy} disabled={!what.trim()}>{pro ? t("adr.form.submitPro") : t("adr.form.submit")}</Button></div>
         <ActionError error={act.error} />
       </form>
@@ -191,6 +204,7 @@ function Body({ d, pro, reload }: { d: Detail; pro: boolean; reload(): void }) {
           <div><dt>{t("adr.f.onset")}</dt><dd>{when(fmt, e.original.onsetAt) ?? none}</dd></div>
           <div><dt>{t("adr.f.ended")}</dt><dd>{when(fmt, e.original.resolvedAt) ?? none}</dd></div>
           <div><dt>{t("adr.f.outcome")}</dt><dd dir="auto">{e.original.outcomeAsStated ?? none}</dd></div>
+          <div><dt>{t("adr.f.dose")}</dt><dd dir="auto">{e.original.doseAndAdministrationAsReported ?? none}</dd></div>
           <div><dt>{t("adr.f.details")}</dt><dd dir="auto">{e.original.additionalDetails ?? none}</dd></div>
           <div><dt>{t("adr.f.external")}</dt><dd>{t("adr.external.NotSubmitted")}</dd></div>
         </dl>
@@ -204,6 +218,10 @@ function Body({ d, pro, reload }: { d: Detail; pro: boolean; reload(): void }) {
         <h4>{t("adr.sec.meds")}</h4>
         {e.suspectedMedications.length === 0 ? <p className="ms-muted">{t("adr.med.none")}</p> : (
           <ul className="adr-meds">{e.suspectedMedications.map((m, i) => <li key={i}><strong dir="auto">{m.displayName ?? m.nameAsReported}</strong><div className="ms-muted">{t(`adr.med.${m.state}`)}</div></li>)}</ul>)}
+      </Card>
+      <Card title={t("adr.sec.concomitant")}>
+        {e.concomitantMedications.length === 0 ? <p className="ms-muted">{t("adr.concomitant.none")}</p> : (
+          <ul className="adr-meds">{e.concomitantMedications.map((m, i) => <li key={i}><strong dir="auto">{m.displayName ?? m.nameAsReported}</strong><div className="ms-muted">{t(`adr.med.${m.state}`)}</div></li>)}</ul>)}
       </Card>
       <Card title={t("adr.sec.missing")}>
         {e.missingInformation.length === 0 ? <p className="ms-muted">{t("adr.miss.none")}</p> : <ul className="adr-bullets">{e.missingInformation.map((c) => <li key={c}>{t(`adr.miss.${c.replace(/[.]/g, "_")}`)}</li>)}</ul>}

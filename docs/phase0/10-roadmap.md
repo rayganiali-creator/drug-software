@@ -1,6 +1,6 @@
 # 10 — Roadmap (Phaseهای کوچک)
 
-> **Note added in Phase 9 (navigation aid, historical content below unchanged):** the phase numbers in this file are the *Phase 0 plan*. The phases actually delivered follow a different order (for example, delivered Phase 9 is the internal adverse-event record, which this plan calls P10). See [`docs/phase9/08-roadmap-reconciliation.md`](../phase9/08-roadmap-reconciliation.md) for the mapping.
+> **Note added in Phase 9 (navigation aid, historical content below unchanged):** the phase numbers in this file are the *Phase 0 plan*. The phases actually delivered follow a different order (for example, delivered Phase 9 is the internal adverse-event record, which this plan calls P10, and delivered Phase 10 — pharmacy safety records — has no equivalent in this plan). See [`docs/phase9/08-roadmap-reconciliation.md`](../phase9/08-roadmap-reconciliation.md) for the mapping.
 
 قواعد: هر Phase مستقل تحویل‌پذیر، ≤ ~۲–۳ هفته (تخمین زمان: **UNKNOWN**، وابسته به اندازه تیم – D-30)، با Definition of Done مشترک:
 تست‌های واحد+یکپارچگی سبز، Architecture tests سبز، SAST/SCA/Secret scan بدون Finding بحرانی، Threat model و جدول Privacy به‌روز، OpenAPI به‌روز، Audit برای هر مسیر PHI، مستند Runbook مختصر.

@@ -25,6 +25,7 @@ Evidence labels used in every document of this phase (the five categories reques
 | [07-sources-and-limits.md](07-sources-and-limits.md) | which files were read and how, known source limitations, Excel provenance |
 | [08-roadmap-reconciliation.md](08-roadmap-reconciliation.md) | planned (Phase 0) vs delivered phase numbering |
 | [09-test-matrix.md](09-test-matrix.md) | exact commands and results |
+| [11-extension-dose-and-concomitant.md](11-extension-dose-and-concomitant.md) | Phase 9 extension in the combined 9+10 session: dose/administration as reported, other medicines named |
 | [10-phase-report.md](10-phase-report.md) | final report, limitations, decisions needed, proposed Phase 10 |
 
 Product-wide matrix (all phases): [`../pharmacovigilance-traceability-matrix.md`](../pharmacovigilance-traceability-matrix.md). Source analysis: [`../pharmacovigilance-source-analysis.md`](../pharmacovigilance-source-analysis.md).
@@ -35,3 +36,5 @@ dotnet test MedSmarter.sln                                   # everything, in me
 MEDSMARTER_PG_TEST='Host=127.0.0.1;Port=5432;Database=postgres;Username=…;Password=…' dotnet test tests/MedSmarter.Patients.Tests   # + PostgreSQL (scratch, local)
 cd web && npx vitest run && node scripts/phase9-qa.mjs       # browser QA needs the local API + a local PostgreSQL
 ```
+
+> **Update:** Phase 10 was implemented in the combined Phase 9 + 10 session. See [`../phase10/README.md`](../phase10/README.md) and the combined report [`../phase9-10/PHASE_9_10_FINAL_REPORT.md`](../phase9-10/PHASE_9_10_FINAL_REPORT.md). The Phase 9 report (`10-phase-report.md`) is kept as written at its time; its "Phase 10 proposal" is now partly delivered (see the combined report).

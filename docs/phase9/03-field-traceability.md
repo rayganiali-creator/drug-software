@@ -15,6 +15,8 @@ Legend: **SD** source-derived · **ER** existing-system reuse · **DP** design p
 | `onsetAt`, `resolvedAt` | DP | Dates appear among fields of public databases in the Excel comparison (X, **unverified**) — not authoritative |
 | `outcomeAsStated` | DP | Free text "as stated"; deliberately not a coded outcome (no coding system supplied) |
 | `additionalDetails` | DP | Free text |
+| `doseAndAdministrationAsReported` (added in the combined 9+10 session) | DP | Free text exactly as described by the reporter; never completed or corrected. The brief names dose/administration details as relevant where known; no source field list exists |
+| `concomitantMedications[]` (added in the combined 9+10 session) | ER + DP | Same reference rules as suspected medicines (own record or a name as given); separate list; "not named" is not "none taken" |
 | `suspectedMedications[]` (id or name) | ER + DP | Reuses `PatientMedication` ids (Phase 5); name-only entries for unknown medicines |
 | `category` | DP over (X) definitions | Five terms with quoted definitions (WHO 2025, FIP 2020); default Unclassified |
 | `status` | DP | Review workflow; **no status set exists in any source** |

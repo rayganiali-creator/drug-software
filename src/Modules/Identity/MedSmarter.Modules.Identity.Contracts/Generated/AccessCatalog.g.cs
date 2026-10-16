@@ -78,6 +78,9 @@ public static class Permissions
     public const string ClinicalrulesReview = "clinicalrules.review";
     public const string ClinicalrulesRetire = "clinicalrules.retire";
     public const string AdrRecordCreate = "adr.record.create";
+    public const string PharmacySafetyCreate = "pharmacy.safety.create";
+    public const string PharmacySafetyRead = "pharmacy.safety.read";
+    public const string PharmacySafetyReview = "pharmacy.safety.review";
 }
 
 public static class RoleNames

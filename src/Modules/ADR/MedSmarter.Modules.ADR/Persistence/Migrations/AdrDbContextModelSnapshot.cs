@@ -130,6 +130,18 @@ namespace MedSmarter.Modules.ADR.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("client_request_id");
 
+                    b.Property<string>("ConcomitantMedicationsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("concomitant_medications_json")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<string>("DoseAndAdministrationAsReported")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("dose_and_administration_as_reported");
+
                     b.Property<string>("EventDescription")
                         .IsRequired()
                         .HasMaxLength(2000)

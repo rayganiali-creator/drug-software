@@ -25,9 +25,9 @@ const INTERNAL = "This is an internal record. It has not been submitted to any r
 
 const event = (over: Record<string, unknown> = {}, pro = true) => ({
   id: "e1", subjectId: "s1", reporterRole: "Patient", origin: "PatientReported", reportedAt: "2026-10-10T08:00:00Z",
-  original: { eventDescription: "Itchy rash on both arms", onsetAt: null, resolvedAt: null, outcomeAsStated: null, additionalDetails: null },
+  original: { eventDescription: "Itchy rash on both arms", onsetAt: null, resolvedAt: null, outcomeAsStated: null, additionalDetails: null, doseAndAdministrationAsReported: null },
   effective: { onsetAt: { value: null, provenance: "NotRecorded", entryId: null }, resolvedAt: { value: null, provenance: "NotRecorded", entryId: null }, outcomeAsStated: { value: null, provenance: "NotRecorded", entryId: null } },
-  suspectedMedications: [{ patientMedicationId: null, nameAsReported: "a white tablet", displayName: null, state: "ReportedNameOnly" }],
+  suspectedMedications: [{ patientMedicationId: null, nameAsReported: "a white tablet", displayName: null, state: "ReportedNameOnly" }], concomitantMedications: [],
   category: pro ? "Unclassified" : null, status: "Submitted", missingInformation: ["onset.unknown", "resolution.unknown_or_ongoing", "medication.not_linked"], lastActivityAt: "2026-10-10T08:00:00Z", version: 3,
   signalNotice: SIGNAL, internalRecordNotice: INTERNAL, externalStatus: "NotSubmitted", persianWordingStatus: "AwaitingClinicalReview", ...over,
 });
@@ -49,14 +49,29 @@ describe("patient adverse-event page", () => {
 
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("What happened?"), "Dizzy after lunch");
-    await user.type(screen.getByLabelText("Or a name as given"), "blue tablet");
-    await user.click(screen.getByRole("button", { name: "Add medicine" }));
+    const suspected = screen.getByRole("group", { name: "Medicines that may be involved (optional)" });
+    await user.type(within(suspected).getByLabelText("Or a name as given"), "blue tablet");
+    await user.click(within(suspected).getByRole("button", { name: "Add medicine" }));
     await user.click(screen.getByRole("button", { name: "Save this record" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
     const post = calls.find((c) => c.method === "POST")!;
     expect(post.path).toMatch(/\/patients\/.+\/adverse-events$/);
-    expect(post.body).toMatchObject({ eventDescription: "Dizzy after lunch", onsetAt: null, resolvedAt: null, outcomeAsStated: null, additionalDetails: null, suspectedMedications: [{ patientMedicationId: null, nameAsReported: "blue tablet" }] });
+    expect(post.body).toMatchObject({ eventDescription: "Dizzy after lunch", onsetAt: null, resolvedAt: null, outcomeAsStated: null, additionalDetails: null, doseAndAdministrationAsReported: null, concomitantMedications: [], suspectedMedications: [{ patientMedicationId: null, nameAsReported: "blue tablet" }] });
     expect(typeof (post.body as { clientRequestId: string }).clientRequestId).toBe("string");
+  });
+
+  it("dose and other medicines are sent as typed, kept apart from the suspected medicines, and an empty list is not read as 'none taken'", async () => {
+    const calls = open((p, i) => i?.method === "POST" ? json(201, detail({}, [], false)) : p.includes("/medications") ? json(200, []) : p.includes("/adverse-events") ? json(200, []) : json(404), "/app/patient/adverse-events");
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("What happened?"), "Rash");
+    await user.type(screen.getByLabelText("Dose and how it was taken, as described (optional)"), "one in the morning, I think");
+    const others = screen.getByRole("group", { name: "Other medicines taken at the time (optional)" });
+    await user.type(within(others).getByLabelText("Or a name as given"), "herbal tea");
+    await user.click(within(others).getByRole("button", { name: "Add medicine" }));
+    await user.click(screen.getByRole("button", { name: "Save this record" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({ doseAndAdministrationAsReported: "one in the morning, I think", suspectedMedications: [], concomitantMedications: [{ patientMedicationId: null, nameAsReported: "herbal tea" }] });
+    expect(screen.getByText("Listing a medicine here does not mean it is suspected.")).toBeInTheDocument();
   });
 
   it("says plainly when the app is not connected to a server instead of pretending to work", async () => {
@@ -75,6 +90,7 @@ describe("record detail", () => {
     expect(screen.getByText("The start is not known.")).toBeInTheDocument();
     expect(screen.getByText("The end is not known (it may be ongoing).")).toBeInTheDocument();
     expect(screen.getByText("Only a name as given; not matched to anything")).toBeInTheDocument();
+    expect(screen.getByText("None named (this is not the same as none taken).")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/seriousness (grade|score)\b(?! and)|causality (score|grade)\b(?!\.)/i);
     expect(screen.queryByRole("button", { name: /submit to|send to|report to/i })).not.toBeInTheDocument();
   });

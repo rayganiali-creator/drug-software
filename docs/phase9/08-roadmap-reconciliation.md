@@ -13,7 +13,7 @@
 | Phase 7 | clinical safety engine, versioned rules | P7 |
 | Phase 8 | adherence, scheduled reassessment, rule review UI | parts of P9, P10, P13 |
 | **Phase 9 (this)** | **internal adverse-event record, human review** | P10 (the "ADR" part) |
-| Phase 10 (proposed, not started) | pharmacy workflows (dispensing-error/near-miss log, product-concern intake) | none (Phase 0 had no pharmacy-error module) |
+| **Phase 10** (delivered in the combined Phase 9 + 10 session) | pharmacy safety: dispensing-error/near-miss log, product-concern intake | none (Phase 0 had no pharmacy-error module; the Phase 0 `Pharmacies` module was only an organization placeholder) |
 | later | reporting adapter, E2B/MedDRA, analytics | P15, P16, P19+ ("official ADR reporting" was already post-MVP) |
 
 Phase 0 decision **D-11** ("ADR: receiving body, official format, causality method — internal recording in MVP, official output later") is consistent with Phase 9 and remains **open** for everything beyond internal recording. [OPEN] confirm whether the Phase 0 roadmap should be replaced by the current plan or kept as history (a pointer note is in place either way).

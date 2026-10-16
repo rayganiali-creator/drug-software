@@ -1,10 +1,10 @@
 # Pharmacovigilance traceability matrix (product-wide)
 
-Companion to [`pharmacovigilance-source-analysis.md`](pharmacovigilance-source-analysis.md) (same requirement IDs) and [`phase9/`](phase9/README.md). **Last updated: Phase 9.** Update this file whenever a later phase touches a row.
+Companion to [`pharmacovigilance-source-analysis.md`](pharmacovigilance-source-analysis.md) (same requirement IDs) and [`phase9/`](phase9/README.md). **Last updated: combined Phase 9 + 10 session.** Update this file whenever a later phase touches a row.
 
 **Class:** SLIDE = directly supported by a lecture slide · SUPP = supported by a named supplementary document · DESIGN = design inference/proposal (not a source requirement) · OPEN = question needing an authoritative source · BLOCKED = blocked pending clinical / regulatory / legal / privacy / expert approval.
 **Sources:** S1 Shalviri (industry) · S2 Karimi Ghovanlou (patients; uploaded twice, identical) · S3 Mohebbi (AI) — these three are the **only lecture slides**. D1 WHO 2025 · D2 FIP 2020 · D3 npj Digit Med review · D4 Persian Excel comparison (unverified, author unknown). D1–D3 were read selectively, not exhaustively. Slide 6 of S1 and slide 18 of S2 have the limitations stated in `phase9/07-sources-and-limits.md`.
-**Phase 9 status:** DONE · PARTIAL · NOT STARTED (deferred) · N/A.
+**Status columns:** "Phase 9 status" now covers the combined Phase 9 + 10 session (rows touched by Phase 10 say so). DONE · PARTIAL · NOT STARTED (deferred) · N/A.
 
 | ID | Requirement / statement (concise) | Class | Source (file, place) | Existing module(s) | Phase 9 status | Planned phase / reason for deferral | Acceptance tests | Approval still needed |
 |---|---|---|---|---|---|---|---|---|
@@ -28,10 +28,10 @@ Companion to [`pharmacovigilance-source-analysis.md`](pharmacovigilance-source-a
 | P-02 | WHO tools (VigiFlow, VigiMobile, VigiLyze); patient reporting widely adopted | SUPP | D1 glossary, Annex 1 | Integrations | NOT STARTED | later (mock adapter first) | — | **OPEN**: Iranian pathway |
 | P-03 | Risk-based, practical (not a rigid checklist) strategy | SUPP | D1 foreword | — | N/A | — | — | — |
 | P-04 | Pharmacists are well placed to detect and report AEs; PV belongs in routine practice | SUPP | D2 §5.4.5 | ADR, Pharmacists | PARTIAL — a pharmacist can open and review internal records | 10 (pharmacy workflow) | roles in tests | **OPEN**: Iranian pharmacist pathway |
-| P-05 | Dispensing safety practices (counselling, barcodes, history/reconciliation) | SUPP | D2 §5.2–5.4 | Pharmacies, ProductTrace | NOT STARTED | 10 | — | clinical review |
-| P-06 | LASA names/packaging are a medication-error risk | SUPP | D2 §7.3 | ProductTrace | NOT STARTED | 10 (product concern) | — | clinical review |
-| P-07 | Shortages/recalls create risks | SUPP | D2 §5.1 | ProductTrace | NOT STARTED | 10+ | — | — |
-| P-08 | Blame-free culture and error reporting/learning | SUPP | D2 §8.1 | ADR, Pharmacies | PARTIAL — neutral wording; no error log yet | 10 | wording review | wording (fa) |
+| P-05 | Dispensing safety practices (counselling, barcodes, history/reconciliation) | SUPP | D2 §5.2–5.4 | Pharmacies, ProductTrace | NOT STARTED (the dispensing-error log, Phase 10, records errors; it does not implement counselling or barcode practices) | later | — | clinical review |
+| P-06 | LASA names/packaging are a medication-error risk | SUPP | D2 §7.3 | Pharmacies (product concern "labelling or naming" — provisional intake label) | PARTIAL (Phase 10): a provisional concern type exists; no LASA workflow | later | Phase10Tests (provisional types) | clinical review |
+| P-07 | Shortages/recalls create risks | SUPP | D2 §5.1 | ProductTrace | NOT STARTED (no shortage/recall workflow) | later | — | — |
+| P-08 | Blame-free culture and error reporting/learning | SUPP | D2 §8.1 | ADR, Pharmacies | PARTIAL (Phase 10): neutral wording, internal log for review and learning, no regulatory framing | later (learning loop, analytics) | notice tests | wording (fa) |
 | P-09 | GenAI/LLMs untested prospectively; hallucination and outdated info are limits | SUPP | D3 abstract/discussion | AI, ADR | DONE — no model used; reason recorded | any AI add-on needs validation first | assistance tests | **BLOCKED** for any real model |
 | P-10 | Spontaneous reports do not prove causality/incidence | SUPP (unverified) | D4 sheet 2 | ADR | DONE (matches E-07 independently) | — | notice tests | verify D4 provenance |
 | D-def-1 | Definitions of ADR, AE, ADE, ME, near miss | SUPP | D1 glossary p.xiii; D2 §1.1 pp.6–7 (printed) | ADR | DONE — quoted in `AdrDefinitions`, cited, **not** attributed to slides | — | definitions tests | re-check page numbers against originals; fa wording |
@@ -42,9 +42,9 @@ Companion to [`pharmacovigilance-source-analysis.md`](pharmacovigilance-source-a
 | I-04 | Show reporter role; never merge patient and professional accounts | DESIGN (supported by E-05) | — | ADR | DONE | — | voice-separation tests | — |
 | I-05 | Patient awareness text about reporting | DESIGN | — | web | PARTIAL (short page text) | later | UI test | clinical + wording review |
 | I-06 | AI strictly assistive, excluded from category/seriousness/causality | DESIGN | — | ADR, AI | DONE | — | assistance tests | — |
-| I-07 | Dispensing-error / near-miss internal log, blame-free | DESIGN (basis D2 §5.2.1) | — | Pharmacies | NOT STARTED | 10 | — | clinical review |
-| I-08 | Product concern intake linked to batch/lot | DESIGN | — | ProductTrace | NOT STARTED | 10 | — | — |
-| I-09 | Counselling / medication-history prompts | DESIGN | — | Pharmacies | NOT STARTED | 10 | — | clinical review |
+| I-07 | Dispensing-error / near-miss internal log, blame-free | DESIGN (basis D2 §5.2.1, §1.1) | — | Pharmacies | **DONE (Phase 10)** | — | Phase10Tests, Phase10ApiTests, phase10.test.tsx, phase10-qa | clinical review of pairing rule and tags; fa wording |
+| I-08 | Product concern intake linked to batch/lot | DESIGN | — | Pharmacies, ProductTrace | **DONE (Phase 10)** — linked snapshot or flagged unmatched; no defect claim | — | link/unmatched/mismatch tests | clinical + regulatory review of types |
+| I-09 | Counselling / medication-history prompts | DESIGN | — | Pharmacies | NOT STARTED | later | — | clinical review |
 | I-10 | Reporting adapter, **mock only** until an authoritative spec | DESIGN | — | Integrations | NOT STARTED | later | — | **BLOCKED** |
 | I-11 | De-identified aggregate analytics for signals as hypotheses | DESIGN | — | Analytics | NOT STARTED | later | — | **BLOCKED**: privacy, clinical |
 | I-12 | Source provenance tags in the knowledge base | DESIGN | — | KnowledgeBase | PARTIAL — provenance recorded on definitions; no KB integration | later | definitions tests | — |
@@ -62,4 +62,13 @@ Companion to [`pharmacovigilance-source-analysis.md`](pharmacovigilance-source-a
 | Q-10 | Persian terms for ADR/AE/ADE/ME/near miss, named reviewer | OPEN/BLOCKED | — | i18n | all fa wording `AwaitingClinicalReview` | — | wording-status test | named qualified reviewer |
 | Q-11 | Permission to reuse slide figures | OPEN | — | — | none reused | — | — | — |
 | N-01 | Retention/DPIA for adverse-event records | BLOCKED | — | — | NOT STARTED | before any pilot | — | privacy/legal |
-| N-02 | Emergency / urgent escalation path | BLOCKED | — | Guidance | NOT STARTED — **page states it sends no urgent alerts**; no emergency criteria invented | proposed Phase 11+ | notice test | clinical + product decision |
+| N-02 | Emergency / urgent escalation path | BLOCKED | — | Guidance | NOT STARTED — Phase 9 and 10 pages state they send no urgent alerts; no emergency criteria invented | proposed Phase 11+ | notice test | clinical + product decision |
+| D-def-3 | Eight example dispensing errors (FIP §5.2.1, introduced by "For example:") | SUPP | D2 §5.2.1, list on printed p. 29 (page numbers to be re-checked) | Pharmacies (`PharmacyDefinitions.Examples`) | DONE (Phase 10) — optional tags, cited, **not** called official or complete | — | examples test | re-check pages against the PDF; fa wording |
+| D-def-4 | Near miss definition reused for the near-miss kind | SUPP | D2 §1.1 | Pharmacies | DONE (Phase 10) | — | definition test | fa wording |
+| I-16 | Reached-the-patient yes/no/unknown paired with kind (near miss never "yes"; error never "no") | DESIGN | — | Pharmacies | DONE (Phase 10) | — | near-miss/error tests | clinical review |
+| I-17 | Product concern keeps typed identifiers as typed; flags differences from a linked record; never chooses | DESIGN | — | Pharmacies | DONE (Phase 10) | — | linked/unmatched tests | — |
+| I-18 | Manufacturer-report **human note** on a concern; creates/queues/sends nothing | DESIGN | — | Pharmacies, ProductTrace (unchanged) | DONE (Phase 10) | pharmacy-initiated report: later | outbox-unchanged tests (service + HTTP) | **BLOCKED**: legal, agreement, spec |
+| I-19 | ADR record carries dose/administration as reported and concomitant medicines (separate from suspected) | DESIGN | — | ADR | DONE (combined session) | — | Phase 9 extension tests | clinical review of field set |
+| I-20 | Pharmacy records are organization-scoped; a link to a patient's records needs that patient's own relationship + consent | DESIGN | — | Pharmacies, Identity, Consent | DONE (Phase 10) | picker UI later | cross-organization and link tests | privacy review (retained snapshot) |
+| Q-12 | Pharmacy's role and pathway for reporting dispensing errors / product concerns in Iran | OPEN | none supplied | — | NOT STARTED | — | — | authoritative document |
+| Q-13 | Taxonomy for product-quality defect / substandard / falsified / lack of effect | OPEN | none supplied | — | provisional labels only | — | provisional-label test | authoritative taxonomy |

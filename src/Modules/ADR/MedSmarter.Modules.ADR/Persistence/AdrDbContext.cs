@@ -24,6 +24,9 @@ public sealed class AdverseEventRow
     public string? OutcomeAsStated { get; set; }
     public string? AdditionalDetails { get; set; }
     public string SuspectedMedicationsJson { get; set; } = "[]";
+    /// <summary>Phase 9 (additive): dose/route as reported, and other medicines named. Part of the original report: written once.</summary>
+    public string? DoseAndAdministrationAsReported { get; set; }
+    public string ConcomitantMedicationsJson { get; set; } = "[]";
 
     // ---- current review state (the only mutable part) ----
     public EventCategory Category { get; set; } = EventCategory.Unclassified;
@@ -77,6 +80,8 @@ public sealed class AdrDbContext(DbContextOptions<AdrDbContext> options) : DbCon
             e.Property(x => x.OutcomeAsStated).HasMaxLength(500);
             e.Property(x => x.AdditionalDetails).HasMaxLength(2000);
             e.Property(x => x.SuspectedMedicationsJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.DoseAndAdministrationAsReported).HasMaxLength(500);
+            e.Property(x => x.ConcomitantMedicationsJson).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb").IsRequired();
             e.Property(x => x.Version).IsConcurrencyToken();
             e.HasIndex(x => new { x.SubjectId, x.ReportedAt });
             e.HasIndex(x => new { x.Status, x.LastActivityAt });

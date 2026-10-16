@@ -321,6 +321,37 @@ public class Phase9Tests
         Assert.True(AdverseEventService.MoveAllowed(ReviewStatus.InReview, ReviewStatus.Assessed));
     }
 
+    [Fact]
+    public async Task Dose_and_other_medicines_are_kept_as_reported_unknown_stays_unknown_and_not_named_is_not_none_taken()
+    {
+        var (env, svc, sara, doctor) = await Setup();
+        using var _ = env;
+        var bare = (await svc.CreateAsync(sara, ReporterRole.Patient, sara, Report(), "test", null)).Value!.Event;
+        Assert.Contains("dose.not_stated", bare.MissingInformation);
+        Assert.Contains("concomitant.not_stated", bare.MissingInformation);
+        Assert.Empty(bare.ConcomitantMedications);
+        var help = (await svc.AssistAsync(doctor, ReporterRole.Physician, bare.Id, "test", null)).Value!;
+        Assert.Contains(help.Summary, l => l.Text.Contains("none named (this is not the same as none taken)", StringComparison.Ordinal));
+
+        var mine = await env.TakeMedication(sara);
+        var theirs = await env.TakeMedication(await env.Patient("demo-patient-2"));
+        var full = (await svc.CreateAsync(sara, ReporterRole.Patient, sara, Report(cid: "d-1") with { DoseAndAdministrationAsReported = "one tablet in the morning, I think", ConcomitantMedications = [new(mine.Id, null), new(null, "a herbal tea")] }, "test", null)).Value!.Event;
+        Assert.Equal("one tablet in the morning, I think", full.Original.DoseAndAdministrationAsReported);
+        Assert.Equal(2, full.ConcomitantMedications.Count);
+        Assert.Equal(MedicationReferenceState.Linked, full.ConcomitantMedications[0].State);
+        Assert.Equal(MedicationReferenceState.ReportedNameOnly, full.ConcomitantMedications[1].State);
+        Assert.DoesNotContain("dose.not_stated", full.MissingInformation);
+        Assert.DoesNotContain("concomitant.not_stated", full.MissingInformation);
+        // concomitant medicines are not "suspected": the two lists are separate, and the other patient's record can never be linked
+        Assert.Empty(full.SuspectedMedications);
+        Assert.Equal("medication.not_found", (await svc.CreateAsync(sara, ReporterRole.Patient, sara, Report() with { ConcomitantMedications = [new(theirs.Id, null)] }, "test", null)).Detail);
+        Assert.Contains("concomitant.too_many", (await svc.CreateAsync(sara, ReporterRole.Patient, sara, Report() with { ConcomitantMedications = [.. Enumerable.Range(0, 11).Select(i => new SuspectedMedicationInput(null, "m" + i))] }, "test", null)).Detail ?? "");
+        Assert.Contains("dose.too_long", (await svc.CreateAsync(sara, ReporterRole.Patient, sara, Report() with { DoseAndAdministrationAsReported = new string('x', 501) }, "test", null)).Detail ?? "");
+        // the original (including the dose text) never changes afterwards
+        await svc.AddFollowUpAsync(sara, ReporterRole.Patient, full.Id, "More later", "test", null);
+        Assert.Equal(full.Original, (await svc.GetAsync(full.Id, ReporterRole.Physician)).Value!.Event.Original);
+    }
+
     [PostgresFact]
     public async Task On_PostgreSQL_records_and_their_history_survive_a_restart_and_the_unique_request_id_holds()
     {

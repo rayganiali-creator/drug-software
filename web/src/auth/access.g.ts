@@ -74,6 +74,9 @@ export const permissions = {
   clinicalrulesReview: "clinicalrules.review",
   clinicalrulesRetire: "clinicalrules.retire",
   adrRecordCreate: "adr.record.create",
+  pharmacySafetyCreate: "pharmacy.safety.create",
+  pharmacySafetyRead: "pharmacy.safety.read",
+  pharmacySafetyReview: "pharmacy.safety.review",
 } as const;
 export type Permission = (typeof permissions)[keyof typeof permissions];
 

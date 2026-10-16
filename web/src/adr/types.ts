@@ -17,9 +17,10 @@ export interface SuspectedMedicationInput { patientMedicationId: string | null; 
 export interface FieldValue<T> { value: T | null; provenance: string; entryId: string | null }
 export interface AdverseEvent {
   id: string; subjectId: string; reporterRole: ReporterRole; origin: ReportOrigin; reportedAt: string;
-  original: { eventDescription: string; onsetAt: string | null; resolvedAt: string | null; outcomeAsStated: string | null; additionalDetails: string | null };
+  original: { eventDescription: string; onsetAt: string | null; resolvedAt: string | null; outcomeAsStated: string | null; additionalDetails: string | null; doseAndAdministrationAsReported: string | null };
   effective: { onsetAt: FieldValue<string>; resolvedAt: FieldValue<string>; outcomeAsStated: FieldValue<string> };
   suspectedMedications: SuspectedMedication[];
+  concomitantMedications: SuspectedMedication[];
   /** Null when the viewer is the patient. */
   category: EventCategory | null; status: ReviewStatus; missingInformation: string[]; lastActivityAt: string; version: number;
   signalNotice: string; internalRecordNotice: string; externalStatus: string; persianWordingStatus: string;
@@ -36,4 +37,4 @@ export interface Assistance {
 }
 export interface Definition { category: EventCategory; term: string; definition: string; source: { document: string; section: string; page: string; kind: string; isLectureSlide: boolean }; note: string; persianWordingStatus: string }
 export interface Definitions { definitions: Definition[]; signalNotice: string; internalRecordNotice: string; persianWordingStatus: string }
-export interface CreateInput { eventDescription: string; onsetAt: string | null; resolvedAt: string | null; suspectedMedications: SuspectedMedicationInput[]; outcomeAsStated: string | null; additionalDetails: string | null; clientRequestId: string }
+export interface CreateInput { eventDescription: string; onsetAt: string | null; resolvedAt: string | null; suspectedMedications: SuspectedMedicationInput[]; outcomeAsStated: string | null; additionalDetails: string | null; clientRequestId: string; doseAndAdministrationAsReported: string | null; concomitantMedications: SuspectedMedicationInput[] }

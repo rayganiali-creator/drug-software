@@ -50,6 +50,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("reportreviews", "inbox"),
     n("care", "users"),
     n("rules", "clipboard"),
+    n("safety-log", "clipboard"),
+    n("product-concerns", "box"),
     n("drugs", "bookOpen"),
   ],
   pharmacy: [
@@ -59,6 +61,8 @@ export const navByRole: Record<Role, NavItem[]> = {
     n("dispensing", "truck"),
     n("requests", "inbox"),
     n("alerts", "bell"),
+    n("safety-log", "clipboard"),
+    n("product-concerns", "box"),
     n("drugs", "bookOpen"),
   ],
   admin: [{ ...n("home", "shield", true), labelKey: "role.admin" }, n("queue", "truck")],

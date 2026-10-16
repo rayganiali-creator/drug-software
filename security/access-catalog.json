@@ -426,6 +426,21 @@
       "kind": "subject",
       "description": "Enter an internal adverse-event record for a patient (professional-entered, for human review; not a regulatory report)",
       "dataScope": "adr"
+    },
+    {
+      "name": "pharmacy.safety.create",
+      "kind": "organization",
+      "description": "Record an internal dispensing error, near miss or product concern in the caller's pharmacy organization"
+    },
+    {
+      "name": "pharmacy.safety.read",
+      "kind": "organization",
+      "description": "Read the internal pharmacy safety records of the caller's pharmacy organization"
+    },
+    {
+      "name": "pharmacy.safety.review",
+      "kind": "organization",
+      "description": "Review, follow up and close internal pharmacy safety records of the caller's pharmacy organization"
     }
   ],
   "roles": [
@@ -538,7 +553,10 @@
         "safety.assess.read",
         "clinicalrules.read",
         "clinicalrules.review",
-        "adr.record.create"
+        "adr.record.create",
+        "pharmacy.safety.create",
+        "pharmacy.safety.read",
+        "pharmacy.safety.review"
       ]
     },
     {
@@ -555,7 +573,10 @@
         "org.manage",
         "session.read",
         "session.revoke",
-        "medication.read"
+        "medication.read",
+        "pharmacy.safety.create",
+        "pharmacy.safety.read",
+        "pharmacy.safety.review"
       ]
     },
     {

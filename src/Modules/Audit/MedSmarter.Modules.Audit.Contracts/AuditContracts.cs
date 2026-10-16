@@ -32,6 +32,12 @@ public static class AuditActions
     public const string AdrClassified = "ADR_CLASSIFIED";
     public const string AdrStatusChanged = "ADR_STATUS_CHANGED";
     public const string AdrAssistanceGenerated = "ADR_ASSISTANCE_GENERATED";
+    public const string PharmacySafetyEventCreated = "PHARMACY_SAFETY_EVENT_CREATED";
+    public const string PharmacySafetyEntryAdded = "PHARMACY_SAFETY_ENTRY_ADDED";
+    public const string PharmacySafetyStatusChanged = "PHARMACY_SAFETY_STATUS_CHANGED";
+    public const string ProductConcernCreated = "PRODUCT_CONCERN_CREATED";
+    public const string ProductConcernReportProposed = "PRODUCT_CONCERN_REPORT_PROPOSED";
+    public const string PharmacySafetyAccessed = "PHARMACY_SAFETY_ACCESSED";
     public const string AccessDenied = "ACCESS_DENIED";
     public const string AdminAction = "ADMIN_ACTION";
     public const string AuditRead = "AUDIT_READ";

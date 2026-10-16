@@ -76,6 +76,9 @@ abstract final class Permissions {
   static const clinicalrulesReview = 'clinicalrules.review';
   static const clinicalrulesRetire = 'clinicalrules.retire';
   static const adrRecordCreate = 'adr.record.create';
+  static const pharmacySafetyCreate = 'pharmacy.safety.create';
+  static const pharmacySafetyRead = 'pharmacy.safety.read';
+  static const pharmacySafetyReview = 'pharmacy.safety.review';
 }
 
 abstract final class RoleNames {
