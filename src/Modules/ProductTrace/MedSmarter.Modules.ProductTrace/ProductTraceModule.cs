@@ -15,6 +15,8 @@ public sealed class ProductTraceModule : IModule
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<ManufacturerReportsOptions>(configuration.GetSection(ManufacturerReportsOptions.Section));
+        services.Configure<IndustryInsightsOptions>(configuration.GetSection(IndustryInsightsOptions.Section));
+        services.AddSingleton<IIndustryInsightsService, IndustryInsightsService>();
         services.TryAddSingleton<IClock, SystemClock>();
         services.AddModuleDatabase<ProductTraceDbContext>(configuration, ProductTraceDbContext.Schema);
         services.AddSingleton<IProductTraceService, ProductTraceService>();

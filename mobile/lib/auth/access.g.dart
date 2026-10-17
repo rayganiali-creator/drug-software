@@ -26,6 +26,7 @@ abstract final class Permissions {
   static const pharmacyAlertsRead = 'pharmacy.alerts.read';
   static const orgRead = 'org.read';
   static const orgManage = 'org.manage';
+  static const industryInsightsRead = 'industry.insights.read';
   static const analyticsRead = 'analytics.read';
   static const signalsRead = 'signals.read';
   static const researchDatasetRequest = 'research.dataset.request';

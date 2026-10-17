@@ -28,6 +28,7 @@ public static class Permissions
     public const string PharmacyAlertsRead = "pharmacy.alerts.read";
     public const string OrgRead = "org.read";
     public const string OrgManage = "org.manage";
+    public const string IndustryInsightsRead = "industry.insights.read";
     public const string AnalyticsRead = "analytics.read";
     public const string SignalsRead = "signals.read";
     public const string ResearchDatasetRequest = "research.dataset.request";

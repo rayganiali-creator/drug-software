@@ -38,6 +38,7 @@ public static class AuditActions
     public const string ProductConcernCreated = "PRODUCT_CONCERN_CREATED";
     public const string ProductConcernReportProposed = "PRODUCT_CONCERN_REPORT_PROPOSED";
     public const string PharmacySafetyAccessed = "PHARMACY_SAFETY_ACCESSED";
+    public const string IndustryInsightsAccessed = "INDUSTRY_INSIGHTS_ACCESSED";
     public const string AccessDenied = "ACCESS_DENIED";
     public const string AdminAction = "ADMIN_ACTION";
     public const string AuditRead = "AUDIT_READ";

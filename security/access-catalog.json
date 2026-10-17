@@ -164,6 +164,11 @@
       "description": "Manage an organization"
     },
     {
+      "name": "industry.insights.read",
+      "kind": "organization",
+      "description": "Read the aggregate, suppressed report counts for the manufacturer(s) linked to the caller's own organization"
+    },
+    {
       "name": "analytics.read",
       "kind": "aggregate",
       "description": "Read aggregate, de-identified analytics"
@@ -588,6 +593,7 @@
       "name": "PharmaceuticalCompany",
       "description": "Pharmaceutical industry user: aggregate data only",
       "permissions": [
+        "industry.insights.read",
         "analytics.read",
         "signals.read",
         "org.read",

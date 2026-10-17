@@ -11,7 +11,13 @@ import "../features.css";
 function AggregateBanner() {
   const { t, fmt } = useI18n();
   const { analytics } = useServices();
-  return <div className="banner-agg" role="note"><span>{t("ind.aggregate", { k: fmt.number(analytics.k()) })}</span></div>;
+  return (
+    <div className="banner-agg" role="note">
+      <Badge tone="warning" icon="alertTriangle">{t("demo.badge")}</Badge>
+      <span>{t("ind.demoOnly")}</span>
+      <span>{t("ind.aggregate", { k: fmt.number(analytics.k()) })}</span>
+    </div>
+  );
 }
 
 /** k-anonymity: cells below k are never shown as numbers. */

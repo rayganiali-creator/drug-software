@@ -69,6 +69,7 @@ export const navByRole: Record<Role, NavItem[]> = {
   workspace: [{ ...n("home", "grid", true), labelKey: "role.workspace" }, n("drugs", "bookOpen"), n("rules", "clipboard")],
   industry: [
     { ...n("home", "chartBar", true), labelKey: "nav.analytics" },
+    n("insights", "fileText"),
     n("adr-trends", "trendUp"),
     n("experience", "heart"),
     n("signals", "activity"),

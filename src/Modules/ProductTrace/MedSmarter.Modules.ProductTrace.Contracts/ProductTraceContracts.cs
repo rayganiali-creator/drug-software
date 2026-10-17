@@ -311,3 +311,38 @@ public interface IManufacturerReportProvider
     /// <param name="idempotencyKey">Stable per report: sending the same key twice must not create two reports at the receiver.</param>
     Task<ReportSubmissionResult> SubmitAsync(ManufacturerReportPayload payload, string idempotencyKey, CancellationToken ct = default);
 }
+
+// ---------- industry insights (Phase 15) ----------
+
+/// <summary>Real: reports whose delivery was not simulated and whose records are not demo data. SimulatedOrDemo: everything else. The two are never added together.</summary>
+public enum InsightBasis
+{
+    Real,
+    SimulatedOrDemo,
+}
+
+/// <summary>One row of an aggregate table. A suppressed cell carries no number at all.</summary>
+public sealed record InsightCell(string Key, string? Label, int? Reports, bool Suppressed);
+
+/// <summary>
+/// Counts of patient-submitted product-quality reports that were sent to the manufacturer(s) linked to the organization, grouped by one attribute at a time.
+/// Contains no patient, batch, free text, date of birth or exact date; cells below the threshold are suppressed. Not an incidence, not evidence of a defect or of causation.
+/// </summary>
+public sealed record IndustryInsightsDto(
+    Guid OrganizationId,
+    DateOnly From,
+    DateOnly Until,
+    InsightBasis Basis,
+    bool Linked,
+    int MinCellSize,
+    bool ProductsTruncated,
+    IReadOnlyList<InsightCell> ByProduct,
+    IReadOnlyList<InsightCell> ByIssueType,
+    IReadOnlyList<InsightCell> BySeverity,
+    IReadOnlyList<InsightCell> ByMonth);
+
+public interface IIndustryInsightsService
+{
+    /// <summary>The aggregate for the manufacturer(s) linked to the organization. The caller has already proven membership of <paramref name="organizationId"/>.</summary>
+    Task<TraceOutcome<IndustryInsightsDto>> GetAsync(Guid organizationId, DateOnly windowStart, DateOnly windowEnd, InsightBasis basis, CancellationToken ct = default);
+}

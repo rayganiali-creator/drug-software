@@ -24,6 +24,7 @@ export const permissions = {
   pharmacyAlertsRead: "pharmacy.alerts.read",
   orgRead: "org.read",
   orgManage: "org.manage",
+  industryInsightsRead: "industry.insights.read",
   analyticsRead: "analytics.read",
   signalsRead: "signals.read",
   researchDatasetRequest: "research.dataset.request",

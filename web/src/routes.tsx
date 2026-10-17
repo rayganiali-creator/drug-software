@@ -157,6 +157,7 @@ export const routes: RouteObject[] = [
         path: "industry", element: guarded("industry", "industry"),
         children: [
             { index: true, ...page(() => import("./features/industry/Industry"), "IndustryOverview") },
+            { path: "insights", ...page(() => import("./features/industry/Insights"), "IndustryInsightsPage") },
             { path: "adr-trends", ...page(() => import("./features/industry/Industry"), "IndustryAdrTrends") },
             { path: "experience", ...page(() => import("./features/industry/Industry"), "IndustryExperience") },
             { path: "signals", ...page(() => import("./features/industry/Industry"), "IndustrySignals") },
