@@ -149,7 +149,8 @@ class OfflineQueue extends ChangeNotifier {
   Future<SubmitResult> submitIntake(RecordsClient api, Json slot, String status) async {
     final queuedAt = _now();
     try {
-      await api.logIntake(slot, status, clientRecordedAt: queuedAt);
+      // No client time on a live report: a phone clock that runs behind would make the server treat a correction as older than the record it just saved.
+      await api.logIntake(slot, status);
       _drop(slotKeyOf(slot)); // a newer online report supersedes an older queued one
       return SubmitResult.synced;
     } on RecordsException catch (e) {

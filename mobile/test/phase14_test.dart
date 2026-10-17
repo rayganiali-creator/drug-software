@@ -62,10 +62,19 @@ void main() {
   OfflineQueue make({int max = 50, int attempts = 5}) =>
       OfflineQueue(prefs: prefs, now: () => now, maxItems: max, maxAttempts: attempts)..bind('user-1');
 
-  test('online: sent at once, nothing queued, client time travels with the report', () async {
+  test('online: sent at once, nothing queued, and no client time is sent (a skewed phone clock must not turn a live correction into a conflict)', () async {
     final q = make();
     expect(await q.submitIntake(api, slot, 'Taken'), SubmitResult.synced);
     expect(q.ops, isEmpty);
+    expect(server.received.single.containsKey('clientRecordedAt'), isFalse);
+  });
+
+  test('a replay carries the time the person made the report', () async {
+    final q = make();
+    server.online = false;
+    await q.submitIntake(api, slot, 'Taken');
+    server.online = true;
+    await q.sync(api);
     expect(server.received.single['clientRecordedAt'], '2026-10-17T06:00:00.000Z');
   });
 

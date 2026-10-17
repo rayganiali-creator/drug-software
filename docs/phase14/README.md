@@ -25,8 +25,9 @@ adverse-event reports, consent, messages) needs the server and shows its "not co
 holds a **different** status for that dose whose `RecordedAt` is later than `ClientRecordedAt`, it answers
 `409 intake.newer_record_exists` and changes nothing. The app moves the operation to `conflict` and the person decides
 ("Keep the saved record" discards the queued report). A report older than nothing, the same report, or a genuinely newer client
-decision follows the normal rules (idempotent / versioned correction). Online reports also send `ClientRecordedAt`, so a
-slow request cannot silently override a newer one from another device.
+decision follows the normal rules (idempotent / versioned correction). Only **replays** of queued reports send
+`ClientRecordedAt`; a live report does not (found in the post-Phase-15 review: a phone clock running behind would have made
+the server treat a live correction as older than the record it had just saved).
 
 Limits: the comparison trusts the device clock for `ClientRecordedAt`; a wrong device clock can mis-order two reports. The
 conflict is surfaced, never resolved automatically in either direction beyond this rule.
