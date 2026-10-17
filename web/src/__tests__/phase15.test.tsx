@@ -21,7 +21,7 @@ function open(reply: (p: string) => Response, account = "demo-industry", locale:
 }
 const cell = (key: string, reports: number | null, label: string | null = null) => ({ key, label, reports, suppressed: reports === null });
 const insights = (over: Record<string, unknown> = {}) => ({
-  organizationId: "o", from: "2026-07-01", until: "2026-09-30", basis: "Real", linked: true, minCellSize: 5, productsTruncated: false,
+  organizationId: "o", from: "2026-07-01", until: "2026-09-30", period: "2026-Q3", availablePeriods: ["2026-Q3", "2026-Q2"], basis: "Real", linked: true, minCellSize: 5, productsTruncated: false,
   byProduct: [cell("m1", 8, "Demopril"), cell("unregistered", null)], byIssueType: [cell("QualityProblem", 12), cell("Other", null)], bySeverity: [cell("Mild", 12)], byMonth: [cell("2026-09", 12)], ...over,
 });
 
@@ -37,9 +37,9 @@ describe("industry report counts", () => {
     expect(screen.getByText(/not proof of a defect/)).toBeInTheDocument();
     expect(screen.getAllByText("fewer than 5").length).toBe(2);
     expect(screen.getByText("Products not in the reference (names not shown)")).toBeInTheDocument();
-    expect(paths[0]).toMatch(/^\/organizations\/[^/]+\/industry\/insights\?basis=Real&from=\d{4}-\d{2}-\d{2}&until=\d{4}-\d{2}-\d{2}$/);
+    expect(paths[0]).toMatch(/^\/organizations\/[^/]+\/industry\/insights\?basis=Real$/); // the server picks the newest closed quarter; the client sends no date range
     expect(screen.queryByText(/Simulated or demo data/)).toBeNull();
-    expect(screen.getByText("Period shown: 2026-07-01 to 2026-09-30")).toBeInTheDocument();
+    expect(screen.getByText("Period 2026-Q3: 2026-07-01 to 2026-09-30")).toBeInTheDocument();
     expect(screen.getByText(/also hidden so that hidden groups cannot be worked out/)).toBeInTheDocument();
   });
 
@@ -49,6 +49,14 @@ describe("industry report counts", () => {
     await userEvent.selectOptions(screen.getByLabelText("Data"), "SimulatedOrDemo");
     await waitFor(() => expect(screen.getByText("Simulated or demo data")).toBeInTheDocument());
     expect(paths.some((p) => p.includes("basis=SimulatedOrDemo"))).toBe(true);
+  });
+
+  it("offers fixed quarters only (no date inputs) and asks the server for the chosen one", async () => {
+    const paths = open(() => json(200, insights()));
+    await waitFor(() => expect(screen.getByText("Demopril")).toBeInTheDocument());
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    await userEvent.selectOptions(screen.getByLabelText("Quarter"), "2026-Q2");
+    await waitFor(() => expect(paths.some((p) => p.includes("period=2026-Q2"))).toBe(true));
   });
 
   it("says plainly when the organization is not linked, and shows nothing else", async () => {

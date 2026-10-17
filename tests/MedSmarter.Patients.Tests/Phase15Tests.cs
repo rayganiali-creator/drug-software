@@ -18,7 +18,7 @@ public class Phase15Tests
     private static readonly Guid Med1 = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
 
     internal static async Task Seed(IDbContextFactory<ProductTraceDbContext> factory, Guid maker, Guid? med, int reports, int reporters, ReportIssueType issue = ReportIssueType.QualityProblem,
-        bool mock = false, bool demo = false, ReportStatus status = ReportStatus.Sent, DateOnly? on = null, string product = "Reference product")
+        bool mock = false, bool demo = false, ReportStatus status = ReportStatus.Sent, DateOnly? on = null, string product = "Reference product", DateTimeOffset? sentAt = null)
     {
         await using var db = await factory.CreateDbContextAsync();
         var patients = Enumerable.Range(0, reporters).Select(_ => Guid.NewGuid()).ToList();
@@ -30,7 +30,7 @@ public class Phase15Tests
             db.Reports.Add(new ReportRow
             {
                 Id = Guid.NewGuid(), Reference = Guid.NewGuid().ToString("N")[..20], PatientId = pid, ProductRecordId = prod.Id, Status = status, IssueType = issue, Severity = ReportSeverity.Mild,
-                OccurredOn = on ?? new DateOnly(2026, 9, 10), Description = "free text that must never be returned", IsMockDelivery = mock, IsDemo = demo, CreatedBy = pid,
+                OccurredOn = on ?? new DateOnly(2026, 9, 10), SentAt = sentAt ?? new DateTimeOffset((on ?? new DateOnly(2026, 9, 10)).ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero), Description = "free text that must never be returned", IsMockDelivery = mock, IsDemo = demo, CreatedBy = pid,
             });
         }
 
@@ -42,9 +42,6 @@ public class Phase15Tests
         [$"IndustryInsights:Organizations:{Org}:0"] = Maker.ToString(),
         ["IndustryInsights:MinCellSize"] = (k ?? 5).ToString(System.Globalization.CultureInfo.InvariantCulture),
     });
-
-    private static readonly DateOnly From = new(2026, 7, 1);
-    private static readonly DateOnly Until = new(2026, 9, 30);
 
     [Fact]
     public void The_disclosure_rule_hides_small_cells_and_small_reporter_counts_and_orders_by_name_not_size()
@@ -63,7 +60,7 @@ public class Phase15Tests
     public async Task An_organization_with_no_link_sees_nothing_and_a_linked_one_sees_only_its_own_manufacturers_reports()
     {
         using var unlinked = new PEnv();
-        var none = (await unlinked.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!;
+        var none = (await unlinked.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.Real)).Value!;
         Assert.False(none.Linked);
         Assert.Empty(none.ByIssueType);
 
@@ -71,7 +68,7 @@ public class Phase15Tests
         var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
         await Seed(f, Maker, Med1, 6, 6);
         await Seed(f, OtherMaker, Med1, 30, 30); // another manufacturer: never visible
-        var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!;
+        var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.Real)).Value!;
         Assert.True(r.Linked);
         Assert.Equal(6, r.ByIssueType.Single().Reports);
         Assert.Equal(6, r.ByProduct.Single().Reports);
@@ -89,7 +86,7 @@ public class Phase15Tests
         await Seed(f, Maker, Med1, 3, 3, issue: ReportIssueType.ApparentLackOfEffect);
         await Seed(f, Maker, Med1, 40, 40, issue: ReportIssueType.Other); // a larger visible group, so only the smallest visible one is sacrificed
         await Seed(f, Maker, Med1, 20, 20, status: ReportStatus.Draft);
-        var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!;
+        var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.Real)).Value!;
         var json = JsonSerializer.Serialize(r);
         Assert.DoesNotContain("herbal", json, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET-BATCH", json, StringComparison.Ordinal);
@@ -113,32 +110,40 @@ public class Phase15Tests
         await Seed(f, Maker, Med1, 9, 9, mock: true);
         await Seed(f, Maker, Med1, 11, 11, demo: true);
         var svc = env.Get<IIndustryInsightsService>();
-        Assert.Equal(6, (await svc.GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
-        var sim = (await svc.GetAsync(Guid.Parse(Org), From, Until, InsightBasis.SimulatedOrDemo)).Value!;
+        Assert.Equal(6, (await svc.GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+        var sim = (await svc.GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.SimulatedOrDemo)).Value!;
         Assert.Equal(20, sim.ByIssueType.Single().Reports);
         Assert.Equal(InsightBasis.SimulatedOrDemo, sim.Basis);
     }
 
     [Fact]
-    public async Task The_window_is_bounded_and_the_threshold_cannot_be_configured_below_the_floor()
+    public async Task Only_closed_quarters_can_be_asked_for_and_the_threshold_cannot_be_configured_below_the_floor()
     {
         using var env = Env(k: 1);
         var svc = env.Get<IIndustryInsightsService>();
-        Assert.Equal(3, (await svc.GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!.MinCellSize);
-        Assert.Equal("window.too_short", (await svc.GetAsync(Guid.Parse(Org), Until.AddDays(-6), Until, InsightBasis.Real)).Detail);
-        Assert.Equal("window.too_long", (await svc.GetAsync(Guid.Parse(Org), Until.AddDays(-400), Until, InsightBasis.Real)).Detail);
-        Assert.Equal("basis.invalid", (await svc.GetAsync(Guid.Parse(Org), From, Until, (InsightBasis)99)).Detail);
+        var ok = (await svc.GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.Real)).Value!;
+        Assert.Equal(3, ok.MinCellSize);
+        Assert.Equal("2026-Q3", ok.Period);
+        Assert.Equal(new DateOnly(2026, 7, 1), ok.From);
+        Assert.Equal(new DateOnly(2026, 9, 30), ok.Until);
+        Assert.Equal("2026-Q3", (await svc.GetAsync(Guid.Parse(Org), null, InsightBasis.Real)).Value!.Period); // default: the newest closed quarter
+        Assert.Equal("period.not_closed", (await svc.GetAsync(Guid.Parse(Org), "2026-Q4", InsightBasis.Real)).Detail); // still running
+        Assert.Equal("period.invalid", (await svc.GetAsync(Guid.Parse(Org), "2026-07", InsightBasis.Real)).Detail);
+        Assert.Equal("period.invalid", (await svc.GetAsync(Guid.Parse(Org), "2026-Q5", InsightBasis.Real)).Detail);
+        Assert.Equal("period.too_old", (await svc.GetAsync(Guid.Parse(Org), "2020-Q1", InsightBasis.Real)).Detail);
+        Assert.Equal("basis.invalid", (await svc.GetAsync(Guid.Parse(Org), "2026-Q3", (InsightBasis)99)).Detail);
+        Assert.Equal(8, ok.AvailablePeriods.Count);
     }
 
     [Fact]
-    public async Task Reports_outside_the_window_and_in_other_months_are_grouped_by_month_without_exact_dates()
+    public async Task Reports_outside_the_quarter_are_not_counted_and_the_rest_are_grouped_by_month_sent_without_exact_dates()
     {
         using var env = Env();
         var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
         await Seed(f, Maker, Med1, 5, 5, on: new DateOnly(2026, 8, 3));
         await Seed(f, Maker, Med1, 5, 5, on: new DateOnly(2026, 9, 28));
         await Seed(f, Maker, Med1, 9, 9, on: new DateOnly(2026, 3, 1)); // outside
-        var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!;
+        var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), "2026-Q3", InsightBasis.Real)).Value!;
         Assert.Equal(["2026-08", "2026-09"], r.ByMonth.Select(c => c.Key));
     }
 }
@@ -152,6 +157,15 @@ public class Phase15DisclosureTests
         Assert.True(cells.Single(c => c.Key == "a").Suppressed);
         Assert.True(cells.Single(c => c.Key == "b").Suppressed); // 2 + 6 >= 5
         Assert.Equal(30, cells.Single(c => c.Key == "c").Reports);
+    }
+
+    [Fact]
+    public void A_single_group_hidden_for_having_few_reporters_is_never_the_only_hidden_group()
+    {
+        var cells = DisclosureRule.Apply([new("a", "A", 20, 2), new("b", "B", 40, 40), new("c", "C", 90, 90)], 5);
+        Assert.True(cells.Single(c => c.Key == "a").Suppressed);
+        Assert.True(cells.Single(c => c.Key == "b").Suppressed); // the next-smallest is hidden too, so "total minus visible" is 60, not 20
+        Assert.Equal(90, cells.Single(c => c.Key == "c").Reports);
     }
 
     [Theory]
@@ -183,6 +197,7 @@ public class Phase15DisclosureTests
             var hiddenSum = groups.Where(g => hiddenKeys.Contains(g.Key)).Sum(g => g.Reports);
             var everyVisibleExists = hiddenKeys.Count < groups.Count;
             Assert.True(hiddenSum >= 5 || !everyVisibleExists, $"run {run}: hidden sum {hiddenSum}");
+            Assert.True(hiddenKeys.Count >= 2 || !everyVisibleExists || groups.Count == 1, $"run {run}: a single hidden group would be recoverable by subtraction");
         }
     }
 }
@@ -194,46 +209,33 @@ public class Phase15WindowTests
     private static PEnv Env() => new(settings: new() { [$"IndustryInsights:Organizations:{Phase15Tests.Org}:0"] = Phase15Tests.Maker.ToString() });
 
     [Fact]
-    public async Task The_window_is_snapped_to_whole_closed_months_so_a_one_day_shift_changes_nothing()
+    public async Task A_quarter_is_published_only_after_the_closure_delay_and_never_changes_afterwards()
     {
-        using var env = Env(); // clock: 2026-10-09
+        using var env = Env(); // clock 2026-10-09; delay 7 days: Q3 closed on 2026-10-07
         var svc = env.Get<IIndustryInsightsService>();
-        var a = (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 15), new DateOnly(2026, 9, 20), InsightBasis.Real)).Value!;
-        var b = (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!;
-        var c = (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 16), new DateOnly(2026, 9, 21), InsightBasis.Real)).Value!;
-        Assert.Equal((new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30)), (a.From, a.Until));
-        Assert.Equal((b.From, b.Until), (a.From, a.Until));
-        Assert.Equal((b.From, b.Until), (c.From, c.Until));
-    }
-
-    [Fact]
-    public async Task The_month_that_is_still_filling_up_is_never_included_and_a_window_with_no_closed_month_is_refused()
-    {
-        using var env = Env();
         var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
-        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6, on: new DateOnly(2026, 10, 2)); // current month
         await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6, on: new DateOnly(2026, 9, 2));
-        var svc = env.Get<IIndustryInsightsService>();
-        var r = (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 31), InsightBasis.Real)).Value!;
-        Assert.Equal(new DateOnly(2026, 9, 30), r.Until);
-        Assert.Equal(6, r.ByIssueType.Single().Reports);
-        env.Clock.Advance(TimeSpan.FromDays(2)); // a later query on the same closed window must not move
-        Assert.Equal(6, (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 31), InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
-        Assert.Equal("window.no_closed_month", (await svc.GetAsync(OrgId, new DateOnly(2026, 10, 1), new DateOnly(2026, 11, 30), InsightBasis.Real)).Detail);
+        Assert.Equal(6, (await svc.GetAsync(OrgId, "2026-Q3", InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+
+        env.Clock.UtcNow = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero); // inside the delay: Q3 is not yet published
+        Assert.Equal("period.not_closed", (await svc.GetAsync(OrgId, "2026-Q3", InsightBasis.Real)).Detail);
+        Assert.Equal("2026-Q2", (await svc.GetAsync(OrgId, null, InsightBasis.Real)).Value!.Period);
+
+        env.Clock.UtcNow = new DateTimeOffset(2027, 3, 1, 0, 0, 0, TimeSpan.Zero); // months later: same answer
+        Assert.Equal(6, (await svc.GetAsync(OrgId, "2026-Q3", InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
     }
 
     [Fact]
-    public async Task Overlapping_queries_cannot_isolate_a_small_group_by_shifting_the_window_by_days()
+    public async Task Reports_are_placed_by_the_month_they_were_sent_so_a_late_one_lands_in_a_later_quarter()
     {
         using var env = Env();
         var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
-        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 3, 3, on: new DateOnly(2026, 9, 29)); // 3 reports at the very end of the window
-        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 30, 30, on: new DateOnly(2026, 8, 10));
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6, on: new DateOnly(2026, 8, 5));
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6, on: new DateOnly(2026, 8, 5), sentAt: new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.Zero)); // occurred in August, sent in October
         var svc = env.Get<IIndustryInsightsService>();
-        var wide = (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!;
-        var narrow = (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 28), InsightBasis.Real)).Value!; // "one day shorter" snaps to the same window
-        Assert.Equal(wide.ByMonth.Select(c => (c.Key, c.Reports)), narrow.ByMonth.Select(c => (c.Key, c.Reports)));
-        Assert.True(wide.ByMonth.Single(c => c.Key == "2026-09").Suppressed); // 3 < k
+        var q3 = (await svc.GetAsync(OrgId, "2026-Q3", InsightBasis.Real)).Value!;
+        Assert.Equal(6, q3.ByIssueType.Single().Reports);
+        Assert.Equal("2026-08", q3.ByMonth.Single().Key);
     }
 
     [Fact]
@@ -249,8 +251,8 @@ public class Phase15WindowTests
         await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6);
         await Phase15Tests.Seed(f, Phase15Tests.OtherMaker, null, 9, 9);
         var svc = env.Get<IIndustryInsightsService>();
-        Assert.Equal(6, (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
-        Assert.Equal(9, (await svc.GetAsync(Guid.Parse(otherOrg), new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+        Assert.Equal(6, (await svc.GetAsync(OrgId, "2026-Q3", InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+        Assert.Equal(9, (await svc.GetAsync(Guid.Parse(otherOrg), "2026-Q3", InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
     }
 }
 
@@ -277,7 +279,10 @@ public class Phase15ApiTests(IndustryApiFactory factory) : IClassFixture<Industr
     [Fact]
     public async Task Only_the_industry_role_of_that_organization_may_read_and_the_answer_is_aggregate_only_and_audited()
     {
-        await Phase15Tests.Seed(factory.Services.GetRequiredService<IDbContextFactory<ProductTraceDbContext>>(), Phase15Tests.Maker, null, 6, 6, on: new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1).AddMonths(-1).AddDays(4));
+        var now = DateOnly.FromDateTime(DateTime.UtcNow);
+        var quarterStart = new DateOnly(now.Year, (((now.Month - 1) / 3) * 3) + 1, 1);
+        var latestClosed = now > quarterStart.AddDays(-1).AddDays(7) ? quarterStart.AddMonths(-3) : quarterStart.AddMonths(-6); // same rule as the service (7-day delay)
+        await Phase15Tests.Seed(factory.Services.GetRequiredService<IDbContextFactory<ProductTraceDbContext>>(), Phase15Tests.Maker, null, 6, 6, on: latestClosed.AddDays(40));
         var industry = await As("demo-industry");
         var res = await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?basis=Real");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
@@ -298,7 +303,26 @@ public class Phase15ApiTests(IndustryApiFactory factory) : IClassFixture<Industr
         }
 
         Assert.Equal(HttpStatusCode.BadRequest, (await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?basis=Nonsense")).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?from=2026-09-01&until=2026-09-05")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?from=2026-09-01&until=2026-09-05")).StatusCode); // no caller-chosen range
+        Assert.Equal(HttpStatusCode.BadRequest, (await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?period=2026-07")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?period=2999-Q1")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Over_HTTP_the_same_request_returns_the_same_body_for_separate_sessions_and_after_new_reports_are_sent()
+    {
+        var path = $"/organizations/{Phase15Tests.Org}/industry/insights";
+        var first = await As("demo-industry");
+        var second = await As("demo-industry"); // a separate session of the same account: the answer has no per-session input
+        var firstBody = await (await first.Client.GetAsync(path)).Content.ReadAsStringAsync();
+        var period = JsonDocument.Parse(firstBody).RootElement.GetProperty("period").GetString()!;
+        Assert.Equal(firstBody, await (await second.Client.GetAsync(path)).Content.ReadAsStringAsync());
+        Assert.Equal(firstBody, await (await second.Client.GetAsync(path + "?period=" + period)).Content.ReadAsStringAsync()); // naming the period explicitly changes nothing
+
+        // reports sent now (in the running quarter) and a differently-dated product do not alter the published quarter
+        await Phase15Tests.Seed(factory.Services.GetRequiredService<IDbContextFactory<ProductTraceDbContext>>(), Phase15Tests.Maker, null, 9, 9, on: DateOnly.FromDateTime(DateTime.UtcNow), sentAt: DateTimeOffset.UtcNow);
+        Assert.Equal(firstBody, await (await first.Client.GetAsync(path)).Content.ReadAsStringAsync());
+        Assert.Equal(firstBody, await (await first.Client.GetAsync(path + "?period=" + period + "&basis=Real")).Content.ReadAsStringAsync());
     }
 
     [Fact]

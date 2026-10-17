@@ -12,7 +12,7 @@ Scope: reduce the risks M-2, M-4, M-6, M-5 of the post-Phase-15 review. No Phase
 3. Existing: k on reports and on distinct reporters, k floor 3, no totals, audit line per read, organization/manufacturer scope.
 
 **Not mitigated (residual — needs a privacy expert):**
-* Differencing **between two different months windows** (e.g. Jan–Mar minus Jan–Feb) can still isolate a month's cell for a product/issue that is visible in both windows. Closing it needs a finer-grained rule (suppress on the finest cell, or fixed non-overlapping periods), or noise.
+* (Superseded by `docs/industry-privacy-review`: fixed quarters now remove this.) Differencing between two different months windows (e.g. Jan–Mar minus Jan–Feb) can still isolate a month's cell for a product/issue that is visible in both windows. Closing it needs a finer-grained rule (suppress on the finest cell, or fixed non-overlapping periods), or noise.
 * **Late-arriving data:** a report can enter an already-closed month later (back-dated occurrence, delayed `Sent`); two queries at different times can differ by exactly that report.
 * **Intersection attacks** across tables with different hidden sets, and **repeated querying**. The only mitigation here is the audit line per read; I did not verify that the insights route is covered by a rate limiter.
 * Group size ≥ k is not anonymity: rare product × rare event × month can identify a person to someone who already knows them. No claim of anonymity or compliance is made.

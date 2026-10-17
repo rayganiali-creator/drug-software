@@ -339,10 +339,15 @@ public sealed record IndustryInsightsDto(
     IReadOnlyList<InsightCell> ByProduct,
     IReadOnlyList<InsightCell> ByIssueType,
     IReadOnlyList<InsightCell> BySeverity,
-    IReadOnlyList<InsightCell> ByMonth);
+    IReadOnlyList<InsightCell> ByMonth,
+    string Period,
+    IReadOnlyList<string> AvailablePeriods);
 
 public interface IIndustryInsightsService
 {
-    /// <summary>The aggregate for the manufacturer(s) linked to the organization. The caller has already proven membership of <paramref name="organizationId"/>.</summary>
-    Task<TraceOutcome<IndustryInsightsDto>> GetAsync(Guid organizationId, DateOnly windowStart, DateOnly windowEnd, InsightBasis basis, CancellationToken ct = default);
+    /// <summary>
+    /// The aggregate for the manufacturer(s) linked to the organization, for one fixed calendar quarter ("yyyy-Qn", null = the newest closed one). Only closed quarters exist; a
+    /// report is placed by the month it was sent. The caller has already proven membership of <paramref name="organizationId"/>.
+    /// </summary>
+    Task<TraceOutcome<IndustryInsightsDto>> GetAsync(Guid organizationId, string? period, InsightBasis basis, CancellationToken ct = default);
 }

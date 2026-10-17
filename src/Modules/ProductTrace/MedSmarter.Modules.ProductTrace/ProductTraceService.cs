@@ -119,6 +119,14 @@ public sealed partial class ProductTraceService(
             return TraceOutcome.Fail<ProductRecordDto>(TraceError.Conflict, "version.mismatch");
         }
 
+        // Once a report about this product has been sent, who made it and which reference medicine it is must not change: those fields place the report in the manufacturer's
+        // aggregate counts, and a closed, published period has to stay as published (Phase 15 industry privacy review).
+        if ((checkedInput.ManufacturerId != row.ManufacturerId || checkedInput.Reference?.Id != row.MedicationId)
+            && await db.Reports.AnyAsync(r => r.ProductRecordId == id && (r.Status == ReportStatus.Sent || r.Status == ReportStatus.Acknowledged), ct))
+        {
+            return TraceOutcome.Fail<ProductRecordDto>(TraceError.Conflict, "product.locked_after_report");
+        }
+
         var now = clock.UtcNow;
         Apply(row, checkedInput, input, recorder, now, actorUserId);
         row.Version++;

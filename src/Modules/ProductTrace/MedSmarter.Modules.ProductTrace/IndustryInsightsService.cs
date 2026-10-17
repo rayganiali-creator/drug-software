@@ -14,8 +14,12 @@ public sealed class IndustryInsightsOptions
     public int MinCellSize { get; set; } = 5;
 
     public const int FloorMinCellSize = 3;
-    public int MinWindowDays { get; set; } = 28;
-    public int MaxWindowDays { get; set; } = 366;
+
+    /// <summary>A calendar quarter is published only this many days after its last day. Reports are placed in the month they were SENT, which cannot be back-dated, so a published quarter never changes afterwards.</summary>
+    public int ClosureDelayDays { get; set; } = 7;
+
+    /// <summary>How many closed quarters can be asked for.</summary>
+    public int MaxPeriods { get; set; } = 8;
     public int MaxProducts { get; set; } = 25;
 
     /// <summary>Organization id → manufacturer ids (from the medication reference) the organization may see. An organization without an entry sees nothing.</summary>
@@ -29,8 +33,8 @@ public static class DisclosureRule
 {
     /// <summary>
     /// Primary suppression: a group with fewer than <paramref name="k"/> reports or fewer than <paramref name="k"/> distinct reporters has no number.
-    /// Complementary suppression: if anything is hidden, the hidden groups must together hold at least <paramref name="k"/> reports, otherwise the smallest visible groups are hidden too.
-    /// Without that, "population total (from another table) minus the visible groups" would isolate a single hidden small group. Output order is by label/key, never by size.
+    /// Complementary suppression: if anything is hidden, at least two groups must be hidden and together hold at least <paramref name="k"/> reports, otherwise the smallest visible groups are hidden too.
+    /// Without that, "population total (from another table) minus the visible groups" would give the exact count of a single hidden group (small, or hidden for having few reporters). Output order is by label/key, never by size.
     /// This reduces differencing within and across the tables of one response; it does not make the output anonymous (see docs/post-phase-15-stabilization).
     /// </summary>
     public static IReadOnlyList<InsightCell> Apply(IEnumerable<RawGroup> groups, int k)
@@ -38,13 +42,15 @@ public static class DisclosureRule
         var list = groups.OrderBy(g => g.Label ?? g.Key, StringComparer.Ordinal).ThenBy(g => g.Key, StringComparer.Ordinal).ToList();
         var hidden = list.Select(g => g.Reports < k || g.Reporters < k).ToList();
         var hiddenSum = list.Where((_, i) => hidden[i]).Sum(g => g.Reports);
-        if (hidden.Any(h => h) && hiddenSum < k)
+        var hiddenCount = hidden.Count(h => h);
+        if (hiddenCount > 0 && (hiddenSum < k || hiddenCount < 2))
         {
             foreach (var i in Enumerable.Range(0, list.Count).Where(i => !hidden[i]).OrderBy(i => list[i].Reports).ThenBy(i => list[i].Key, StringComparer.Ordinal))
             {
                 hidden[i] = true;
                 hiddenSum += list[i].Reports;
-                if (hiddenSum >= k)
+                hiddenCount++;
+                if (hiddenSum >= k && hiddenCount >= 2)
                 {
                     break;
                 }
@@ -61,52 +67,78 @@ public static class DisclosureRule
 /// </summary>
 public sealed class IndustryInsightsService(IDbContextFactory<ProductTraceDbContext> factory, IOptions<IndustryInsightsOptions> options, IClock clock) : IIndustryInsightsService
 {
-    public async Task<TraceOutcome<IndustryInsightsDto>> GetAsync(Guid organizationId, DateOnly windowStart, DateOnly windowEnd, InsightBasis basis, CancellationToken ct = default)
+    private static readonly System.Text.RegularExpressions.Regex PeriodPattern = new(@"^(\d{4})-Q([1-4])$", System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.NonBacktracking);
+
+    private static (DateOnly Start, DateOnly End) QuarterBounds(int year, int quarter)
+    {
+        var start = new DateOnly(year, ((quarter - 1) * 3) + 1, 1);
+        return (start, start.AddMonths(3).AddDays(-1));
+    }
+
+    private bool IsClosed(DateOnly end, DateOnly today) => today > end.AddDays(options.Value.ClosureDelayDays);
+
+    /// <summary>The newest closed quarters, newest first.</summary>
+    private List<string> ClosedPeriods(DateOnly today)
+    {
+        var list = new List<string>();
+        var year = today.Year;
+        var quarter = ((today.Month - 1) / 3) + 1;
+        for (var i = 0; i < 40 && list.Count < Math.Max(1, options.Value.MaxPeriods); i++)
+        {
+            if (IsClosed(QuarterBounds(year, quarter).End, today))
+            {
+                list.Add($"{year:0000}-Q{quarter}");
+            }
+
+            if (--quarter == 0)
+            {
+                quarter = 4;
+                year--;
+            }
+        }
+
+        return list;
+    }
+
+    public async Task<TraceOutcome<IndustryInsightsDto>> GetAsync(Guid organizationId, string? period, InsightBasis basis, CancellationToken ct = default)
     {
         var o = options.Value;
         var k = Math.Max(o.MinCellSize, IndustryInsightsOptions.FloorMinCellSize);
-        var days = windowEnd.DayNumber - windowStart.DayNumber + 1;
         if (!Enum.IsDefined(basis))
         {
             return Support.Invalid<IndustryInsightsDto>(["basis.invalid"]);
         }
 
-        if (days < o.MinWindowDays)
-        {
-            return Support.Invalid<IndustryInsightsDto>(["window.too_short"]); // a very short window would single out individual reports
-        }
-
-        if (days > o.MaxWindowDays + 31)
-        {
-            return Support.Invalid<IndustryInsightsDto>(["window.too_long"]);
-        }
-
-        // Whole, closed calendar months only: a window that moves by a day (or a month that is still filling up) would let two queries be subtracted to isolate a day's reports.
+        // Fixed, non-overlapping reporting periods (calendar quarters), published only after they are closed. No caller-chosen range exists, so two answers can never be subtracted
+        // to isolate a month or a day, and the same request always gives the same answer.
         var today = DateOnly.FromDateTime(clock.UtcNow.UtcDateTime);
-        var lastClosed = new DateOnly(today.Year, today.Month, 1).AddDays(-1);
-        windowStart = new DateOnly(windowStart.Year, windowStart.Month, 1);
-        windowEnd = new DateOnly(windowEnd.Year, windowEnd.Month, 1).AddMonths(1).AddDays(-1);
-        if (windowEnd > lastClosed)
+        var available = ClosedPeriods(today);
+        var chosen = period ?? available.FirstOrDefault();
+        if (chosen is null)
         {
-            windowEnd = lastClosed;
+            return Support.Invalid<IndustryInsightsDto>(["period.not_closed"]);
         }
 
-        if (windowStart > windowEnd)
+        var match = PeriodPattern.Match(chosen);
+        if (!match.Success)
         {
-            return Support.Invalid<IndustryInsightsDto>(["window.no_closed_month"]);
+            return Support.Invalid<IndustryInsightsDto>(["period.invalid"]);
         }
 
-        if ((windowEnd.Year - windowStart.Year) * 12 + windowEnd.Month - windowStart.Month + 1 > 12)
+        if (!available.Contains(chosen, StringComparer.Ordinal))
         {
-            return Support.Invalid<IndustryInsightsDto>(["window.too_long"]);
+            return Support.Invalid<IndustryInsightsDto>([IsClosed(QuarterBounds(int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture)).End, today) ? "period.too_old" : "period.not_closed"]);
         }
 
+        var (start, end) = QuarterBounds(int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
         var linked = LinkedManufacturers(o, organizationId);
         if (linked.Count == 0)
         {
-            return TraceOutcome.Ok(new IndustryInsightsDto(organizationId, windowStart, windowEnd, basis, false, k, false, [], [], [], []));
+            return TraceOutcome.Ok(new IndustryInsightsDto(organizationId, start, end, basis, false, k, false, [], [], [], [], chosen, available));
         }
 
+        var startUtc = new DateTimeOffset(start.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var endUtc = new DateTimeOffset(end.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
         await using var db = await factory.CreateDbContextAsync(ct);
         var real = basis == InsightBasis.Real;
         var rows =
@@ -114,13 +146,13 @@ public sealed class IndustryInsightsService(IDbContextFactory<ProductTraceDbCont
             join p in db.Products.AsNoTracking() on r.ProductRecordId equals p.Id
             where linked.Contains(p.ManufacturerId)
                 && (r.Status == ReportStatus.Sent || r.Status == ReportStatus.Acknowledged)
-                && r.OccurredOn >= windowStart && r.OccurredOn <= windowEnd
+                && r.SentAt >= startUtc && r.SentAt < endUtc
                 && (real ? !r.IsMockDelivery && !r.IsDemo && !p.IsDemo : r.IsMockDelivery || r.IsDemo || p.IsDemo)
-            select new { r.PatientId, r.IssueType, r.Severity, r.OccurredOn, p.MedicationId, p.ProductName };
+            select new { r.PatientId, r.IssueType, r.Severity, r.SentAt, p.MedicationId, p.ProductName };
 
         var byProduct = await rows.Where(x => x.MedicationId != null).GroupBy(x => x.MedicationId)
             .Select(g => new { Id = g.Key, Name = g.Max(x => x.ProductName), Reports = g.Count(), Reporters = g.Select(x => x.PatientId).Distinct().Count() })
-            .OrderByDescending(g => g.Reports).Take(o.MaxProducts + 1).ToListAsync(ct);
+            .OrderByDescending(g => g.Reports).ThenBy(g => g.Id).Take(o.MaxProducts + 1).ToListAsync(ct); // ties broken by id: the same request must always list the same products
         var truncated = byProduct.Count > o.MaxProducts;
         var unregistered = await rows.Where(x => x.MedicationId == null).GroupBy(x => 1)
             .Select(g => new { Reports = g.Count(), Reporters = g.Select(x => x.PatientId).Distinct().Count() }).FirstOrDefaultAsync(ct);
@@ -132,14 +164,28 @@ public sealed class IndustryInsightsService(IDbContextFactory<ProductTraceDbCont
 
         var byIssue = await rows.GroupBy(x => x.IssueType).Select(g => new { g.Key, Reports = g.Count(), Reporters = g.Select(x => x.PatientId).Distinct().Count() }).ToListAsync(ct);
         var bySeverity = await rows.GroupBy(x => x.Severity).Select(g => new { g.Key, Reports = g.Count(), Reporters = g.Select(x => x.PatientId).Distinct().Count() }).ToListAsync(ct);
-        var byMonth = await rows.GroupBy(x => x.OccurredOn.Year * 100 + x.OccurredOn.Month).Select(g => new { g.Key, Reports = g.Count(), Reporters = g.Select(x => x.PatientId).Distinct().Count() }).ToListAsync(ct);
+
+        // the three months of the quarter (month = month the report was sent), one range query each: no provider-specific date functions
+        var months = new List<RawGroup>();
+        for (var m = 0; m < 3; m++)
+        {
+            var from = new DateTimeOffset(start.AddMonths(m).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            var to = new DateTimeOffset(start.AddMonths(m + 1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+            var inMonth = rows.Where(x => x.SentAt >= from && x.SentAt < to);
+            var n = await inMonth.CountAsync(ct);
+            if (n > 0)
+            {
+                months.Add(new RawGroup($"{from.Year:0000}-{from.Month:00}", null, n, await inMonth.Select(x => x.PatientId).Distinct().CountAsync(ct)));
+            }
+        }
 
         return TraceOutcome.Ok(new IndustryInsightsDto(
-            organizationId, windowStart, windowEnd, basis, true, k, truncated,
+            organizationId, start, end, basis, true, k, truncated,
             DisclosureRule.Apply(productGroups, k),
             DisclosureRule.Apply(byIssue.Select(g => new RawGroup(g.Key.ToString(), null, g.Reports, g.Reporters)), k),
             DisclosureRule.Apply(bySeverity.Select(g => new RawGroup(g.Key.ToString(), null, g.Reports, g.Reporters)), k),
-            DisclosureRule.Apply(byMonth.Select(g => new RawGroup($"{g.Key / 100:0000}-{g.Key % 100:00}", null, g.Reports, g.Reporters)), k)));
+            DisclosureRule.Apply(months, k),
+            chosen, available));
     }
 
     private static List<Guid?> LinkedManufacturers(IndustryInsightsOptions o, Guid organizationId) =>

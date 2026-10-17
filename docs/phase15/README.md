@@ -18,7 +18,7 @@ It returns **counts of patient-submitted manufacturer product reports that reach
 | Product-scoped, fail-closed | The organization → manufacturer link is configuration only (`IndustryInsights:Organizations:{orgId}:0 = <manufacturer id from the medication reference>`). No link → `linked:false` and no data. Nothing is guessed from names. |
 | No identifiers or free text | The response type has no patient id, batch, description, reference, exact date or typed product name. Products outside the reference are lumped into one "not in the reference" row. A test serializes the result and asserts the seeded batch number and free text are absent. |
 | Small-group suppression | A cell is hidden when it has fewer than *k* reports **or** fewer than *k* different reporters (default 5, `IndustryInsights:MinCellSize`, floor 3 — a lower configured value is raised). A hidden cell carries no number. Tables are ordered by name, never by size. |
-| Bounded | Whole closed calendar months only, at most 12 (stabilization pass; originally 28–366 days); at most 25 products (flagged `productsTruncated`); counting happens in the database, no rows are loaded. |
+| Bounded | Fixed calendar quarters only, published after a closure delay (industry privacy review; originally a 28–366 day free range, then whole months); at most 25 products (flagged `productsTruncated`); counting happens in the database, no rows are loaded. |
 | Real vs simulated | `basis=Real` counts only non-mock, non-demo reports/products. `SimulatedOrDemo` counts the rest. They are never added together and the page shows a warning banner and badge on the simulated view. Legacy prototype pages (trends, signals, experience, reports) under the same role now also carry a visible DEMO badge and say MedSmarter does not detect or confirm safety signals. |
 | No causality, no defect inference | Notice on every view: patient-submitted, unverified, not proof of a defect or causation, not an incidence. Labels are the reporter's categories, never MedSmarter's conclusion. |
 | No sending | There is no route here that sends, exports or creates a report; the manufacturer-report outbox is untouched. |
@@ -38,3 +38,6 @@ It returns **counts of patient-submitted manufacturer product reports that reach
 
 * .NET `Phase15Tests` (6): disclosure rule, link/no-link, other manufacturers invisible, drafts not counted, unregistered names hidden, real vs simulated, bounds and the k floor, month grouping. `Phase15ApiTests` (3): 401, membership + role matrix + audit, no patient/ADR/pharmacy routes. Also passing on PostgreSQL.
 * Web `phase15.test.tsx` (6).
+
+
+> Update (industry privacy review, `docs/industry-privacy-review`): the endpoint now takes `period=yyyy-Qn`, places reports by the month they were sent, requires ≥ 2 hidden groups, and locks manufacturer/medicine edits after a report is sent. The analytics are not guaranteed anonymous.

@@ -4,7 +4,7 @@ export type ApiFetch = (path: string, init?: RequestInit) => Promise<Response>;
 export type Basis = "Real" | "SimulatedOrDemo";
 export type Cell = { key: string; label: string | null; reports: number | null; suppressed: boolean };
 export type Insights = {
-  organizationId: string; from: string; until: string; basis: Basis; linked: boolean; minCellSize: number; productsTruncated: boolean;
+  organizationId: string; from: string; until: string; period: string; availablePeriods: string[]; basis: Basis; linked: boolean; minCellSize: number; productsTruncated: boolean;
   byProduct: Cell[]; byIssueType: Cell[]; bySeverity: Cell[]; byMonth: Cell[];
 };
 
@@ -12,11 +12,11 @@ export type Insights = {
 export class IndustryApi {
   constructor(private readonly apiFetch: ApiFetch | undefined) {}
 
-  async insights(org: string, basis: Basis, from: string, until: string, signal?: AbortSignal): Promise<Insights> {
+  async insights(org: string, basis: Basis, period: string | null, signal?: AbortSignal): Promise<Insights> {
     if (!this.apiFetch) throw new RecordsError("notConnected");
     let res: Response;
     try {
-      const q = new URLSearchParams({ basis, from, until });
+      const q = new URLSearchParams({ basis, ...(period ? { period } : {}) });
       res = await this.apiFetch(`/organizations/${encodeURIComponent(org)}/industry/insights?${q}`, { method: "GET", signal });
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") throw e;
