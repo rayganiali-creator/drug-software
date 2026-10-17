@@ -3,7 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { AlertCard, Badge, Button, Card, EmptyState, Select, TextArea, TextField } from "../../components/ui";
 import { useI18n } from "../../i18n/I18nProvider";
 import { PageHeader } from "../../layouts/PageHeader";
-import { useAction } from "../../records/hooks";
+import { useAction, useLoad } from "../../records/hooks";
+import type { CareRow, ProductRecord } from "../../records/types";
 import { allStatuses, concernTypes, examples, type Concern, type ConcernDetail, type DispensingErrorExample, type Entry, type EventDetail, type Identifiers, type PharmacyRole, type ReachedPatient, type SafetyEvent, type SafetyEventKind, type SafetyStatus, type Summary } from "../../pharmacy/types";
 import { ActionError, Loaded } from "../records/shared";
 import { useOrganizationId, usePharmacyApi, usePharmacyLoad } from "./hooks";
@@ -21,17 +22,27 @@ function NoOrg() {
   return <Card><EmptyState icon="building" title={t("ph.noOrg")} /></Card>;
 }
 
-function List({ rows, base }: { rows: Summary[]; base: string }) {
+function List({ rows: all, base }: { rows: Summary[]; base: string }) {
   const { t, fmt } = useI18n();
-  if (rows.length === 0) return <Card><EmptyState icon="inbox" title={t("ph.empty")} /></Card>;
+  const [status, setStatus] = useState<"" | SafetyStatus>("");
+  const [q, setQ] = useState("");
+  const rows = all.filter((r) => (!status || r.status === status) && (!q.trim() || r.excerpt.toLowerCase().includes(q.trim().toLowerCase())));
+  if (all.length === 0) return <Card><EmptyState icon="inbox" title={t("ph.empty")} /></Card>;
   return (
+    <>
+    <div className="ph-form" role="search">
+      <Select label={t("ph.filter.status")} value={status} onValueChange={(v) => setStatus(v as "" | SafetyStatus)} options={[{ value: "", label: t("ph.filter.all") }, ...allStatuses.map((s) => ({ value: s, label: t(`ph.status.${s}`) }))]} />
+      <TextField label={t("ph.filter.text")} value={q} onChange={(e) => setQ(e.target.value)} />
+    </div>
+    {rows.length === 0 ? <Card><EmptyState icon="inbox" title={t("ph.filter.none")} /></Card> :
     <ul className="ph-list" aria-label={t("ph.log.title")}>{rows.map((r) => (
       <li key={r.id}><Card>
         <div className="ph-row"><Badge tone="info">{t(`ph.status.${r.status}`)}</Badge><Badge tone="neutral">{base === "safety-log" ? t(`ph.kind.${r.label}`) : t(`ph.concernType.${r.label}`)}</Badge><span className="ms-muted">{fmt.date(new Date(r.reportedAt), "short")}</span></div>
         <p className="ph-text" dir="auto">{r.excerpt}</p>
         <Link className="ms-link" to={`../${base}/${r.id}`} relative="path">{t("ph.open")}</Link>
       </Card></li>))}
-    </ul>
+    </ul>}
+    </>
   );
 }
 
@@ -148,6 +159,38 @@ function EventBody({ d, reload }: { d: EventDetail; reload(): void }) {
 
 // ---------------------------------------------------------------- product concerns
 
+
+/**
+ * Pick the patient (only those the server lists as the caller's ACTIVE care relationships) and then one of THAT patient's batch records (the server answers 403 unless the
+ * patient's consent covers products). Nothing is searched across patients and nothing is guessed; with no pick the report is saved as unmatched.
+ */
+function BatchPicker({ value, onChange }: { value: { subjectId: string; productRecordId: string } | null; onChange(v: { subjectId: string; productRecordId: string } | null): void }) {
+  const { t, fmt } = useI18n();
+  const care = useLoad((a, s) => a.care(s), []);
+  const [patient, setPatient] = useState("");
+  const products = useLoad((a, s) => patient ? a.products(patient, s) : Promise.resolve([] as ProductRecord[]), [patient]);
+  const rows: CareRow[] = care.state.status === "ready" ? care.state.data.filter((r) => r.relationship.status === "Active") : [];
+  const records: ProductRecord[] = products.state.status === "ready" ? products.state.data : [];
+  const denied = patient !== "" && products.state.status === "error";
+  return (
+    <fieldset className="ph-form">
+      <legend>{t("ph.pick.title")}</legend>
+      <p className="ms-muted">{t("ph.pick.hint")}</p>
+      {care.state.status === "error" && <p role="alert">{t("ph.pick.careFailed")}</p>}
+      <Select label={t("ph.pick.patient")} value={patient} onValueChange={(v) => { setPatient(v); onChange(null); }}
+        options={[{ value: "", label: t("ph.pick.none") }, ...rows.map((r) => ({ value: r.relationship.patientSubjectId, label: r.patientName }))]} />
+      {patient && products.state.status === "loading" && <p className="ms-muted">{t("common.loading")}</p>}
+      {denied && <p role="alert">{t("ph.pick.denied")}</p>}
+      {patient && products.state.status === "ready" && records.length === 0 && <p className="ms-muted">{t("ph.pick.noRecords")}</p>}
+      {records.length > 0 && (
+        <Select label={t("ph.pick.record")} value={value?.productRecordId ?? ""} onValueChange={(v) => onChange(v ? { subjectId: patient, productRecordId: v } : null)}
+          options={[{ value: "", label: t("ph.pick.unmatched") }, ...records.map((r) => ({ value: r.id, label: `${r.productName} · ${r.batchNumber} · ${fmt.date(new Date(r.expiryDate), "short")}` }))]} />
+      )}
+      {value && <p className="ms-muted">{t("ph.pick.chosen")}</p>}
+    </fieldset>
+  );
+}
+
 function ConcernForm({ org, onSaved }: { org: string; onSaved(): void }) {
   const { t } = useI18n();
   const api = usePharmacyApi();
@@ -159,15 +202,13 @@ function ConcernForm({ org, onSaved }: { org: string; onSaved(): void }) {
   const [batch, setBatch] = useState("");
   const [expiry, setExpiry] = useState("");
   const [maker, setMaker] = useState("");
-  const [subject, setSubject] = useState("");
-  const [record, setRecord] = useState("");
+  const [link, setLink] = useState<{ subjectId: string; productRecordId: string } | null>(null);
   const [rid, setRid] = useState(() => crypto.randomUUID());
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const typed: Identifiers | null = name.trim() || batch.trim() || expiry || maker.trim() ? { productName: name.trim() || null, batchNumber: batch.trim() || null, expiryDate: dayToDate(expiry), manufacturerName: maker.trim() || null, gtin: null } : null;
-    const link = subject.trim() && record.trim() ? { subjectId: subject.trim(), productRecordId: record.trim() } : null;
     void act.run(() => api.createConcern(org, { type, description: what.trim(), observedOn: dayToDate(seen), productRecord: link, asReported: typed, clientRequestId: rid }),
-      () => { setWhat(""); setSeen(""); setName(""); setBatch(""); setExpiry(""); setMaker(""); setSubject(""); setRecord(""); setRid(crypto.randomUUID()); onSaved(); });
+      () => { setWhat(""); setSeen(""); setName(""); setBatch(""); setExpiry(""); setMaker(""); setLink(null); setRid(crypto.randomUUID()); onSaved(); });
   };
   return (
     <Card title={t("ph.form.title")}>
@@ -180,12 +221,7 @@ function ConcernForm({ org, onSaved }: { org: string; onSaved(): void }) {
         <TextField label={t("ph.form.batch")} value={batch} onChange={(e) => setBatch(e.target.value)} maxLength={64} />
         <TextField label={t("ph.form.expiry")} type="date" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
         <TextField label={t("ph.form.manufacturer")} value={maker} onChange={(e) => setMaker(e.target.value)} maxLength={200} />
-        <details>
-          <summary>{t("ph.form.linkTitle")}</summary>
-          <p className="ms-muted">{t("ph.form.linkHint")}</p>
-          <TextField label={t("ph.form.linkSubject")} value={subject} onChange={(e) => setSubject(e.target.value)} dir="ltr" />
-          <TextField label={t("ph.form.linkRecord")} value={record} onChange={(e) => setRecord(e.target.value)} dir="ltr" />
-        </details>
+        <BatchPicker value={link} onChange={setLink} />
         <div><Button type="submit" loading={act.busy} disabled={!what.trim()}>{t("ph.form.submit")}</Button></div>
         <ActionError error={act.error} />
       </form>

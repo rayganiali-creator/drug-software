@@ -78,7 +78,7 @@ function ReportRow({ r, onChanged }: { r: Report; onChanged(): void }) {
         <span className="rec-row__meta">{t(`rec.issue.${r.issueType}`)} · {t(`rec.severity.${r.severity}`)} · {fmt.date(new Date(r.occurredOn), "short")}</span>
         <Steps status={r.status} />
         <span className="rec-badges">
-          <Badge tone={r.status === "Failed" ? "danger" : r.status === "Acknowledged" ? "success" : "info"} icon={r.status === "Acknowledged" ? "check" : "clock"}>{t(`rec.rep.status.${r.status}`)}</Badge>
+          <Badge tone={r.status === "Failed" ? "danger" : r.status === "Acknowledged" && !r.isMockDelivery ? "success" : "info"} icon={r.status === "Acknowledged" && !r.isMockDelivery ? "check" : "clock"}>{r.isMockDelivery && (r.status === "Sent" || r.status === "Acknowledged") ? t(`rec.rep.status.${r.status}.simulated`) : t(`rec.rep.status.${r.status}`)}</Badge>
           {r.reviewRequired && <Badge tone="neutral" icon="user">{t("rec.rep.needsReview")}</Badge>}
           {r.isMockDelivery && <Badge tone="warning" icon="alertTriangle">{t("rec.rep.mockDelivery")}</Badge>}
           <DemoFlag show={r.isDemo} />

@@ -40,10 +40,15 @@ function StatusBadges({ s }: { s: Pick<Summary, "status" | "category" | "origin"
   );
 }
 
-function RecordList({ rows, empty }: { rows: Summary[]; empty?: boolean }) {
+function RecordList({ rows: all, empty }: { rows: Summary[]; empty?: boolean }) {
   const { t, fmt } = useI18n();
-  if (rows.length === 0) return <Card><EmptyState icon="inbox" title={t("adr.empty")} body={empty ? undefined : t("adr.emptyBody")} /></Card>;
+  const [q, setQ] = useState("");
+  const rows = all.filter((r) => !q.trim() || r.excerpt.toLowerCase().includes(q.trim().toLowerCase()));
+  if (all.length === 0) return <Card><EmptyState icon="inbox" title={t("adr.empty")} body={empty ? undefined : t("adr.emptyBody")} /></Card>;
   return (
+    <>
+    <div className="adr-form" role="search"><TextField label={t("adr.filter.text")} value={q} onChange={(e) => setQ(e.target.value)} /></div>
+    {rows.length === 0 ? <Card><EmptyState icon="inbox" title={t("adr.filter.none")} /></Card> :
     <ul className="adr-list" aria-label={t("adr.title.pro")}>{rows.map((r) => (
       <li key={r.id}><Card>
         <StatusBadges s={r} />
@@ -51,7 +56,8 @@ function RecordList({ rows, empty }: { rows: Summary[]; empty?: boolean }) {
         <p className="ms-muted">{t("adr.reportedBy", { role: t(`adr.role.${r.reporterRole}`) })} · {fmt.date(new Date(r.reportedAt), "short")}</p>
         <Link className="ms-link" to={`../adverse-events/${r.id}`} relative="path">{t("adr.open")}</Link>
       </Card></li>))}
-    </ul>
+    </ul>}
+    </>
   );
 }
 
