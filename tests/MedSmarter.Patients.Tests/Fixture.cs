@@ -142,11 +142,12 @@ public sealed class PEnv : IDisposable
         new GuidanceModule().Register(services, config);
         new MedSmarter.Modules.ADR.ADRModule().Register(services, config);
         new MedSmarter.Modules.Pharmacies.PharmaciesModule().Register(services, config);
+        new MedSmarter.Modules.Integrations.IntegrationsModule().Register(services, config);
         new ClinicalRulesModule().Register(services, config);
         new AIModule().Register(services, config);
     }
 
-    public PEnv(bool seedPatients = false, Dictionary<string, string?>? settings = null, string? reuseDatabase = null, bool seedReference = true)
+    public PEnv(bool seedPatients = false, Dictionary<string, string?>? settings = null, string? reuseDatabase = null, bool seedReference = true, Action<IServiceCollection>? configureServices = null)
     {
         _settings = settings;
         var map = new Dictionary<string, string?>
@@ -180,6 +181,7 @@ public sealed class PEnv : IDisposable
         services.AddLogging();
         services.AddSingleton<IClock>(Clock);
         RegisterModules(services, config);
+        configureServices?.Invoke(services);
         _sp = services.BuildServiceProvider();
         _sp.GetRequiredService<IDemoIdentitySeeder>().SeedAsync().GetAwaiter().GetResult();
         if (seedReference)

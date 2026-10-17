@@ -79,6 +79,7 @@ abstract final class Permissions {
   static const pharmacySafetyCreate = 'pharmacy.safety.create';
   static const pharmacySafetyRead = 'pharmacy.safety.read';
   static const pharmacySafetyReview = 'pharmacy.safety.review';
+  static const integrationsRegistryRead = 'integrations.registry.read';
 }
 
 abstract final class RoleNames {

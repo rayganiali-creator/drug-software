@@ -81,6 +81,7 @@ public static class Permissions
     public const string PharmacySafetyCreate = "pharmacy.safety.create";
     public const string PharmacySafetyRead = "pharmacy.safety.read";
     public const string PharmacySafetyReview = "pharmacy.safety.review";
+    public const string IntegrationsRegistryRead = "integrations.registry.read";
 }
 
 public static class RoleNames

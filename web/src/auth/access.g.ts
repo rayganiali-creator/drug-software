@@ -77,6 +77,7 @@ export const permissions = {
   pharmacySafetyCreate: "pharmacy.safety.create",
   pharmacySafetyRead: "pharmacy.safety.read",
   pharmacySafetyReview: "pharmacy.safety.review",
+  integrationsRegistryRead: "integrations.registry.read",
 } as const;
 export type Permission = (typeof permissions)[keyof typeof permissions];
 

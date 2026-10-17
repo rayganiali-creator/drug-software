@@ -2,6 +2,7 @@ using MedSmarter.Api;
 using MedSmarter.BuildingBlocks;
 using MedSmarter.Api.Adr;
 using MedSmarter.Api.Http;
+using MedSmarter.Api.Integrations;
 using MedSmarter.Api.Pharmacy;
 using MedSmarter.Api.Knowledge;
 using MedSmarter.Api.Patients;
@@ -181,6 +182,7 @@ try
     app.MapSafety();
     app.MapAdr();
     app.MapPharmacySafety();
+    app.MapIntegrations();
     app.MapSecurity(app.Services.GetService<IDemoAccountDirectory>() is not null);
     app.MapPlatformHealth();
     app.MapGet("/version", () => Results.Ok(new

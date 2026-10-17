@@ -441,6 +441,11 @@
       "name": "pharmacy.safety.review",
       "kind": "organization",
       "description": "Review, follow up and close internal pharmacy safety records of the caller's pharmacy organization"
+    },
+    {
+      "name": "integrations.registry.read",
+      "kind": "global",
+      "description": "See which external integrations are disabled, simulated or blocked (configuration only; no secrets, no call)"
     }
   ],
   "roles": [
@@ -646,7 +651,8 @@
         "session.revoke",
         "manufacturer-report.queue.read",
         "manufacturer-report.queue.manage",
-        "clinicalrules.retire"
+        "clinicalrules.retire",
+        "integrations.registry.read"
       ]
     }
   ],
