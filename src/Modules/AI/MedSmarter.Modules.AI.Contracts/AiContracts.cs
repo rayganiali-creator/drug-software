@@ -71,7 +71,8 @@ public sealed record EvidenceSource(Guid SourceId, string Name, string Version, 
 /// <param name="Qualifier">For interactions: the other ingredient and the severity. Otherwise null.</param>
 /// <param name="Stale">The source was received longer ago than the configured limit.</param>
 /// <param name="SourceDateUnknown">The source has no recorded receipt date, so its age cannot be judged.</param>
-public sealed record EvidenceItem(string Id, Guid MedicationId, string MedicationName, string Kind, string Text, string? Qualifier, EvidenceSource Source, string Validation, bool IsDemo, bool Stale, bool SourceDateUnknown);
+/// <param name="RecordId">Id of the stored statement or interaction record this item was copied from, and <paramref name="RevisionId"/> of its source revision: with the medication record version (see <see cref="EvidenceMedication"/>) the item can be traced to exact stored content. Null when the record did not supply them.</param>
+public sealed record EvidenceItem(string Id, Guid MedicationId, string MedicationName, string Kind, string Text, string? Qualifier, EvidenceSource Source, string Validation, bool IsDemo, bool Stale, bool SourceDateUnknown, Guid? RecordId = null, Guid? RevisionId = null);
 
 public sealed record EvidenceMedication(Guid Id, string Name, string DosageForm, string Strength, int RecordVersion, DateTimeOffset UpdatedAt, bool IsDemo, string Validation);
 

@@ -22,7 +22,7 @@ internal sealed class CapturingHandler : HttpMessageHandler
     {
         Calls++;
         Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"text\":\"fake gateway answer\",\"model\":\"m\"}", Encoding.UTF8, "application/json") };
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{\"text\":\"fake gateway answer [E1]\",\"model\":\"m\"}", Encoding.UTF8, "application/json") };
     }
 }
 

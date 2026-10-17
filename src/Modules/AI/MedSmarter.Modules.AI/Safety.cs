@@ -130,7 +130,7 @@ public static partial class AnswerSafetyPolicy
     private static readonly string[] CertaintyEn = ["definitely", "certainly", "guaranteed", "guarantee", "without doubt", "absolutely safe", "completely safe", "totally safe", "no risk", "risk-free", "100%"];
     private static readonly string[] CertaintyFa = ["قطعاً", "حتماً", "بدون هیچ خطر", "کاملاً بی‌خطر", "کاملا بی خطر", "تضمین"];
 
-    [GeneratedRegex(@"\b(stop|stopping|skip|skipping|discontinue|quit|double|increase|reduce|lower|halve|change|adjust|switch|swap)\b.{0,30}\b(dose|dosage|medication|medications|medicine|medicines|pills|tablet|tablets|treatment|prescription)\b|\b(start|begin) (taking|using)\b|\btake (more|less|extra)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\b(stop|stopping|skip|skipping|discontinue|quit|double|increase|reduce|lower|halve|change|adjust|switch|swap)\b.{0,30}\b(dose|dosage|medication|medications|medicine|medicines|pills|tablet|tablets|treatment|prescription)\b|\b(start|begin) (taking|using)\b|\b(stop|stopping|skip|skipping|discontinue|discontinuing|quit)\s+(taking|using)\b|\btake (more|less|extra)\b", RegexOptions.IgnoreCase)]
     private static partial Regex ChangeEn();
 
     [GeneratedRegex(@"(مصرف (دارو )?را (قطع|متوقف)|دارو را (قطع|متوقف|عوض|کم|زیاد)|قطع کنید|دوز(ش)? را (افزایش|کاهش|زیاد|کم|دو برابر|تغییر)|شروع کنید به مصرف|شروع به مصرف)")]
@@ -176,9 +176,15 @@ public static partial class AnswerSafetyPolicy
             violations.Add("contact_or_instruction_text");
         }
 
-        if (Citation().Matches(text).Any(m => !evidenceIds.Contains(m.Groups[1].Value)))
+        var citations = Citation().Matches(text);
+        if (citations.Any(m => !evidenceIds.Contains(m.Groups[1].Value)))
         {
             violations.Add("unknown_citation");
+        }
+
+        if (evidenceIds.Count > 0 && citations.Count == 0)
+        {
+            violations.Add("uncited_answer"); // text built from evidence must point at it; an answer with no citation at all is not grounded
         }
 
         return violations;
@@ -215,6 +221,42 @@ public static class SafeMessages
     public static string PolicyOverride(string locale) => IsFa(locale)
         ? "نمی‌توانم قواعد ایمنی این دستیار را تغییر دهم. اگر پرسشی درباره‌ی یک دارو دارید، با کمال میل از روی منابع پاسخ می‌دهم."
         : "I can't change the safety rules of this assistant. If you have a question about a medicine, I'm happy to answer it from the sources.";
+
+    /// <summary>
+    /// Written by the backend, never by a model, and put in front of every generated answer whose evidence has a recorded weakness, so the uncertainty cannot be left out of the wording.
+    /// Only the weakness codes decide the sentences; no clinical statement is made. (Persian wording awaits review like all other Persian text.) Null when the evidence has none of these weaknesses.
+    /// </summary>
+    public static string? EvidenceCaveat(string locale, IReadOnlyCollection<string> limitations)
+    {
+        var fa = IsFa(locale);
+        var lines = new List<string>();
+        if (limitations.Contains("evidence.conflict"))
+        {
+            lines.Add(fa ? "منابعی که پیدا شد در دست‌کم یک مورد با هم هم‌خوان نیستند و من نمی‌توانم بگویم کدام درست است." : "The sources found disagree with each other on at least one point, and I cannot say which one is right.");
+        }
+
+        if (limitations.Contains("evidence.incomplete"))
+        {
+            lines.Add(fa ? "بخشی از اطلاعاتی که پرسیده‌اید در منابع پیدا نشد." : "Some of the information you asked about was not found in the sources.");
+        }
+
+        if (limitations.Contains("evidence.not_validated"))
+        {
+            lines.Add(fa ? "بخشی از این اطلاعات هنوز راستی‌آزمایی نشده است." : "Some of this information has not been verified.");
+        }
+
+        if (limitations.Contains("evidence.stale_source"))
+        {
+            lines.Add(fa ? "دست‌کم یکی از منابع مدت‌ها پیش دریافت شده و ممکن است قدیمی باشد." : "At least one source was received a long time ago and may be out of date.");
+        }
+
+        if (limitations.Contains("evidence.truncated"))
+        {
+            lines.Add(fa ? "فقط بخشی از اطلاعات موجود در این پاسخ به کار رفته است." : "Only part of the available information is used in this answer.");
+        }
+
+        return lines.Count == 0 ? null : (fa ? "پیش از خواندن:" : "Before you read this:") + "\n- " + string.Join("\n- ", lines) + (fa ? "\nبرای تصمیم دربارهٔ خودتان با داروساز یا پزشک صحبت کنید." : "\nPlease talk to a pharmacist or doctor before deciding anything about yourself.");
+    }
 
     public static string Withheld(string locale) => IsFa(locale)
         ? "پاسخ تولیدشده از بررسی ایمنی ما نگذشت و نمایش داده نمی‌شود. منابعی که پیدا شد در زیر آمده است؛ برای تفسیر آن‌ها لطفاً با داروساز یا پزشک خود صحبت کنید."

@@ -120,11 +120,37 @@ public sealed class AssistantService(
         {
             await audit.WriteAsync(new AuditEvent(AuditActions.AiAnswerBlocked, AuditResult.Denied, actorUserId, "ai-assistant", null, null, source, correlationId, string.Join(',', violations)), ct);
             return await FinishAsync(actorUserId, source, correlationId, evidence, generation, context is not null, "answer.blocked",
-                Make(SafeMessages.Withheld(locale), AnswerStatus.Blocked, "answer.blocked", evidence, NextStep.ConsultProfessional, generation, null, contextNote: contextNote), ct);
+                Make(WithheldText(locale, evidence), AnswerStatus.Blocked, "answer.blocked", evidence, NextStep.ConsultProfessional, generation, null, contextNote: contextNote), ct);
         }
 
+        // The weaknesses of the evidence are stated by the backend in front of the generated text (a model cannot leave them out); the generated text itself is unchanged.
+        var caveat = SafeMessages.EvidenceCaveat(locale, evidence.Limitations);
+        var shown = WithCaveat(result.Completion.Text, caveat);
         return await FinishAsync(actorUserId, source, correlationId, evidence, generation, context is not null, null,
-            Make(result.Completion.Text, AnswerStatus.Answered, "answered", evidence, NextStep.ConsultProfessional, generation, null, contextNote: contextNote, contextUsed: context is not null), ct);
+            Make(shown, AnswerStatus.Answered, "answered", evidence, NextStep.ConsultProfessional, generation, null, contextNote: contextNote, contextUsed: context is not null), ct);
+    }
+
+    /// <summary>
+    /// What is shown when a generated answer is withheld: the fixed backend message, preceded by the backend's own statement of what is weak or missing in the evidence.
+    /// The model's wording is never used, and a model claiming "the sources do not cover this" changes nothing here: only the recorded evidence limitations count.
+    /// </summary>
+    private static string WithheldText(string locale, EvidenceSet evidence)
+    {
+        var caveat = SafeMessages.EvidenceCaveat(locale, evidence.Limitations);
+        return caveat is null ? SafeMessages.Withheld(locale) : caveat + "\n\n" + SafeMessages.Withheld(locale);
+    }
+
+    /// <summary>The backend caveat goes first, except that the "mock / demo" label of the demo provider always stays the very first thing in the text.</summary>
+    public static string WithCaveat(string generated, string? caveat)
+    {
+        if (caveat is null)
+        {
+            return generated;
+        }
+
+        return generated.StartsWith(MockAIProvider.Label, StringComparison.Ordinal)
+            ? MockAIProvider.Label + "\n" + caveat + "\n\n" + generated[MockAIProvider.Label.Length..].TrimStart()
+            : caveat + "\n\n" + generated;
     }
 
     private async Task<AssistantAnswer> ScreenedAsync(QuestionClass screened, string locale, Guid actor, string source, string? correlationId, CancellationToken ct)

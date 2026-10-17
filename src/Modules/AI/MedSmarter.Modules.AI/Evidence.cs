@@ -111,6 +111,7 @@ public static class QuestionTopics
 /// Retrieval through the authorised medication service (never the database directly): normalise the question, find medications, read their
 /// source-bearing knowledge documents, and turn them into provenance-labelled evidence items. Evidence stays separate from any generated text.
 /// Nothing is invented: a missing source, a missing kind of information or a disagreement is reported, not filled in.
+/// Phase 16: items carry the id of the stored record and revision they came from; a severity disagreement is a conflict even inside one source.
 /// </summary>
 public sealed class MedicationEvidenceRetriever(IMedicationService medications, IClock clock, IOptions<AiOptions> options) : IEvidenceRetriever
 {
@@ -213,7 +214,7 @@ public sealed class MedicationEvidenceRetriever(IMedicationService medications, 
                 }
 
                 present.Add(s.Kind);
-                items.Add(Item(items.Count + 1, d, name, s.Kind.ToString(), s.Text, null, s.SourceId, s.Validation, sourceById, now, staleAfter));
+                items.Add(Item(items.Count + 1, d, name, s.Kind.ToString(), s.Text, null, s.SourceId, s.Validation, sourceById, now, staleAfter, s.RecordId, s.RevisionId));
             }
 
             foreach (var i in d.Interactions.OrderByDescending(x => x.Severity))
@@ -236,12 +237,12 @@ public sealed class MedicationEvidenceRetriever(IMedicationService medications, 
                     continue;
                 }
 
-                items.Add(Item(items.Count + 1, d, name, "Interaction", i.Summary, $"{i.WithIngredient} | {i.Severity}", i.SourceId, i.Validation, sourceById, now, staleAfter));
+                items.Add(Item(items.Count + 1, d, name, "Interaction", i.Summary, $"{i.WithIngredient} | {i.Severity}", i.SourceId, i.Validation, sourceById, now, staleAfter, i.RecordId, i.RevisionId));
             }
         }
 
-        var conflicts = items.Where(x => x.Kind == "Interaction").GroupBy(x => (x.MedicationId, With: QueryNormalizer.Normalize(x.Qualifier!.Split('|')[0])))
-            .Where(g => g.Select(x => x.Qualifier!.Split('|')[1].Trim()).Distinct(StringComparer.Ordinal).Count() > 1 && g.Select(x => x.Source.SourceId).Distinct().Count() > 1)
+        var conflicts = items.Where(x => x.Kind == "Interaction").GroupBy(x => (x.MedicationId, With: QueryNormalizer.Normalize(QualifierPart(x.Qualifier!, true))))
+            .Where(g => g.Select(x => QualifierPart(x.Qualifier!, false).Trim()).Distinct(StringComparer.Ordinal).Count() > 1) // two sources, or one source contradicting itself: either way the severity is not settled
             .Select(g => new EvidenceConflict("interaction.severity_disagrees", g.First().MedicationName, [.. g.Select(x => x.Id)]))
             .ToList();
 
@@ -322,14 +323,21 @@ public sealed class MedicationEvidenceRetriever(IMedicationService medications, 
         return new EvidenceSet(medicationList, items, conflicts, missing, limitations, quality, quarantined, excluded);
     }
 
+    /// <summary>The qualifier is "ingredient | severity". The severity never contains a bar, so split at the LAST one: an ingredient name that contains a bar must not shift the severity.</summary>
+    private static string QualifierPart(string qualifier, bool ingredient)
+    {
+        var cut = qualifier.LastIndexOf('|');
+        return cut < 0 ? (ingredient ? qualifier : string.Empty) : ingredient ? qualifier[..cut] : qualifier[(cut + 1)..];
+    }
+
     private static EvidenceItem Item(int n, MedicationKnowledgeDocument d, string name, string kind, string text, string? qualifier, Guid sourceId, ValidationStatus validation,
-        Dictionary<Guid, KnowledgeSourceRef> sources, DateTimeOffset now, TimeSpan staleAfter)
+        Dictionary<Guid, KnowledgeSourceRef> sources, DateTimeOffset now, TimeSpan staleAfter, Guid? recordId = null, Guid? revisionId = null)
     {
         var src = sources.TryGetValue(sourceId, out var s) ? s : new KnowledgeSourceRef(sourceId, "unknown source", string.Empty, string.Empty);
         var unknown = src.ReceivedAt is null;
         var stale = src.ReceivedAt is { } at && now - at > staleAfter;
         return new EvidenceItem($"E{n.ToString(CultureInfo.InvariantCulture)}", d.MedicationId, name, kind, text, qualifier,
             new EvidenceSource(src.SourceId, src.Name, src.Version, src.Publisher, src.ReceivedAt, (src.Validation ?? validation).ToString()),
-            validation.ToString(), d.IsDemo, stale, unknown);
+            validation.ToString(), d.IsDemo, stale, unknown, recordId, revisionId);
     }
 }

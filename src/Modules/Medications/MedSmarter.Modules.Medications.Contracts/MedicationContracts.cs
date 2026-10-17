@@ -199,9 +199,10 @@ public sealed record MedicationKnowledgeDocument(
     DateTimeOffset UpdatedAt,
     string Notice);
 
-public sealed record KnowledgeStatementView(StatementKind Kind, string Text, Guid SourceId, ValidationStatus Validation);
+/// <param name="RecordId">Id of the stored statement and <paramref name="RevisionId"/> of the source revision it came from, so an answer can be traced to the exact stored record. Null for callers that do not supply them.</param>
+public sealed record KnowledgeStatementView(StatementKind Kind, string Text, Guid SourceId, ValidationStatus Validation, Guid? RecordId = null, Guid? RevisionId = null);
 
-public sealed record KnowledgeInteractionView(string WithIngredient, InteractionSeverity Severity, string Summary, Guid SourceId, ValidationStatus Validation);
+public sealed record KnowledgeInteractionView(string WithIngredient, InteractionSeverity Severity, string Summary, Guid SourceId, ValidationStatus Validation, Guid? RecordId = null, Guid? RevisionId = null);
 
 /// <param name="ReceivedAt">When this system received the source (NOT the publication or effective date, which is not recorded). Null when unknown.</param>
 /// <param name="Validation">Validation status of the source itself. Null when not supplied by an older caller.</param>
