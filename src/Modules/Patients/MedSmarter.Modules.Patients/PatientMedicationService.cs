@@ -447,6 +447,12 @@ public sealed class PatientMedicationService(IDbContextFactory<PatientsDbContext
             return PatientOutcome.Ok(ToDto(existing));
         }
 
+        if (existing is not null && command.ClientRecordedAt is { } clientAt && existing.RecordedAt > clientAt)
+        {
+            // A queued offline report is replayed after the server already holds a different, newer record for this dose (another device or the web). It is never applied silently over it.
+            return PatientOutcome.Fail<IntakeLogDto>(PatientError.Conflict, "intake.newer_record_exists");
+        }
+
         var log = existing ?? new IntakeLogRecord { Id = Guid.CreateVersion7(), PatientId = patient!.Id, PatientMedicationId = med.Id, ScheduleEntryId = command.ScheduleEntryId, ScheduledFor = scheduledUtc };
         log.Status = command.Status;
         log.TakenAt = command.Status == IntakeStatus.Taken ? command.TakenAt ?? now : null;

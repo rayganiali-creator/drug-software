@@ -12,6 +12,7 @@ import '../api/medication_client.dart';
 import '../api/assistant_client.dart';
 import '../api/safety_client.dart';
 import '../api/records_client.dart';
+import 'offline_queue.dart';
 import '../auth/auth_controller.dart';
 import '../config.dart';
 import 'formatters.dart';
@@ -50,6 +51,7 @@ class AppController extends ChangeNotifier {
     _apiAccount = account;
     if (account == null) {
       api.clear();
+      offlineQueue.clear(); // queued reports are removed with the session
       return;
     }
     api.login(account).then((_) {
@@ -68,6 +70,7 @@ class AppController extends ChangeNotifier {
   final ApiSession api;
   late final MedicationClient medications = MedicationClient(api);
   late final RecordsClient records = RecordsClient(api);
+  late final OfflineQueue offlineQueue = OfflineQueue(prefs: _prefs, now: clock);
   late final AssistantClient assistant = AssistantClient(api);
   late final SafetyClient safety = SafetyClient(api);
   final SharedPreferences? _prefs;

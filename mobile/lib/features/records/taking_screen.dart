@@ -9,6 +9,7 @@ import '../../components/inputs.dart';
 import '../../components/screen.dart';
 import '../../components/tone.dart';
 import '../../core/app_scope.dart';
+import '../../core/offline_queue.dart';
 import '../../design/theme.dart';
 import '../../design/tokens.g.dart';
 import 'common.dart';
@@ -23,7 +24,26 @@ class TakingScreen extends StatefulWidget {
 
 class _TakingScreenState extends State<TakingScreen> {
   int _gen = 0;
+  bool _started = false;
   void _refresh() => setState(() => _gen++);
+
+  /// Binds the offline queue to this account and tries to send what is waiting. The queue is also sent on demand ("Send now").
+  Future<void> _syncQueue() async {
+    final app = context.app;
+    app.offlineQueue.bind(app.records.selfId);
+    await app.offlineQueue.sync(app.records);
+    if (mounted) _refresh();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      context.app.offlineQueue.bind(context.app.records.selfId);
+      if (context.app.offlineQueue.pendingCount > 0) _syncQueue();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +52,7 @@ class _TakingScreenState extends State<TakingScreen> {
       title: context.t('rec.taking.title'),
       subtitle: context.t('rec.taking.sub'),
       children: [
+        _QueuePanel(onSync: _syncQueue),
         RecordsLoader<List<Json>>(
           key: ValueKey('doses$_gen'),
           load: () => api.doses(DateTime.now()),
@@ -100,13 +121,39 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
     final s = widget.slot;
     final status = s['status'] as String?;
     final time = '${s['localTime']}'.padRight(5).substring(0, 5);
+    final queue = context.app.offlineQueue;
+    return ListenableBuilder(
+      listenable: queue,
+      builder: (context, _) => _build(context, s, status, time, queue.forSlot(s)),
+    );
+  }
+
+  Future<Object?> _report(Json s, String status) async {
+    final result = await context.app.offlineQueue.submitIntake(context.app.records, s, status);
+    if (result == SubmitResult.queued && mounted) {
+      setState(() => failure = null);
+    }
+    return result;
+  }
+
+  Widget _build(BuildContext context, Json s, String? status, String time, QueuedOp? queued) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AppListTile(
           title: '${s['medicationName']}',
           meta: context.fmt.time(time),
-          trailing: status == null
+          trailing: queued != null && queued.state != QueueState.synced
+              ? AppBadge(
+                  text: context.t('off.state.${queued.state.name}'),
+                  tone: queued.state == QueueState.pending
+                      ? Tone.warning
+                      : Tone.danger,
+                  icon: queued.state == QueueState.pending
+                      ? 'clock'
+                      : 'alertTriangle',
+                )
+              : status == null
               ? null
               : AppBadge(
                   text: context.t('rec.intake.$status'),
@@ -130,7 +177,7 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
                     : ButtonVariant.primary,
                 loading: busy,
                 onPressed: () => act(
-                  () => context.app.records.logIntake(s, 'Taken'),
+                  () => _report(s, 'Taken'),
                   widget.onDone,
                 ),
               ),
@@ -141,7 +188,7 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
                 onPressed: busy
                     ? null
                     : () => act(
-                        () => context.app.records.logIntake(s, 'Skipped'),
+                        () => _report(s, 'Skipped'),
                         widget.onDone,
                       ),
               ),
@@ -154,7 +201,7 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
                   onPressed: busy
                       ? null
                       : () => act(
-                          () => context.app.records.logIntake(s, 'Missed'),
+                          () => _report(s, 'Missed'),
                           widget.onDone,
                         ),
                 ),
@@ -174,6 +221,83 @@ class _DoseRowState extends State<_DoseRow> with ActionRunner {
           ),
         failureAlert(),
       ],
+    );
+  }
+}
+
+/// Reports made without a connection: what is waiting, what failed, what needs a decision. Nothing here is "saved" until sent.
+class _QueuePanel extends StatelessWidget {
+  const _QueuePanel({required this.onSync});
+  final Future<void> Function() onSync;
+
+  @override
+  Widget build(BuildContext context) {
+    final queue = context.app.offlineQueue;
+    return ListenableBuilder(
+      listenable: queue,
+      builder: (context, _) {
+        final ops = [for (final o in queue.ops) if (o.state != QueueState.synced) o];
+        if (ops.isEmpty) return const SizedBox.shrink();
+        return RecSection(
+          title: context.t('off.title'),
+          subtitle: context.t('off.body'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final o in ops)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.s3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppBadge(
+                        text: '${context.t('off.state.${o.state.name}')} · ${context.t('rec.intake.${o.status}')}',
+                        tone: o.state == QueueState.pending ? Tone.warning : Tone.danger,
+                        icon: o.state == QueueState.pending ? 'clock' : 'alertTriangle',
+                      ),
+                      if (o.state == QueueState.pending)
+                        Text(context.t('off.pendingNote'), style: context.text.caption),
+                      if (o.state == QueueState.conflict)
+                        Text(context.t('off.conflictBody'), style: context.text.caption),
+                      if (o.state == QueueState.failed)
+                        Text(context.t('off.failedBody'), style: context.text.caption),
+                      Wrap(
+                        spacing: Space.s2,
+                        children: [
+                          if (o.state == QueueState.failed)
+                            AppButton(
+                              label: context.t('off.retry'),
+                              size: ButtonSize.sm,
+                              variant: ButtonVariant.secondary,
+                              onPressed: () {
+                                queue.retry(o.id);
+                                onSync();
+                              },
+                            ),
+                          if (o.state != QueueState.pending)
+                            AppButton(
+                              label: context.t(o.state == QueueState.conflict ? 'off.keepServer' : 'off.discard'),
+                              size: ButtonSize.sm,
+                              variant: ButtonVariant.ghost,
+                              onPressed: () => queue.discard(o.id),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              if (queue.pendingCount > 0)
+                AppButton(
+                  label: context.t('off.syncNow'),
+                  size: ButtonSize.sm,
+                  iconStart: 'send',
+                  loading: queue.syncing,
+                  onPressed: onSync,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -58,3 +58,53 @@ public class Phase14Tests
         Assert.Equal(DeliveryMode.Simulated, row.Mode); // and it stays labelled simulated
     }
 }
+
+/// <summary>Phase 14: replaying a queued offline intake never overwrites a newer server record silently.</summary>
+public class Phase14SyncTests
+{
+    private static async Task<(Guid Id, PatientMedicationDto Med, ScheduleEntryDto Entry, DoseSlotDto Slot)> Setup(PEnv env)
+    {
+        var id = await env.Patient("demo-patient");
+        var med = await env.TakeMedication(id);
+        var entry = (await env.Meds.AddScheduleEntryAsync(id, id, med.Id, new ScheduleEntryInput(new TimeOnly(8, 0), null, null, null), "t", null)).Value!;
+        env.Clock.Advance(TimeSpan.FromHours(6));
+        return (id, med, entry, (await env.Meds.GetDayAsync(id, env.Today)).Value!.Single());
+    }
+
+    [Fact]
+    public async Task A_queued_report_older_than_a_different_server_record_is_a_conflict_and_changes_nothing()
+    {
+        using var env = new PEnv();
+        var (id, med, entry, slot) = await Setup(env);
+        var queuedAt = env.Clock.UtcNow;
+        env.Clock.Advance(TimeSpan.FromMinutes(10));
+        var server = (await env.Meds.LogIntakeAsync(id, id, new LogIntakeCommand(med.Id, entry.Id, slot.ScheduledFor, IntakeStatus.Skipped, null, null), "web", null)).Value!;
+
+        var replay = await env.Meds.LogIntakeAsync(id, id, new LogIntakeCommand(med.Id, entry.Id, slot.ScheduledFor, IntakeStatus.Taken, null, null, queuedAt), "android", null);
+        Assert.Equal(PatientError.Conflict, replay.Error);
+        Assert.Equal("intake.newer_record_exists", replay.Detail);
+        var stored = Assert.Single((await env.Meds.ListIntakeAsync(id, env.Clock.UtcNow.AddDays(-1), env.Clock.UtcNow)).Value!);
+        Assert.Equal(IntakeStatus.Skipped, stored.Status);
+        Assert.Equal(server.RecordedAt, stored.RecordedAt);
+    }
+
+    [Fact]
+    public async Task A_replay_of_the_same_queued_report_is_idempotent_and_a_newer_client_report_is_applied()
+    {
+        using var env = new PEnv();
+        var (id, med, entry, slot) = await Setup(env);
+        var queuedAt = env.Clock.UtcNow;
+        var cmd = new LogIntakeCommand(med.Id, entry.Id, slot.ScheduledFor, IntakeStatus.Taken, null, null, queuedAt);
+        env.Clock.Advance(TimeSpan.FromMinutes(5));
+        var first = (await env.Meds.LogIntakeAsync(id, id, cmd, "android", null)).Value!;
+        env.Clock.Advance(TimeSpan.FromMinutes(5));
+        var again = await env.Meds.LogIntakeAsync(id, id, cmd, "android", null); // lost response, queue retries
+        Assert.True(again.Succeeded);
+        Assert.Equal(first.RecordedAt, again.Value!.RecordedAt);
+
+        // a genuinely newer client decision (made after the stored record) is accepted as a versioned correction
+        var later = await env.Meds.LogIntakeAsync(id, id, new LogIntakeCommand(med.Id, entry.Id, slot.ScheduledFor, IntakeStatus.Skipped, null, null, env.Clock.UtcNow), "android", null);
+        Assert.True(later.Succeeded);
+        Assert.Equal(IntakeStatus.Skipped, later.Value!.Status);
+    }
+}

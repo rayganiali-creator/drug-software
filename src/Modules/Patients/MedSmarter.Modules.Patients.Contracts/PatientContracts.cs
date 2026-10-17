@@ -236,7 +236,7 @@ public sealed record AdherenceMedicationDto(
 
 public sealed record AdherenceSummaryDto(DateTimeOffset From, DateTimeOffset Until, int Days, string Provenance, IReadOnlyList<AdherenceMedicationDto> Medications, DateTimeOffset? IntakeLastUpdatedAt, bool IntakeStale, string Notice);
 
-public sealed record LogIntakeCommand(Guid PatientMedicationId, Guid? ScheduleEntryId, DateTimeOffset? ScheduledFor, IntakeStatus Status, DateTimeOffset? TakenAt, string? Note);
+public sealed record LogIntakeCommand(Guid PatientMedicationId, Guid? ScheduleEntryId, DateTimeOffset? ScheduledFor, IntakeStatus Status, DateTimeOffset? TakenAt, string? Note, DateTimeOffset? ClientRecordedAt = null);
 
 // ---------- symptoms ----------
 

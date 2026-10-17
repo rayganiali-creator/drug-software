@@ -151,8 +151,9 @@ class RecordsClient {
       });
   Future<Json> adherenceSummary([int days = 14]) => _obj('GET', _p('adherence/summary?days=$days'));
   Future<List<Json>> doses(DateTime day) => _list(_p('doses?date=${_day(day)}'));
-  Future<void> logIntake(Json slot, String status) async {
+  Future<void> logIntake(Json slot, String status, {DateTime? clientRecordedAt}) async {
     await _call('POST', _p('intake'), {
+      if (clientRecordedAt != null) 'clientRecordedAt': clientRecordedAt.toUtc().toIso8601String(),
       'patientMedicationId': slot['patientMedicationId'],
       'scheduleEntryId': slot['scheduleEntryId'],
       'scheduledFor': slot['scheduledFor'],
