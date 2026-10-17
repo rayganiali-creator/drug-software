@@ -11,6 +11,7 @@ import 'features/home/home_screen.dart';
 import 'features/medications/medications_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/records/batches_screen.dart';
+import 'features/records/adverse_events_screen.dart';
 import 'features/records/messages_screen.dart';
 import 'features/records/records_screen.dart';
 import 'features/records/sharing_screen.dart';
@@ -114,6 +115,17 @@ GoRouter buildRouter({
                 GoRoute(path: 'sharing', builder: (c, s) => const SharingScreen()),
                 GoRoute(path: 'messages', builder: (c, s) => const MessagesScreen()),
                 GoRoute(path: 'safety', builder: (c, s) => const SafetyScreen()),
+                GoRoute(
+                  path: 'adverse-events',
+                  builder: (c, s) => const AdverseEventsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      builder: (c, s) =>
+                          AdverseEventDetailScreen(id: s.pathParameters['id']!),
+                    ),
+                  ],
+                ),
                 GoRoute(
                   path: 'design-system',
                   builder: (c, s) => const DesignSystemScreen(),

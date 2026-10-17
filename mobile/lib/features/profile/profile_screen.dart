@@ -72,6 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ('sharing', 'nav.sharing', 'shield'),
                 ('messages', 'nav.messages', 'message'),
                 ('safety', 'nav.safety', 'shield'),
+                ('adverse-events', 'nav.adverse-events', 'alertTriangle'),
               ])
                 AppListTile(
                   title: context.t(key),

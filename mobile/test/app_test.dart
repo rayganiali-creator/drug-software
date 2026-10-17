@@ -317,7 +317,7 @@ void main() {
       await pumpApp(
         tester,
         locale: const Locale('fa'),
-        size: const Size(390, 2000),
+        size: const Size(390, 2400),
         location: '/profile',
       );
       expect(

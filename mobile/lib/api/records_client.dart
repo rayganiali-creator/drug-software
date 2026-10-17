@@ -227,6 +227,17 @@ class RecordsClient {
     'version': 'v1',
   });
 
+  // ---- adverse-event records (the patient's own; internal records for professional review, never submitted anywhere)
+  Future<List<Json>> adverseEvents() => _list(_p('adverse-events'));
+  Future<Json> adverseEvent(String id) async =>
+      (await _call('GET', '/adverse-events/$id')) as Json;
+  Future<Json> createAdverseEvent(Json body) async =>
+      (await _call('POST', _p('adverse-events'), body)) as Json;
+  Future<Json> addAdverseEventFollowUp(String id, String text) async =>
+      (await _call('POST', '/adverse-events/$id/follow-ups', {'text': text}))
+          as Json;
+  static String newRequestId() => _uuid();
+
   // ---- messages
   Future<List<Json>> messages() => _list('/guidance/messages');
   Future<void> setMessageStatus(String id, String status) =>
