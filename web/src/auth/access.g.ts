@@ -26,7 +26,6 @@ export const permissions = {
   orgManage: "org.manage",
   industryInsightsRead: "industry.insights.read",
   analyticsRead: "analytics.read",
-  signalsRead: "signals.read",
   researchDatasetRequest: "research.dataset.request",
   consentRead: "consent.read",
   consentGrant: "consent.grant",

@@ -11,7 +11,7 @@ adverse-event reports, consent, messages) needs the server and shows its "not co
 | Item | Behaviour |
 |---|---|
 | Storage | `shared_preferences` on the device (the only local store available). It holds ids, the chosen status and the time the person made the report. **No token, no medicine name, no free text, no note.** It is plain preferences, not encrypted storage; this is why nothing sensitive beyond ids/status is put in it. |
-| Scope | Keyed by account id. Another account never sees it. Sign-out removes the queue and its stored copy. |
+| Scope | Keyed by account id. Another account never sees it. Sign-out, expiry, or starting the app signed out removes every stored queue entry (stabilization pass: it used to remove only the queue the current run had opened). |
 | Bound | At most 50 operations. A 51st new dose is refused with a plain message; replacing the report for a dose already queued is allowed. |
 | States | `pending` (not sent, saved on this phone only), `synced` (accepted by the server), `failed` (rejected, or retries exhausted), `conflict` (server holds a different, newer record). Each has a visible label; nothing is shown as saved before the server accepted it. |
 | Idempotency | One live operation per planned dose; the newest local decision replaces an older queued one. Every operation has a local id. The server treats the same report for the same dose as a no-op (existing Phase 8 behaviour), so a lost response followed by a retry creates no duplicate and no new audit line. Overlapping syncs are blocked by a single-flight guard. |

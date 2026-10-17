@@ -340,12 +340,14 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         return final;
     }
 
-    /// <summary>Writes the job result only if this pass still owns the row (state Running); a withdrawal or a recovery in between wins.</summary>
+    /// <summary>Writes the job result only if this pass still owns the row (same claim version); a withdrawal, a recovery or a new claim in between wins.</summary>
     private async Task FinishAsync(MonitoringJobRow claim, Action<MonitoringJobRow> apply, CancellationToken ct)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var row = await db.MonitoringJobs.FirstOrDefaultAsync(j => j.PatientId == claim.PatientId, ct);
-        if (row is null || row.State != MonitoringJobState.Running)
+        // Ownership: the row must still be the very claim this pass made (state Running AND the version this pass wrote). If the lease ran out and another instance
+        // recovered and re-claimed the job meanwhile, the state is Running again but the version differs, and this late result must not overwrite the new owner's.
+        if (row is null || row.State != MonitoringJobState.Running || row.RowVersion != claim.RowVersion)
         {
             return;
         }

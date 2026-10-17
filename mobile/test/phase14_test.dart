@@ -1,12 +1,14 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:medsmarter_mobile/api/api_session.dart';
 import 'package:medsmarter_mobile/api/records_client.dart';
+import 'package:medsmarter_mobile/core/app_controller.dart';
 import 'package:medsmarter_mobile/core/offline_queue.dart';
+import 'package:medsmarter_mobile/core/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers.dart';
@@ -205,6 +207,50 @@ void main() {
     expect(make().ops, isEmpty);
     await prefs.setString('offlineQueue.v1.user-1', 'not json');
     expect(OfflineQueue(prefs: prefs)..bind('user-1'), isA<OfflineQueue>().having((q) => q.ops, 'ops', isEmpty));
+  });
+
+
+  test('sign-out removes a stored queue even when this run never opened it, for every account', () async {
+    await prefs.setString('offlineQueue.v1.user-1', '[{"id":"a"}]');
+    await prefs.setString('offlineQueue.v1.user-2', '[{"id":"b"}]');
+    await prefs.setString('locale', 'en'); // unrelated settings stay
+    final q = OfflineQueue(prefs: prefs); // never bound
+    q.clear();
+    expect(prefs.getKeys().where((k) => k.startsWith('offlineQueue.')), isEmpty);
+    expect(prefs.getString('locale'), 'en');
+  });
+
+  group('with the app controller', () {
+    Future<AppController> controller(WidgetTester tester, {String? account}) async {
+      final c = await tester.runAsync(
+        () => AppController.create(
+          bundle: rootBundle,
+          prefs: prefs,
+          clock: () => DateTime(2026, 9, 29, 10),
+          initialAccountId: account,
+          httpClient: MockClient((_) async => throw http.ClientException('backend off (test)')),
+          servicesBuilder: (data) => MockServices(data, latency: Duration.zero, now: () => DateTime(2026, 9, 29, 10)),
+        ),
+      );
+      return c!;
+    }
+
+    testWidgets('starting signed out (for example after an expired session) discards whatever an earlier session left queued', (tester) async {
+      await prefs.setString('offlineQueue.v1.user-1', '[{"id":"a"}]');
+      await controller(tester);
+      expect(prefs.getKeys().where((k) => k.startsWith('offlineQueue.')), isEmpty);
+    });
+
+    testWidgets('an expired session and an explicit sign-out both clear the queue; the next account sees nothing', (tester) async {
+      final c = await controller(tester, account: 'demo-patient');
+      c.offlineQueue.bind('user-1');
+      await prefs.setString('offlineQueue.v1.user-1', '[{"id":"a"}]');
+      c.auth.simulateExpiry();
+      expect(prefs.getKeys().where((k) => k.startsWith('offlineQueue.')), isEmpty);
+      expect(c.offlineQueue.ops, isEmpty);
+      c.offlineQueue.bind('user-2');
+      expect(c.offlineQueue.ops, isEmpty);
+    });
   });
 
   group('taking screen', () {

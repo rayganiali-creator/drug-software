@@ -1,4 +1,5 @@
 using MedSmarter.BuildingBlocks;
+using MedSmarter.Modules.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,31 @@ public class ReviewTests(PatientsApiFactory factory) : IClassFixture<PatientsApi
             else if (!explicitPermission && !SessionOnly.Contains(path))
             {
                 offenders.Add($"{path}: relies on the fallback policy only");
+            }
+        }
+
+        Assert.True(offenders.Count == 0, string.Join("; ", offenders));
+    }
+
+    // Aggregate-kind permissions carry NO organization or resource check. They may guard only these routes, which return fixed demo payloads.
+    private static readonly HashSet<string> AggregateStubRoutes = ["/analytics/summary"];
+
+    [Fact]
+    public void Aggregate_kind_permissions_guard_only_the_static_demo_stub_routes_and_signals_read_no_longer_exists()
+    {
+        var catalog = factory.Services.GetRequiredService<AccessCatalog>();
+        Assert.Null(catalog.KindOf("signals.read"));
+        var offenders = new List<string>();
+        foreach (var e in factory.Services.GetServices<EndpointDataSource>().SelectMany(s => s.Endpoints).OfType<RouteEndpoint>())
+        {
+            var path = "/" + (e.RoutePattern.RawText ?? string.Empty).TrimStart('/');
+            foreach (var policy in e.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy).Where(p => p is not null && p.StartsWith("perm:", StringComparison.Ordinal)))
+            {
+                var permission = policy!["perm:".Length..];
+                if (catalog.KindOf(permission) == "aggregate" && !AggregateStubRoutes.Contains(path))
+                {
+                    offenders.Add($"{path} uses aggregate-kind '{permission}' (no organization check)");
+                }
             }
         }
 

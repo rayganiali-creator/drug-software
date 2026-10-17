@@ -10,7 +10,7 @@ export const areaPermission: Record<Area, string> = {
   physician: P.prescriptionCreate,
   pharmacist: P.prescriptionReview,
   pharmacy: P.pharmacyInventoryRead,
-  industry: P.analyticsRead,
+  industry: P.analyticsRead, // UX only: lets the prototype industry area open for Industry and Researcher; the data endpoint (industry.insights.read) is organization-scoped on the server
   admin: P.roleManage,
   workspace: P.sessionRead,
 };

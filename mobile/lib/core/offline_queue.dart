@@ -123,13 +123,23 @@ class OfflineQueue extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sign-out: the queue and its stored copy are removed.
+  /// Sign-out or expiry: the in-memory queue and EVERY stored queue are removed, whether or not this run ever opened one
+  /// (a queue left on disk by an earlier run must not outlive the session that made it). Unsent reports are lost with it; that is the stated trade-off.
+  /// This removes the preferences entry. It does not claim to erase every trace on the device (backups, flash wear levelling and OS caches are outside the app's reach).
   void clear() {
-    final old = _account;
     _account = null;
     _ops.clear();
-    if (old != null) prefs?.remove('$_keyPrefix$old');
+    purgeStored();
     notifyListeners();
+  }
+
+  /// Removes every stored queue entry (all accounts).
+  void purgeStored() {
+    final p = prefs;
+    if (p == null) return;
+    for (final k in p.getKeys().where((k) => k.startsWith(_keyPrefix)).toList()) {
+      p.remove(k);
+    }
   }
 
   void _persist() {

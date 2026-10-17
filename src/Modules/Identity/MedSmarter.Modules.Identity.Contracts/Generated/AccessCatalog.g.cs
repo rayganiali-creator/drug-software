@@ -30,7 +30,6 @@ public static class Permissions
     public const string OrgManage = "org.manage";
     public const string IndustryInsightsRead = "industry.insights.read";
     public const string AnalyticsRead = "analytics.read";
-    public const string SignalsRead = "signals.read";
     public const string ResearchDatasetRequest = "research.dataset.request";
     public const string ConsentRead = "consent.read";
     public const string ConsentGrant = "consent.grant";

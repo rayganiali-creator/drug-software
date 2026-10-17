@@ -39,6 +39,8 @@ describe("industry report counts", () => {
     expect(screen.getByText("Products not in the reference (names not shown)")).toBeInTheDocument();
     expect(paths[0]).toMatch(/^\/organizations\/[^/]+\/industry\/insights\?basis=Real&from=\d{4}-\d{2}-\d{2}&until=\d{4}-\d{2}-\d{2}$/);
     expect(screen.queryByText(/Simulated or demo data/)).toBeNull();
+    expect(screen.getByText("Period shown: 2026-07-01 to 2026-09-30")).toBeInTheDocument();
+    expect(screen.getByText(/also hidden so that hidden groups cannot be worked out/)).toBeInTheDocument();
   });
 
   it("labels simulated or demo data loudly and asks for it separately", async () => {

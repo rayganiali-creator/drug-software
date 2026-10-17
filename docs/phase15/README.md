@@ -14,11 +14,11 @@ It returns **counts of patient-submitted manufacturer product reports that reach
 
 | Rule | How |
 |---|---|
-| Organization-scoped | New permission `industry.insights.read` has kind *organization*: the actor must be a member of the organization in the path. Non-member, wrong role and unknown organization all get the same 403. The older `analytics.read`/`signals.read` permissions are *aggregate* kind (no organization check) and **no route uses them**; they stay unused. |
+| Organization-scoped | New permission `industry.insights.read` has kind *organization*: the actor must be a member of the organization in the path. Non-member, wrong role and unknown organization all get the same 403. (Correction after the stabilization pass: `analytics.read` is *aggregate* kind and does guard the static demo route `/analytics/summary` and the web area gate; `signals.read` was unused and has been removed. See `docs/post-phase-15-stabilization`.) |
 | Product-scoped, fail-closed | The organization → manufacturer link is configuration only (`IndustryInsights:Organizations:{orgId}:0 = <manufacturer id from the medication reference>`). No link → `linked:false` and no data. Nothing is guessed from names. |
 | No identifiers or free text | The response type has no patient id, batch, description, reference, exact date or typed product name. Products outside the reference are lumped into one "not in the reference" row. A test serializes the result and asserts the seeded batch number and free text are absent. |
 | Small-group suppression | A cell is hidden when it has fewer than *k* reports **or** fewer than *k* different reporters (default 5, `IndustryInsights:MinCellSize`, floor 3 — a lower configured value is raised). A hidden cell carries no number. Tables are ordered by name, never by size. |
-| Bounded | Window 28–366 days (too short would isolate single reports); at most 25 products (flagged `productsTruncated`); counting happens in the database, no rows are loaded. |
+| Bounded | Whole closed calendar months only, at most 12 (stabilization pass; originally 28–366 days); at most 25 products (flagged `productsTruncated`); counting happens in the database, no rows are loaded. |
 | Real vs simulated | `basis=Real` counts only non-mock, non-demo reports/products. `SimulatedOrDemo` counts the rest. They are never added together and the page shows a warning banner and badge on the simulated view. Legacy prototype pages (trends, signals, experience, reports) under the same role now also carry a visible DEMO badge and say MedSmarter does not detect or confirm safety signals. |
 | No causality, no defect inference | Notice on every view: patient-submitted, unverified, not proof of a defect or causation, not an incidence. Labels are the reporter's categories, never MedSmarter's conclusion. |
 | No sending | There is no route here that sends, exports or creates a report; the manufacturer-report outbox is untouched. |
@@ -28,7 +28,7 @@ It returns **counts of patient-submitted manufacturer product reports that reach
 
 ## Known limits (not hidden)
 
-* **Cross-table differencing.** Each table is suppressed independently. A reader could combine tables (e.g. a total from one table minus visible cells in another) to infer a hidden small cell. No totals are published, windows cannot be narrowed below 28 days, and every read is audited, but this is a residual risk that needs a privacy review before any real use.
+* **Cross-table differencing (mitigated, not removed — see `docs/post-phase-15-stabilization`).** Originally each table was suppressed independently. A reader could combine tables (e.g. a total from one table minus visible cells in another) to infer a hidden small cell. No totals are published, windows cannot be narrowed below 28 days, and every read is audited, but this is a residual risk that needs a privacy review before any real use.
 * The link configuration is manual; there is no admin screen. With no link (the default, including the demo account) the page says so and shows nothing.
 * Real data will be empty today: no real manufacturer delivery exists (the provider is a mock), so every `Sent` report is simulated. The "Real" view is correct but will show nothing until a real, approved delivery exists.
 * Nothing says what may lawfully be shared with a manufacturer (matrix Q-14). The view is therefore minimal and counts-only.

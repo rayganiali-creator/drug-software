@@ -37,7 +37,6 @@ Status: **IMPLEMENTED NOW**. Adding a permission = edit the catalog, run `node s
 | `org.read` | organization |  |  |  | ● | ● |  |  |  | ● |
 | `org.manage` | organization |  |  |  | ● |  |  |  |  | ● |
 | `analytics.read` | aggregate |  |  |  |  | ● | ● |  |  |  |
-| `signals.read` | aggregate |  |  |  |  | ● | ● |  |  |  |
 | `research.dataset.request` | aggregate |  |  |  |  |  | ● |  |  |  |
 | `consent.read` | own | ● |  |  |  |  |  |  |  |  |
 | `consent.grant` | own | ● |  |  |  |  |  |  |  |  |

@@ -69,7 +69,9 @@ export function IndustryInsightsPage() {
                 <div className="ms-row" style={{ gap: "var(--space-2)", flexWrap: "wrap" }}>
                   <Badge tone={r.basis === "SimulatedOrDemo" ? "warning" : "info"} icon={r.basis === "SimulatedOrDemo" ? "alertTriangle" : "check"}>{t(`ind2.basis.${r.basis}`)}</Badge>
                   <Badge tone="neutral">{t("ind2.k", { k: fmt.number(r.minCellSize) })}</Badge>
+                  <Badge tone="neutral">{t("ind2.effective", { from: r.from, until: r.until })}</Badge>
                 </div>
+                <p className="ms-muted">{t("ind2.extraHidden")}</p>
                 {r.productsTruncated ? <p className="ms-muted">{t("ind2.truncated")}</p> : null}
                 <CellTable caption={t("ind2.byProduct")} cells={r.byProduct} k={r.minCellSize} label={(c) => c.key === "unregistered" ? t("ind2.unregistered") : (c.label ?? c.key)} />
                 <CellTable caption={t("ind2.byIssue")} cells={r.byIssueType} k={r.minCellSize} label={(c) => t(`ind2.issue.${c.key}`)} />

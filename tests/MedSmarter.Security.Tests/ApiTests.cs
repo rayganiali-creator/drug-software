@@ -329,6 +329,18 @@ public class ApiTests(SecureApiFactory factory) : IClassFixture<SecureApiFactory
         var (c, _) = await LoginAsync("demo-researcher");
         var text = await c.GetStringAsync("/analytics/summary");
         Assert.Contains("No patient-level data", text, StringComparison.Ordinal);
+        var j = JsonDocument.Parse(text).RootElement;
+        Assert.True(j.GetProperty("demo").GetBoolean()); // a fixed demo payload, never derived from stored data or from an organization
+        Assert.False(j.TryGetProperty("organizationId", out _));
+    }
+
+    [Fact]
+    public async Task The_industry_role_cannot_read_another_organizations_insights_and_the_old_signals_permission_is_gone()
+    {
+        var (industry, _) = await LoginAsync("demo-industry");
+        Assert.Equal(HttpStatusCode.Forbidden, (await industry.GetAsync($"/organizations/{Guid.NewGuid()}/industry/insights")).StatusCode);
+        var (researcher, _) = await LoginAsync("demo-researcher");
+        Assert.Equal(HttpStatusCode.Forbidden, (await researcher.GetAsync("/organizations/023fb39a-0093-5296-a985-9d68009a7d92/industry/insights")).StatusCode);
     }
 
     // ---------- admin + audit ----------

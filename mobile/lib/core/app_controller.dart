@@ -39,6 +39,7 @@ class AppController extends ChangeNotifier {
        _prefs = prefs {
     auth.addListener(_syncApi);
     _syncApi();
+    if (auth.accountId == null) offlineQueue.purgeStored(); // started signed out (expired or signed out earlier): nothing queued under a past session is kept
   }
 
   String? _apiAccount;

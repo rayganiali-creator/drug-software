@@ -171,12 +171,7 @@
     {
       "name": "analytics.read",
       "kind": "aggregate",
-      "description": "Read aggregate, de-identified analytics"
-    },
-    {
-      "name": "signals.read",
-      "kind": "aggregate",
-      "description": "Read aggregate safety signals"
+      "description": "Demo stub only: gates the static /analytics/summary payload. Carries no organization check, so it must never guard a route that returns organization or patient-derived data (use an organization-kind permission such as industry.insights.read)"
     },
     {
       "name": "research.dataset.request",
@@ -595,7 +590,6 @@
       "permissions": [
         "industry.insights.read",
         "analytics.read",
-        "signals.read",
         "org.read",
         "session.read",
         "session.revoke",
@@ -607,7 +601,6 @@
       "description": "Researcher: aggregate, de-identified data only",
       "permissions": [
         "analytics.read",
-        "signals.read",
         "research.dataset.request",
         "session.read",
         "session.revoke",

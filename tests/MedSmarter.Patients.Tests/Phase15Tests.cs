@@ -87,18 +87,21 @@ public class Phase15Tests
         await Seed(f, Maker, Med1, 7, 7, product: "Reference product");
         await Seed(f, Maker, null, 8, 8, product: "Typed name of a herbal tonic");
         await Seed(f, Maker, Med1, 3, 3, issue: ReportIssueType.ApparentLackOfEffect);
+        await Seed(f, Maker, Med1, 40, 40, issue: ReportIssueType.Other); // a larger visible group, so only the smallest visible one is sacrificed
         await Seed(f, Maker, Med1, 20, 20, status: ReportStatus.Draft);
         var r = (await env.Get<IIndustryInsightsService>().GetAsync(Guid.Parse(Org), From, Until, InsightBasis.Real)).Value!;
         var json = JsonSerializer.Serialize(r);
         Assert.DoesNotContain("herbal", json, StringComparison.Ordinal);
         Assert.DoesNotContain("SECRET-BATCH", json, StringComparison.Ordinal);
         Assert.DoesNotContain("free text", json, StringComparison.Ordinal);
-        Assert.Equal(10, r.ByProduct.Single(c => c.Key != "unregistered").Reports);
+        Assert.Equal(50, r.ByProduct.Single(c => c.Key != "unregistered").Reports);
         Assert.Equal(8, r.ByProduct.Single(c => c.Key == "unregistered").Reports);
         var lack = r.ByIssueType.Single(c => c.Key == nameof(ReportIssueType.ApparentLackOfEffect));
         Assert.True(lack.Suppressed);
         Assert.Null(lack.Reports);
-        Assert.Equal(15, r.ByIssueType.Single(c => c.Key == nameof(ReportIssueType.QualityProblem)).Reports); // drafts (20) are not counted
+        // the 3 hidden reports are less than k, so the next-smallest group (QualityProblem, 15) is hidden as well; drafts (20) are never counted
+        Assert.True(r.ByIssueType.Single(c => c.Key == nameof(ReportIssueType.QualityProblem)).Suppressed);
+        Assert.Equal(40, r.ByIssueType.Single(c => c.Key == nameof(ReportIssueType.Other)).Reports);
     }
 
     [Fact]
@@ -140,6 +143,117 @@ public class Phase15Tests
     }
 }
 
+public class Phase15DisclosureTests
+{
+    [Fact]
+    public void Complementary_suppression_hides_the_next_smallest_group_so_the_hidden_sum_reaches_k()
+    {
+        var cells = DisclosureRule.Apply([new("a", "A", 2, 2), new("b", "B", 6, 6), new("c", "C", 30, 30)], 5);
+        Assert.True(cells.Single(c => c.Key == "a").Suppressed);
+        Assert.True(cells.Single(c => c.Key == "b").Suppressed); // 2 + 6 >= 5
+        Assert.Equal(30, cells.Single(c => c.Key == "c").Reports);
+    }
+
+    [Theory]
+    [InlineData(4, 4, 1)]   // just below k on reports
+    [InlineData(5, 4, 1)]   // enough reports, one reporter short
+    [InlineData(5, 5, 0)]   // exactly k on both: shown
+    public void The_boundary_is_inclusive_on_both_counts(int reports, int reporters, int expectedHidden)
+    {
+        var cells = DisclosureRule.Apply([new("a", "A", reports, reporters), new("z", "Z", 500, 500)], 5);
+        Assert.Equal(expectedHidden, cells.Count(c => c.Suppressed && c.Key == "a"));
+    }
+
+    [Fact]
+    public void Subtracting_the_visible_cells_of_one_table_from_the_total_of_another_never_isolates_one_small_group()
+    {
+        // Property check over many shapes: whenever something is hidden, the hidden reports sum to at least k and at least two groups are hidden unless one hidden group alone holds >= k.
+        var rnd = new Random(7);
+        for (var run = 0; run < 500; run++)
+        {
+            var groups = Enumerable.Range(0, rnd.Next(1, 9)).Select(i => new RawGroup("g" + i, null, rnd.Next(1, 40), rnd.Next(1, 40))).ToList();
+            groups = [.. groups.Select(g => g with { Reporters = Math.Min(g.Reporters, g.Reports) })];
+            var cells = DisclosureRule.Apply(groups, 5);
+            var hiddenKeys = cells.Where(c => c.Suppressed).Select(c => c.Key).ToHashSet();
+            if (hiddenKeys.Count == 0)
+            {
+                continue;
+            }
+
+            var hiddenSum = groups.Where(g => hiddenKeys.Contains(g.Key)).Sum(g => g.Reports);
+            var everyVisibleExists = hiddenKeys.Count < groups.Count;
+            Assert.True(hiddenSum >= 5 || !everyVisibleExists, $"run {run}: hidden sum {hiddenSum}");
+        }
+    }
+}
+
+public class Phase15WindowTests
+{
+    private static readonly Guid OrgId = Guid.Parse(Phase15Tests.Org);
+
+    private static PEnv Env() => new(settings: new() { [$"IndustryInsights:Organizations:{Phase15Tests.Org}:0"] = Phase15Tests.Maker.ToString() });
+
+    [Fact]
+    public async Task The_window_is_snapped_to_whole_closed_months_so_a_one_day_shift_changes_nothing()
+    {
+        using var env = Env(); // clock: 2026-10-09
+        var svc = env.Get<IIndustryInsightsService>();
+        var a = (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 15), new DateOnly(2026, 9, 20), InsightBasis.Real)).Value!;
+        var b = (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!;
+        var c = (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 16), new DateOnly(2026, 9, 21), InsightBasis.Real)).Value!;
+        Assert.Equal((new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30)), (a.From, a.Until));
+        Assert.Equal((b.From, b.Until), (a.From, a.Until));
+        Assert.Equal((b.From, b.Until), (c.From, c.Until));
+    }
+
+    [Fact]
+    public async Task The_month_that_is_still_filling_up_is_never_included_and_a_window_with_no_closed_month_is_refused()
+    {
+        using var env = Env();
+        var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6, on: new DateOnly(2026, 10, 2)); // current month
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6, on: new DateOnly(2026, 9, 2));
+        var svc = env.Get<IIndustryInsightsService>();
+        var r = (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 31), InsightBasis.Real)).Value!;
+        Assert.Equal(new DateOnly(2026, 9, 30), r.Until);
+        Assert.Equal(6, r.ByIssueType.Single().Reports);
+        env.Clock.Advance(TimeSpan.FromDays(2)); // a later query on the same closed window must not move
+        Assert.Equal(6, (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 31), InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+        Assert.Equal("window.no_closed_month", (await svc.GetAsync(OrgId, new DateOnly(2026, 10, 1), new DateOnly(2026, 11, 30), InsightBasis.Real)).Detail);
+    }
+
+    [Fact]
+    public async Task Overlapping_queries_cannot_isolate_a_small_group_by_shifting_the_window_by_days()
+    {
+        using var env = Env();
+        var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 3, 3, on: new DateOnly(2026, 9, 29)); // 3 reports at the very end of the window
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 30, 30, on: new DateOnly(2026, 8, 10));
+        var svc = env.Get<IIndustryInsightsService>();
+        var wide = (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!;
+        var narrow = (await svc.GetAsync(OrgId, new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 28), InsightBasis.Real)).Value!; // "one day shorter" snaps to the same window
+        Assert.Equal(wide.ByMonth.Select(c => (c.Key, c.Reports)), narrow.ByMonth.Select(c => (c.Key, c.Reports)));
+        Assert.True(wide.ByMonth.Single(c => c.Key == "2026-09").Suppressed); // 3 < k
+    }
+
+    [Fact]
+    public async Task One_organizations_link_never_exposes_another_organizations_manufacturer()
+    {
+        const string otherOrg = "578742b6-efd3-551a-9000-e250d815db67";
+        using var env = new PEnv(settings: new()
+        {
+            [$"IndustryInsights:Organizations:{Phase15Tests.Org}:0"] = Phase15Tests.Maker.ToString(),
+            [$"IndustryInsights:Organizations:{otherOrg}:0"] = Phase15Tests.OtherMaker.ToString(),
+        });
+        var f = env.Get<IDbContextFactory<ProductTraceDbContext>>();
+        await Phase15Tests.Seed(f, Phase15Tests.Maker, null, 6, 6);
+        await Phase15Tests.Seed(f, Phase15Tests.OtherMaker, null, 9, 9);
+        var svc = env.Get<IIndustryInsightsService>();
+        Assert.Equal(6, (await svc.GetAsync(OrgId, new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+        Assert.Equal(9, (await svc.GetAsync(Guid.Parse(otherOrg), new DateOnly(2026, 7, 1), new DateOnly(2026, 9, 30), InsightBasis.Real)).Value!.ByIssueType.Single().Reports);
+    }
+}
+
 public class IndustryApiFactory : PatientsApiFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -163,7 +277,7 @@ public class Phase15ApiTests(IndustryApiFactory factory) : IClassFixture<Industr
     [Fact]
     public async Task Only_the_industry_role_of_that_organization_may_read_and_the_answer_is_aggregate_only_and_audited()
     {
-        await Phase15Tests.Seed(factory.Services.GetRequiredService<IDbContextFactory<ProductTraceDbContext>>(), Phase15Tests.Maker, null, 6, 6, on: DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-10));
+        await Phase15Tests.Seed(factory.Services.GetRequiredService<IDbContextFactory<ProductTraceDbContext>>(), Phase15Tests.Maker, null, 6, 6, on: new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1).AddMonths(-1).AddDays(4));
         var industry = await As("demo-industry");
         var res = await industry.Client.GetAsync($"/organizations/{Phase15Tests.Org}/industry/insights?basis=Real");
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
