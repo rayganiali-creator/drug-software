@@ -77,9 +77,19 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
                 }
 
                 d.LeaseUntil = null;
+                d.Version++;
             }
 
-            await db.SaveChangesAsync(ct);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                stuck.Clear(); // another instance recovered them first; nothing more to do here
+                recovered = 0;
+            }
+
             foreach (var d in stuck)
             {
                 await AuditAsync(AuditActions.GuidanceDeliveryRecovered, AuditResult.Success, d, d.State.ToString(), ct);
@@ -111,7 +121,12 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
                 row.State = DeliveryState.Failed;
                 row.FailedAt = now;
                 row.ErrorCode = channel is null ? "channel.unavailable" : "message.missing";
-                await db.SaveChangesAsync(ct);
+                row.Version++;
+                if (!await TrySaveAsync(db, ct))
+                {
+                    continue;
+                }
+
                 failed++;
                 await AuditAsync(AuditActions.GuidanceDeliveryFailed, AuditResult.Failure, row, row.ErrorCode, ct);
                 continue;
@@ -122,7 +137,11 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
             row.Attempts++;
             row.LastAttemptAt = now;
             row.LeaseUntil = now.AddSeconds(o.LeaseSeconds);
-            await db.SaveChangesAsync(ct);
+            row.Version++;
+            if (!await TrySaveAsync(db, ct))
+            {
+                continue; // another instance claimed it between our read and our write: it is theirs, we do not attempt it
+            }
 
             ChannelOutcome outcome;
             try
@@ -142,29 +161,38 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
             }
 
             row.LeaseUntil = null;
+            row.Version++;
             switch (outcome)
             {
                 case ChannelOutcome.Confirmed:
                     row.State = DeliveryState.Confirmed;
                     row.ConfirmedAt = clock.UtcNow;
                     row.ErrorCode = null;
-                    confirmed++;
                     break;
                 case ChannelOutcome.TransientFailure when row.Attempts < o.MaxAttempts:
                     row.State = DeliveryState.Scheduled;
                     row.NextAttemptAt = clock.UtcNow.AddSeconds(o.BackoffSeconds * Math.Pow(2, row.Attempts - 1));
                     row.ErrorCode = "channel.transient";
-                    retrying++;
                     break;
                 default:
                     row.State = DeliveryState.Failed;
                     row.FailedAt = clock.UtcNow;
                     row.ErrorCode = outcome == ChannelOutcome.PermanentFailure ? "channel.refused" : "channel.transient_exhausted";
-                    failed++;
                     break;
             }
 
-            await db.SaveChangesAsync(ct);
+            if (!await TrySaveAsync(db, ct))
+            {
+                continue; // the lease ran out during a slow call and recovery handed the row on; whoever holds it now records its outcome
+            }
+
+            switch (row.State)
+            {
+                case DeliveryState.Confirmed: confirmed++; break;
+                case DeliveryState.Scheduled: retrying++; break;
+                default: failed++; break;
+            }
+
             if (row.State == DeliveryState.Confirmed)
             {
                 await AuditAsync(AuditActions.GuidanceDeliveryConfirmed, AuditResult.Success, row, channel.Mode == DeliveryMode.Simulated ? "simulated" : "real", ct);
@@ -176,6 +204,20 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
         }
 
         return new DeliveryRunResult(considered, confirmed, retrying, failed, recovered);
+    }
+
+    /// <summary>Saves, and reports false (instead of throwing) when another instance changed the row first.</summary>
+    private static async Task<bool> TrySaveAsync(GuidanceDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
     }
 
     private async Task AuditAsync(string action, AuditResult result, GuidanceDeliveryRow row, string? reason, CancellationToken ct)

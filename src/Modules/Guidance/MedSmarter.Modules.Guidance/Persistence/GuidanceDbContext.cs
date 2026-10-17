@@ -52,6 +52,8 @@ public sealed class GuidanceDeliveryRow
     public int Attempts { get; set; }
     public string? ErrorCode { get; set; }
     public DateTimeOffset? LeaseUntil { get; set; }
+    /// <summary>Phase 14 (additive): optimistic claim token. Every state change increments it, so two instances can never both claim the same due delivery.</summary>
+    public int Version { get; set; }
 }
 
 public sealed class GuidanceEventRow
@@ -111,6 +113,7 @@ public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> option
             e.HasKey(x => x.Id);
             e.Property(x => x.Channel).HasMaxLength(32).IsRequired();
             e.Property(x => x.ErrorCode).HasMaxLength(64);
+            e.Property(x => x.Version).IsConcurrencyToken();
             e.HasOne<GuidanceMessageRow>().WithMany().HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.MessageId, x.Channel }).IsUnique();
             e.HasIndex(x => new { x.State, x.NextAttemptAt });
