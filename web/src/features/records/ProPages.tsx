@@ -60,6 +60,7 @@ export function CareRequests() {
               {r.status === "PendingProvider" && <><Button size="sm" onClick={() => go(r.id, "accept")}>{t("rec.care.accept")}</Button><Button size="sm" variant="secondary" onClick={() => go(r.id, "decline")}>{t("rec.care.decline")}</Button></>}
               {r.status === "Active" && r.kind === "Treating" && <Link className="ms-link" to={`../patients/${r.patientSubjectId}/safety`}>{t("nav.safety")}</Link>}
               {r.status === "Active" && r.kind === "Treating" && <Link className="ms-link" to={`../patients/${r.patientSubjectId}/adherence`}>{t("adh.pro.link")}</Link>}
+              {r.status === "Active" && <Link className="ms-link" to={`../patients/${r.patientSubjectId}/adverse-events`}>{t("nav.adverse-events")}</Link>}
               {r.status === "Active" && <Button size="sm" variant="ghost" onClick={() => go(r.id, "end")}>{t("rec.care.end")}</Button>}
             </div>
           </li>))}

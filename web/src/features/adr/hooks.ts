@@ -27,3 +27,12 @@ export function useAdrLoad<T>(fn: (api: AdrApi, signal: AbortSignal) => Promise<
   const reload = useCallback(() => setTick((n) => n + 1), []);
   return { state, reload };
 }
+
+/** Open-queue count as the server reports it (already limited to the patients this reviewer may read), with whether it is known to be complete. Never a sample number. */
+export function useOpenAdrCount(): Load<{ count: number; complete: boolean }> {
+  const { state } = useAdrLoad(async (a, s) => {
+    const r = await a.queueWithCompleteness(["Submitted", "InReview", "InformationRequested"], s);
+    return { count: r.rows.length, complete: r.complete };
+  });
+  return state;
+}

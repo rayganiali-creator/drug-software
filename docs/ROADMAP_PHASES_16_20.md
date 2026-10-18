@@ -26,7 +26,9 @@ Global rules for every phase: synthetic data only; no paid server, domain, API o
 
 ---
 
-## Phase 17 — Patient, Pharmacist and Physician workflows (proposed)
+## Phase 17 — Patient, Pharmacist and Physician workflows (first subset implemented, uncommitted; the rest still proposed)
+
+See `docs/phase17/README.md` for the audit, the subset done and what remains.
 
 **Objective.** Close the gap between workflows that exist as real backend features and screens that still run on in-browser mock data.
 

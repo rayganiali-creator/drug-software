@@ -7,10 +7,14 @@ export type ApiFetch = (path: string, init?: RequestInit) => Promise<Response>;
  * Client of the adverse-event endpoints. It holds no business rule: who may see or do what (role, relationship, consent, the record's own subject) is decided by
  * the server, and every refusal is one uniform 403. Without an authorised fetch (the in-browser demo accounts) every call says "not connected".
  */
+/** What the server said about the queue: "truncated" (header exactly "true"), "complete" (exactly "false"), or "unknown" (missing or any other value: nothing is claimed). */
+export type QueueCompleteness = "complete" | "truncated" | "unknown";
+export const queueCompleteness = (header: string | null): QueueCompleteness => (header === "true" ? "truncated" : header === "false" ? "complete" : "unknown");
+
 export class AdrApi {
   constructor(private readonly apiFetch: ApiFetch | undefined) {}
 
-  private async call<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  private async send(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
     if (!this.apiFetch) throw new RecordsError("notConnected");
     let res: Response;
     try {
@@ -19,7 +23,7 @@ export class AdrApi {
       if (e instanceof DOMException && e.name === "AbortError") throw e;
       throw new RecordsError("network");
     }
-    if (res.ok) return (await res.json()) as T;
+    if (res.ok) return res;
     const problem = (await res.json().catch(() => ({}))) as { code?: string; errors?: string[] };
     if (res.status === 401 || res.status === 403) throw new RecordsError("unauthorized");
     if (res.status === 409) throw new RecordsError("conflict", problem.code, problem.errors);
@@ -28,10 +32,24 @@ export class AdrApi {
     throw new RecordsError("server");
   }
 
+  private async call<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+    return (await (await this.send(method, path, body, signal)).json()) as T;
+  }
+
   private r = (rid: string, rest = "") => `/adverse-events/${encodeURIComponent(rid)}${rest}`;
 
   definitions = (s?: AbortSignal) => this.call<Definitions>("GET", "/adverse-events/definitions", undefined, s);
   queue = (statuses: ReviewStatus[], s?: AbortSignal) => this.call<Summary[]>("GET", `/adverse-events/queue?status=${statuses.join(",")}`, undefined, s);
+  /**
+   * The queue together with whether the list is known to be complete. The server reads a bounded number of records before it filters them to the ones this reviewer may read,
+   * and says so in `X-Result-Truncated`. Only an explicit "false" counts as complete: a missing header (older server, proxy) is treated as "may be incomplete".
+   */
+  queueWithCompleteness = async (statuses: ReviewStatus[], s?: AbortSignal): Promise<{ rows: Summary[]; complete: boolean; completeness: QueueCompleteness }> => {
+    const res = await this.send("GET", `/adverse-events/queue?status=${statuses.join(",")}`, undefined, s);
+    const rows = (await res.json()) as Summary[];
+    const completeness = queueCompleteness(res.headers.get("X-Result-Truncated"));
+    return { rows, complete: completeness === "complete", completeness };
+  };
   listFor = (subject: string, s?: AbortSignal) => this.call<Summary[]>("GET", `/patients/${encodeURIComponent(subject)}/adverse-events`, undefined, s);
   create = (subject: string, body: CreateInput) => this.call<Detail>("POST", `/patients/${encodeURIComponent(subject)}/adverse-events`, body);
   get = (rid: string, s?: AbortSignal) => this.call<Detail>("GET", this.r(rid), undefined, s);

@@ -8,6 +8,7 @@ import { useAction, useLoad, useSelfId } from "../../records/hooks";
 import type { PatientMedication } from "../../records/types";
 import { categories, reviewKinds, statuses, type Assistance, type CreateInput, type Definitions, type Detail, type Entry, type EventCategory, type ReviewStatus, type Summary, type SuspectedMedicationInput } from "../../adr/types";
 import { ActionError, Loaded } from "../records/shared";
+import type { QueueCompleteness } from "../../adr/api";
 import { useAdrApi, useAdrLoad } from "./hooks";
 import "./adr.css";
 
@@ -149,16 +150,32 @@ export function PatientAdverseEvents() {
 export function ProAdverseEventQueue() {
   const { t } = useI18n();
   const [all, setAll] = useState(false);
-  const list = useAdrLoad((a, s) => a.queue(all ? statuses : ["Submitted", "InReview", "InformationRequested"], s), [all]);
+  const list = useAdrLoad((a, s) => a.queueWithCompleteness(all ? statuses : ["Submitted", "InReview", "InformationRequested"], s), [all]);
   return (
     <>
       <PageHeader title={t("adr.title.queue")} subtitle={t("adr.sub.queue")} />
       <div className="adr-page">
         <Notices />
         <Select label={t("adr.filter")} value={all ? "all" : "open"} onValueChange={(v) => setAll(v === "all")} options={[{ value: "open", label: t("adr.filter.open") }, { value: "all", label: t("adr.filter.all") }]} />
-        <Loaded load={list.state} reload={list.reload}>{(rows: Summary[]) => <RecordList rows={rows} />}</Loaded>
+        <Loaded load={list.state} reload={list.reload}>{(q) => (
+          <>
+            <QueueCompletenessNotice completeness={q.completeness} />
+            <RecordList rows={q.rows} />
+          </>
+        )}</Loaded>
       </div>
     </>
+  );
+}
+
+/** Only an explicit "complete" answer from the server stays silent. A capped read says so; a missing or unexpected answer is not taken for completeness. */
+function QueueCompletenessNotice({ completeness }: { completeness: QueueCompleteness }) {
+  const { t } = useI18n();
+  if (completeness === "complete") return null;
+  return (
+    <AlertCard tone="warning" role="alert" title={t(completeness === "truncated" ? "adr.queue.truncated.title" : "adr.queue.unknown.title")}>
+      {t(completeness === "truncated" ? "adr.queue.truncated.body" : "adr.queue.unknown.body")}
+    </AlertCard>
   );
 }
 

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ADRCard, AIInsightCard, InteractionCard, PrescriptionCard, RiskBadge } from "../../components/health/cards";
+import { AIInsightCard, InteractionCard, PrescriptionCard, RiskBadge } from "../../components/health/cards";
 import { AlertCard, Badge, Button, Card, Checkbox, EmptyState, Icon, List, ListItem, StatCard, Table, TextArea, Timeline, useToast, Sparkline, type Column } from "../../components/ui";
 import { useI18n } from "../../i18n/I18nProvider";
 import { PageHeader } from "../../layouts/PageHeader";
 import { useAsync, useServices } from "../../services/ServicesProvider";
 import type { Patient, ReviewItem } from "../../services/types";
 import { Async, PersonCell } from "../common";
+import { OpenAdrTile } from "../adr/OpenAdrTile";
 import "../features.css";
 
 export function PharmacistDashboard() {
@@ -14,7 +15,6 @@ export function PharmacistDashboard() {
   const nav = useNavigate();
   const reviews = useAsync((s) => s.pharmacist.reviews());
   const questions = useAsync((s) => s.pharmacist.questions());
-  const adr = useAsync((s) => s.adr.list({ status: "new" }));
   const follow = useAsync((s) => s.pharmacist.followUps());
   const openReviews = reviews.status === "ready" ? reviews.data.filter((r) => r.status === "open") : [];
   return (
@@ -24,7 +24,7 @@ export function PharmacistDashboard() {
         <div className="grid-stats">
           <StatCard icon="clipboard" label={t("pharm.statReviews")} value={reviews.status === "ready" ? fmt.number(openReviews.length) : "…"} />
           <StatCard icon="message" label={t("pharm.statQuestions")} value={questions.status === "ready" ? fmt.number(questions.data.length) : "…"} />
-          <StatCard icon="alertTriangle" label={t("pharm.statAdr")} value={adr.status === "ready" ? fmt.number(adr.data.length) : "…"} />
+          <OpenAdrTile labelKey="pharm.statAdrOpen" />
           <StatCard icon="calendar" label={t("pharm.statFollow")} value={follow.status === "ready" ? fmt.number(follow.data.filter((f) => !f.done && f.dueInDays <= 0).length) : "…"} />
         </div>
         <div className="split">
@@ -107,18 +107,6 @@ export function PharmacistInteractions() {
     <>
       <PageHeader title={t("nav.interactions")} subtitle={t("pharm.ixSub")} />
       <Async state={all}>{(list) => <div className="grid-2">{list.map((x) => <InteractionCard key={x.id} interaction={x} />)}</div>}</Async>
-    </>
-  );
-}
-
-export function PharmacistAdr() {
-  const { t } = useI18n();
-  const toast = useToast();
-  const adr = useAsync((s) => s.adr.list());
-  return (
-    <>
-      <PageHeader title={t("nav.adr")} subtitle={t("pharm.adrSub")} />
-      <Async state={adr}>{(list) => <div className="grid-2">{list.map((a) => <ADRCard key={a.id} report={a} showPatient actions={a.status !== "reviewed" && <Button size="sm" variant="secondary" onClick={() => toast.show({ message: t("pharm.reviewStarted"), tone: "info" })}>{t("pharm.startReview")}</Button>} />)}</div>}</Async>
     </>
   );
 }

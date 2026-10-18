@@ -32,7 +32,8 @@ void main() {
     testWidgets(
       'marking the dose taken confirms with an undo action and advances',
       (tester) async {
-        await pumpApp(tester);
+        // taller surface: the sample-data notice added in Phase 17 pushes the dose card down (layout only)
+        await pumpApp(tester, size: const Size(390, 1400));
         await tester.tap(find.text('I took it'));
         await tester.pumpAndSettle();
         expect(find.text('Solvita recorded as taken'), findsOneWidget);
@@ -72,7 +73,7 @@ void main() {
     testWidgets('bottom bar switches between the five tabs on phones', (
       tester,
     ) async {
-      await pumpApp(tester);
+      await pumpApp(tester, size: const Size(390, 1400)); // taller: the Phase 17 notice takes room (layout only)
       expect(find.byKey(const Key('bottom-bar')), findsOneWidget);
       expect(find.byKey(const Key('nav-rail')), findsNothing);
       await tester.tap(inBottomBar('Medications'));

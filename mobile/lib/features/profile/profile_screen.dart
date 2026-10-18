@@ -12,6 +12,7 @@ import '../../components/inputs.dart';
 import '../../components/screen.dart';
 import '../../components/tone.dart';
 import '../../config.dart';
+import '../../components/sample_notice.dart';
 import '../../core/app_scope.dart';
 import '../../design/theme.dart';
 import '../../design/tokens.g.dart';
@@ -32,6 +33,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ScreenScaffold(
       title: context.t('nav.profile'),
       children: [
+        const SampleDataNotice(
+          realRoute: '/profile/records',
+          realLabelKey: 'sample.real.records',
+        ),
         AsyncView(
           load: () => context.services.patients.current(),
           builder: (context, p, _) => AppCard(

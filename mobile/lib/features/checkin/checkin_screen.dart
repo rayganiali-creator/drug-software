@@ -9,6 +9,7 @@ import '../../components/display.dart';
 import '../../components/inputs.dart';
 import '../../components/screen.dart';
 import '../../components/tone.dart';
+import '../../components/sample_notice.dart';
 import '../../core/app_scope.dart';
 import '../../core/models.dart';
 import '../../design/theme.dart';
@@ -58,6 +59,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
       title: context.t('nav.checkin'),
       subtitle: context.t('checkin.sub'),
       children: [
+        const SampleDataNotice(
+          realRoute: '/profile/records',
+          realLabelKey: 'sample.real.records',
+        ),
         AsyncView<(CheckInConfig, bool)>(
           load: () async {
             final s = context.services;

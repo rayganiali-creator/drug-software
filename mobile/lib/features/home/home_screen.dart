@@ -12,6 +12,7 @@ import '../../components/tone.dart';
 import '../../core/app_scope.dart';
 import '../../core/formatters.dart';
 import '../../core/l10n.dart';
+import '../../components/sample_notice.dart';
 import '../../core/models.dart';
 import '../../design/theme.dart';
 import '../../design/tokens.g.dart';
@@ -66,6 +67,10 @@ class HomeScreen extends StatelessWidget {
       title: context.t('nav.home'),
       visuallyHiddenTitle: true,
       children: [
+        const SampleDataNotice(
+          realRoute: '/profile/taking',
+          realLabelKey: 'sample.real.taking',
+        ),
         AsyncView<_HomeData>(
           load: () => _load(context),
           loadingRows: 3,

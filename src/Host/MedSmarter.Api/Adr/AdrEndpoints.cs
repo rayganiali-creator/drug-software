@@ -22,6 +22,9 @@ public sealed record AdrStatusBody(ReviewStatus Status, string? Note, int Expect
 /// </summary>
 public static class AdrEndpoints
 {
+    public const int QueueReadCap = 200;
+    public const string QueueTruncatedHeader = "X-Result-Truncated";
+
     private static string Perm(string p) => PermissionPolicyProvider.Prefix + p;
     private static CurrentUser Actor(HttpContext ctx) => (CurrentUser)ctx.Items[BearerDefaults.CurrentUserItem]!;
     private static string SourceOf(HttpContext ctx) => ctx.Request.Headers["X-Client"].FirstOrDefault() is { } c && c is "web" or "android" or "ios" or "windows" or "macos" or "linux" ? c : "api";
@@ -146,7 +149,10 @@ public static class AdrEndpoints
                 wanted = [ReviewStatus.Submitted, ReviewStatus.InReview, ReviewStatus.InformationRequested];
             }
 
-            var rows = await svc.ListByStatusAsync(wanted, 200, ctx.RequestAborted);
+            var rows = await svc.ListByStatusAsync(wanted, QueueReadCap, ctx.RequestAborted);
+            // The service reads the newest QueueReadCap records of ALL patients and only then are they filtered to the ones this reviewer may read. When the read hit the cap, records that the
+            // reviewer may read can be missing from the list, and a count made from it would be wrong. Say so (the body is unchanged); clients must not show an exact count in that case.
+            ctx.Response.Headers[QueueTruncatedHeader] = rows.Value!.Count >= QueueReadCap ? "true" : "false";
             var allowed = new Dictionary<Guid, bool>();
             var result = new List<AdverseEventSummaryDto>();
             foreach (var r in rows.Value!)

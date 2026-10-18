@@ -7,6 +7,7 @@ import { PageHeader } from "../../layouts/PageHeader";
 import { useAsync } from "../../services/ServicesProvider";
 import type { Patient } from "../../services/types";
 import { Async, PersonCell, chartColors } from "../common";
+import { OpenAdrTile } from "../adr/OpenAdrTile";
 import "../features.css";
 
 function reasonsFor(p: Patient, t: ReturnType<typeof useI18n>["t"], fmt: ReturnType<typeof useI18n>["fmt"]) {
@@ -21,7 +22,6 @@ export function PhysicianDashboard() {
   const { t, loc, fmt } = useI18n();
   const nav = useNavigate();
   const patients = useAsync((s) => s.patients.list());
-  const adr = useAsync((s) => s.adr.list({ status: "new" }));
   const summary = useAsync((s) => s.ai.physicianSummary("panel"));
   return (
     <>
@@ -36,7 +36,7 @@ export function PhysicianDashboard() {
                 <StatCard icon="users" label={t("phys.statPatients")} value={fmt.number(list.length)} />
                 <StatCard icon="alertTriangle" label={t("phys.statAttention")} value={fmt.number(attention.length)} delta={t("phys.statAttentionHint")} deltaTone="warning" />
                 <StatCard icon="activity" label={t("phys.statAdherence")} value={fmt.percent(avg)} />
-                <StatCard icon="clipboard" label={t("phys.statAdr")} value={adr.status === "ready" ? fmt.number(adr.data.length) : "…"} />
+                <OpenAdrTile labelKey="phys.statAdrOpen" />
               </div>
               <div className="split">
                 <section className="ms-stack" aria-label={t("phys.attention")}>
@@ -163,17 +163,6 @@ export function PhysicianPrescriptions() {
       <PageHeader title={t("nav.prescriptions")} subtitle={t("phys.rxSub")}
         actions={<SegmentedControl label={t("rx.filter")} value={status} onValueChange={setStatus} options={[{ value: "all", label: t("common.all") }, { value: "active", label: t("rx.status.active") }, { value: "pending-review", label: t("rx.status.pending-review") }]} />} />
       <Async state={rx}>{(list) => <div className="grid-2">{list.filter((r) => status === "all" || r.status === status).map((r) => <PrescriptionCard key={r.id} rx={r} showPatient />)}</div>}</Async>
-    </>
-  );
-}
-
-export function PhysicianAdr() {
-  const { t } = useI18n();
-  const adr = useAsync((s) => s.adr.list());
-  return (
-    <>
-      <PageHeader title={t("nav.adr")} subtitle={t("phys.adrSub")} />
-      <Async state={adr}>{(list) => <div className="grid-2">{list.map((a) => <ADRCard key={a.id} report={a} showPatient />)}</div>}</Async>
     </>
   );
 }

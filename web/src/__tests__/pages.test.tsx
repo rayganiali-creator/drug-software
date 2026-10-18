@@ -21,8 +21,8 @@ describe("every route renders without errors", () => {
   const cases: [string, RegExp][] = [
     ["/", /Every medicine, every dose/], ["/design-system", /Design system/],
     ["/app/patient", /Next dose/], ["/app/patient/medications", /Medications/], ["/app/patient/medications/drug-demopril", /Demopril/], ["/app/patient/assistant", /AI Assistant/], ["/app/patient/checkin", /Check-in/], ["/app/patient/profile", /Profile/],
-    ["/app/physician", /Patients needing attention/], ["/app/physician/patients", /Patients/], ["/app/physician/patients/pt-sara", /Sara Ahmadi/], ["/app/physician/prescriptions", /Prescriptions/], ["/app/physician/adr", /Adverse reactions/], ["/app/physician/reports", /Reports/],
-    ["/app/pharmacist", /Work queue/], ["/app/pharmacist/reviews", /Medication review/], ["/app/pharmacist/interactions", /Interactions/], ["/app/pharmacist/adr", /Adverse reactions/], ["/app/pharmacist/adherence", /Adherence/], ["/app/pharmacist/questions", /Patient questions/], ["/app/pharmacist/followups", /Follow-up/],
+    ["/app/physician", /Patients needing attention/], ["/app/physician/patients", /Patients/], ["/app/physician/patients/pt-sara", /Sara Ahmadi/], ["/app/physician/prescriptions", /Prescriptions/], ["/app/physician/adr", /Adverse-event records to review/], ["/app/physician/reports", /Reports/],
+    ["/app/pharmacist", /Work queue/], ["/app/pharmacist/reviews", /Medication review/], ["/app/pharmacist/interactions", /Interactions/], ["/app/pharmacist/adr", /Adverse-event records to review/], ["/app/pharmacist/adherence", /Adherence/], ["/app/pharmacist/questions", /Patient questions/], ["/app/pharmacist/followups", /Follow-up/],
     ["/app/pharmacy", /Overview/], ["/app/pharmacy/inventory", /Inventory/], ["/app/pharmacy/prescriptions", /Prescriptions/], ["/app/pharmacy/dispensing", /Dispensing/], ["/app/pharmacy/requests", /Patient requests/], ["/app/pharmacy/alerts", /Alerts/],
     ["/app/industry", /Analytics/], ["/app/industry/adr-trends", /ADR trends/], ["/app/industry/experience", /Patient experience/], ["/app/industry/signals", /Signals/], ["/app/industry/reports", /Reports/],
   ];
