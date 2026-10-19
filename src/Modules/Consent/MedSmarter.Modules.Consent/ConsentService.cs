@@ -14,6 +14,9 @@ public interface IConsentStore
     Task<ConsentRecord?> FindAsync(Guid id, CancellationToken ct);
     Task<IReadOnlyList<ConsentRecord>> ForSubjectAsync(Guid subjectUserId, CancellationToken ct);
 
+    /// <summary>The consents of several subjects in one read; exactly what <see cref="ForSubjectAsync"/> returns for each of them.</summary>
+    Task<IReadOnlyList<ConsentRecord>> ForSubjectsAsync(IReadOnlyCollection<Guid> subjectUserIds, CancellationToken ct);
+
     /// <summary>Marks the consent revoked (only if it is not revoked yet) and appends the history line, atomically. Returns the stored record.</summary>
     Task<ConsentRecord?> RevokeAsync(Guid id, DateTimeOffset at, ConsentEventRecord revoked, CancellationToken ct);
     Task<IReadOnlyList<ConsentEventRecord>> EventsAsync(Guid subjectUserId, CancellationToken ct);
@@ -95,6 +98,15 @@ public sealed class InMemoryConsentStore : IConsentStore
         lock (_gate)
         {
             return Task.FromResult<IReadOnlyList<ConsentRecord>>([.. _items.Where(x => x.SubjectUserId == subjectUserId).Select(x => x.Copy())]);
+        }
+    }
+
+    public Task<IReadOnlyList<ConsentRecord>> ForSubjectsAsync(IReadOnlyCollection<Guid> subjectUserIds, CancellationToken ct)
+    {
+        var wanted = subjectUserIds.ToHashSet();
+        lock (_gate)
+        {
+            return Task.FromResult<IReadOnlyList<ConsentRecord>>([.. _items.Where(x => wanted.Contains(x.SubjectUserId)).Select(x => x.Copy())]);
         }
     }
 
@@ -218,8 +230,26 @@ public sealed class ConsentService(IConsentStore store, IAuditWriter audit, IClo
 
     public async Task<ConsentDecision> EvaluateAsync(ConsentCheck check, CancellationToken ct = default)
     {
+        var now = clock.UtcNow; // read before the consents, exactly as EvaluateManyAsync does
+        return Decide(await store.ForSubjectAsync(check.SubjectUserId, ct), check, now);
+    }
+
+    /// <summary>One read for all subjects, then the very same decision function per check: nothing about a decision depends on how the consents were fetched.</summary>
+    public async Task<IReadOnlyList<ConsentDecision>> EvaluateManyAsync(IReadOnlyList<ConsentCheck> checks, CancellationToken ct = default)
+    {
+        if (checks.Count == 0)
+        {
+            return [];
+        }
+
         var now = clock.UtcNow;
-        var candidates = (await store.ForSubjectAsync(check.SubjectUserId, ct))
+        var bySubject = (await store.ForSubjectsAsync([.. checks.Select(c => c.SubjectUserId).Distinct()], ct)).ToLookup(x => x.SubjectUserId);
+        return [.. checks.Select(c => Decide([.. bySubject[c.SubjectUserId]], c, now))];
+    }
+
+    private static ConsentDecision Decide(IReadOnlyList<ConsentRecord> records, ConsentCheck check, DateTimeOffset now)
+    {
+        var candidates = records
             .Where(x => x.GranteeUserId == check.GranteeUserId || (x.GranteeOrganizationId is Guid org && check.GranteeOrganizationIds.Contains(org)))
             .ToList();
         if (candidates.Count == 0)

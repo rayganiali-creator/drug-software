@@ -204,6 +204,23 @@ public sealed class CareRelationshipService(IDbContextFactory<PatientsDbContext>
         return [.. rows.Select(r => new ActiveCareLink(r.PatientUserId, r.ProviderUserId, r.ProviderOrganizationId, r.Kind))];
     }
 
+    public async Task<IReadOnlyList<ActiveCareLink>> ActiveForPatientsAsync(IReadOnlyCollection<Guid> patientUserIds, CancellationToken ct = default)
+    {
+        var ids = patientUserIds.Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            return [];
+        }
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        // Same join and the same two conditions (relationship Active, patient record Active) as ActiveForPatientAsync, for several patients at once.
+        var rows = await (from r in db.CareRelationships.AsNoTracking()
+                          join p in db.Patients.AsNoTracking() on r.PatientId equals p.Id
+                          where ids.Contains(r.PatientUserId) && r.Status == CareRelationshipStatus.Active && p.Status == PatientStatus.Active
+                          select r).ToListAsync(ct);
+        return [.. rows.Select(r => new ActiveCareLink(r.PatientUserId, r.ProviderUserId, r.ProviderOrganizationId, r.Kind))];
+    }
+
     public async Task<IReadOnlyList<ActiveCareLink>> ActiveForProviderAsync(Guid providerUserId, IReadOnlyCollection<Guid> organizationIds, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

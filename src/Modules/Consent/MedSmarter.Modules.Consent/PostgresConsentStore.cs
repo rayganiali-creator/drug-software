@@ -31,6 +31,13 @@ public sealed class PostgresConsentStore(IDbContextFactory<ConsentDbContext> fac
         return await db.Consents.AsNoTracking().Where(x => x.SubjectUserId == subjectUserId).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ConsentRecord>> ForSubjectsAsync(IReadOnlyCollection<Guid> subjectUserIds, CancellationToken ct)
+    {
+        var ids = subjectUserIds.ToArray();
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.Consents.AsNoTracking().Where(x => ids.Contains(x.SubjectUserId)).ToListAsync(ct);
+    }
+
     public async Task<ConsentRecord?> RevokeAsync(Guid id, DateTimeOffset at, ConsentEventRecord revoked, CancellationToken ct)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

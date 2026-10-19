@@ -92,6 +92,21 @@ public interface IPurposeConsentEvaluator
 public interface IConsentEvaluator
 {
     Task<ConsentDecision> EvaluateAsync(ConsentCheck check, CancellationToken ct = default);
+
+    /// <summary>
+    /// The same decision as <see cref="EvaluateAsync"/> for each check, in the same order, so a caller with many subjects does not pay one lookup per subject.
+    /// The default asks one at a time; an implementation may fetch the consents of all subjects together as long as every decision stays identical.
+    /// </summary>
+    async Task<IReadOnlyList<ConsentDecision>> EvaluateManyAsync(IReadOnlyList<ConsentCheck> checks, CancellationToken ct = default)
+    {
+        var result = new List<ConsentDecision>(checks.Count);
+        foreach (var check in checks)
+        {
+            result.Add(await EvaluateAsync(check, ct));
+        }
+
+        return result;
+    }
 }
 
 /// <summary>Development seeding only. Imports fictional consents without the actor==subject rule.</summary>

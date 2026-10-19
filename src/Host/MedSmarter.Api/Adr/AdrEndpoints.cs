@@ -168,17 +168,21 @@ public static class AdrEndpoints
                 return Results.Problem(title: "Invalid request", statusCode: StatusCodes.Status400BadRequest, extensions: Codes("cursor.invalid"));
             }
 
-            var authz = ctx.RequestServices.GetRequiredService<IAccessAuthorizer>();
-            var authorized = new List<Guid>();
-            foreach (var p in await ctx.RequestServices.GetRequiredService<IUserIdentityService>().ListRelatedPatientsAsync(actor, includeDisabled: true, ct: ctx.RequestAborted))
+            // Same test as before for each patient the reviewer is related to; an account that is disabled is not a reason to drop an open report, so those patients stay candidates.
+            // The relationship and consent reads are shared across the candidates (AuthorizeManyAsync); each patient still gets exactly the decision, and the audit entry, the single call would give.
+            var candidates = (await ctx.RequestServices.GetRequiredService<IUserIdentityService>().ListRelatedPatientsAsync(actor, includeDisabled: true, ct: ctx.RequestAborted))
+                .Where(p => p.UserId != actor.UserId && RoleFor(actor, p.UserId) is not null)
+                .Select(p => p.UserId)
+                .ToList();
+            var decisions = await ctx.RequestServices.GetRequiredService<IAccessAuthorizer>().AuthorizeManyAsync(
+                actor, Permissions.AdrReview, [.. candidates.Select(id => AccessResource.Patient(id, Scope))], new RequestContext(SourceOf(ctx), ctx.TraceIdentifier), ctx.RequestAborted);
+            if (decisions.Count != candidates.Count)
             {
-                // Same test as before for each patient the reviewer is related to; an account that is disabled is not a reason to drop an open report, so those patients stay candidates.
-                if (p.UserId != actor.UserId && RoleFor(actor, p.UserId) is not null
-                    && (await authz.AuthorizeAsync(actor, Permissions.AdrReview, AccessResource.Patient(p.UserId, Scope), new RequestContext(SourceOf(ctx), ctx.TraceIdentifier), ctx.RequestAborted)).Allowed)
-                {
-                    authorized.Add(p.UserId);
-                }
+                // The decisions are matched to the candidates by position: a different count cannot be trusted, so nothing is read (the request fails as a server error).
+                throw new InvalidOperationException($"The authorizer returned {decisions.Count} decisions for {candidates.Count} patients.");
             }
+
+            var authorized = candidates.Where((_, i) => decisions[i].Allowed).ToList();
 
             var outcome = await ctx.RequestServices.GetRequiredService<IAdverseEventService>().ListQueueAsync(new AdrQueueRequest(wanted, authorized, limit, after?.LastActivityAt, after?.Id, after is null), ctx.RequestAborted);
             if (!outcome.Succeeded)

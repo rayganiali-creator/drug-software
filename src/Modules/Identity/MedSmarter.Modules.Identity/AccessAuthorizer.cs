@@ -96,6 +96,16 @@ public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore ident
         return verdict.Allowed ? AccessDecision.Allow(AccessLayer.Consent) : AccessDecision.Deny(AccessLayer.Consent, verdict.Reason);
     }
 
+    /// <summary>The links that make the actor a care provider of the patient (directly or through one of the actor's organizations).</summary>
+    private static List<(Guid? User, Guid? Org, CareRelationshipKind Kind)> ActorRelationships(CurrentUser actor, IEnumerable<(Guid? User, Guid? Org, CareRelationshipKind Kind)> links) =>
+        [.. links.Where(r => r.User == actor.UserId || (r.Org is { } o && actor.OrganizationIds.Contains(o)))];
+
+    /// <summary>Which consent purposes can open the data for these relationships: a treating link and a dispensing link open different purposes.</summary>
+    private static string[] PurposesFor(IEnumerable<(Guid? User, Guid? Org, CareRelationshipKind Kind)> relationships) =>
+        [.. relationships.SelectMany(r => r.Kind == CareRelationshipKind.Treating
+            ? new[] { ConsentPurposes.Treatment, ConsentPurposes.MedicationReview }
+            : [ConsentPurposes.Dispensing, ConsentPurposes.MedicationReview]).Distinct()];
+
     private async Task<AccessDecision> DecideSubjectAsync(CurrentUser actor, string permission, AccessResource resource, CancellationToken ct)
     {
         if (resource.SubjectUserId is not { } subject)
@@ -108,21 +118,123 @@ public sealed class AccessAuthorizer(AccessCatalog catalog, IIdentityStore ident
             return AccessDecision.Allow(AccessLayer.Ownership);
         }
 
-        var relationships = (await ActiveLinksAsync(subject, ct))
-            .Where(r => r.User == actor.UserId || (r.Org is { } o && actor.OrganizationIds.Contains(o)))
-            .ToList();
+        var relationships = ActorRelationships(actor, await ActiveLinksAsync(subject, ct));
         if (relationships.Count == 0)
         {
             return AccessDecision.Deny(AccessLayer.Relationship, "no_care_relationship");
         }
 
-        var purposes = relationships.SelectMany(r => r.Kind == CareRelationshipKind.Treating
-            ? new[] { ConsentPurposes.Treatment, ConsentPurposes.MedicationReview }
-            : [ConsentPurposes.Dispensing, ConsentPurposes.MedicationReview]).Distinct().ToArray();
         var scope = catalog.DataScopeOf(permission) ?? string.Empty;
-        var verdict = await consent.EvaluateAsync(new ConsentCheck(subject, actor.UserId, actor.OrganizationIds.ToArray(), scope, purposes), ct);
+        var verdict = await consent.EvaluateAsync(new ConsentCheck(subject, actor.UserId, actor.OrganizationIds.ToArray(), scope, PurposesFor(relationships)), ct);
         return verdict.Allowed
             ? AccessDecision.Allow(AccessLayer.Consent)
             : AccessDecision.Deny(AccessLayer.Consent, verdict.Reason);
+    }
+
+    /// <summary>
+    /// Many resources of one subject-kind permission. The decision for each resource is the one DecideSubjectAsync gives (same checks, same order, same shared helpers); only the reads are
+    /// shared: the dynamic relationships of all subjects come from one query per relationship source and the consents of all subjects from one consent read.
+    /// A denial is audited exactly as in the single call (one ACCESS_DENIED entry per denied resource, in order).
+    /// </summary>
+    public async Task<IReadOnlyList<AccessDecision>> AuthorizeManyAsync(CurrentUser actor, string permission, IReadOnlyList<AccessResource> resources, RequestContext context, CancellationToken ct = default)
+    {
+        if (catalog.KindOf(permission) != "subject" || !actor.Has(permission))
+        {
+            // Other kinds and role-level denials involve no per-subject reads: use the single call for each.
+            var each = new List<AccessDecision>(resources.Count);
+            foreach (var resource in resources)
+            {
+                each.Add(await AuthorizeAsync(actor, permission, resource, context, ct));
+            }
+
+            return each;
+        }
+
+        var decisions = new AccessDecision?[resources.Count];
+        var pending = new List<(int Index, Guid Subject)>();
+        for (var i = 0; i < resources.Count; i++)
+        {
+            if (resources[i].SubjectUserId is not { } subject)
+            {
+                decisions[i] = AccessDecision.Deny(AccessLayer.Ownership, "no_subject");
+            }
+            else if (subject == actor.UserId)
+            {
+                decisions[i] = AccessDecision.Allow(AccessLayer.Ownership);
+            }
+            else
+            {
+                pending.Add((i, subject));
+            }
+        }
+
+        if (pending.Count > 0)
+        {
+            var subjects = pending.Select(p => p.Subject).Distinct().ToArray();
+            var links = new Dictionary<Guid, List<(Guid? User, Guid? Org, CareRelationshipKind Kind)>>();
+            foreach (var subject in subjects)
+            {
+                links[subject] = [.. (await identity.RelationshipsForPatientAsync(subject, ct)).Where(r => r.IsActive).Select(r => (r.ProviderUserId, r.ProviderOrganizationId, r.Kind))];
+            }
+
+            foreach (var source in _careSources)
+            {
+                foreach (var l in await source.ActiveForPatientsAsync(subjects, ct))
+                {
+                    if (links.TryGetValue(l.PatientUserId, out var list))
+                    {
+                        list.Add((l.ProviderUserId, l.ProviderOrganizationId, Enum.Parse<CareRelationshipKind>(l.Kind)));
+                    }
+                }
+            }
+
+            var scope = catalog.DataScopeOf(permission) ?? string.Empty;
+            var orgs = actor.OrganizationIds.ToArray();
+            var checks = new List<ConsentCheck>();
+            var checkAt = new List<int>();
+            foreach (var (index, subject) in pending)
+            {
+                var relationships = ActorRelationships(actor, links[subject]);
+                if (relationships.Count == 0)
+                {
+                    decisions[index] = AccessDecision.Deny(AccessLayer.Relationship, "no_care_relationship");
+                    continue;
+                }
+
+                checks.Add(new ConsentCheck(subject, actor.UserId, orgs, scope, PurposesFor(relationships)));
+                checkAt.Add(index);
+            }
+
+            var verdicts = await consent.EvaluateManyAsync(checks, ct);
+            if (verdicts.Count != checks.Count)
+            {
+                // A consent evaluator that answers for a different number of checks cannot be mapped back to the resources: no decision is made from it.
+                throw new InvalidOperationException($"The consent evaluator returned {verdicts.Count} decisions for {checks.Count} checks.");
+            }
+
+            for (var k = 0; k < checks.Count; k++)
+            {
+                decisions[checkAt[k]] = verdicts[k].Allowed ? AccessDecision.Allow(AccessLayer.Consent) : AccessDecision.Deny(AccessLayer.Consent, verdicts[k].Reason);
+            }
+        }
+
+        // Every resource must have its own decision before anything is audited or returned; an unset slot is a defect, never an implicit allow or deny.
+        if (decisions.Any(d => d is null))
+        {
+            throw new InvalidOperationException("A resource was left without an authorization decision.");
+        }
+
+        for (var i = 0; i < resources.Count; i++)
+        {
+            var decision = decisions[i]!;
+            if (!decision.Allowed)
+            {
+                var resource = resources[i];
+                await audit.WriteAsync(new AuditEvent(AuditActions.AccessDenied, AuditResult.Denied, actor.UserId, resource.Type, resource.Id, resource.SubjectUserId, context.Source, context.CorrelationId,
+                    $"{decision.Layer}:{decision.ReasonCode}", new Dictionary<string, string> { ["permission"] = permission }), ct);
+            }
+        }
+
+        return [.. decisions.Select(d => d!)];
     }
 }

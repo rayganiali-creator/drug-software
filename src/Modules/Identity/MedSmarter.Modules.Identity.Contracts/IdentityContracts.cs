@@ -54,6 +54,21 @@ public sealed record RequestContext(string Source, string? CorrelationId);
 public interface IAccessAuthorizer
 {
     Task<AccessDecision> AuthorizeAsync(CurrentUser actor, string permission, AccessResource resource, RequestContext context, CancellationToken ct = default);
+
+    /// <summary>
+    /// <see cref="AuthorizeAsync"/> for each resource, results in the same order. Every decision, reason and audit entry is exactly what the single call would give for that resource;
+    /// an implementation may only change how the relationship and consent data are read (together instead of one subject at a time), never what is decided or logged.
+    /// </summary>
+    async Task<IReadOnlyList<AccessDecision>> AuthorizeManyAsync(CurrentUser actor, string permission, IReadOnlyList<AccessResource> resources, RequestContext context, CancellationToken ct = default)
+    {
+        var result = new List<AccessDecision>(resources.Count);
+        foreach (var resource in resources)
+        {
+            result.Add(await AuthorizeAsync(actor, permission, resource, context, ct));
+        }
+
+        return result;
+    }
 }
 
 // ---------- authentication ----------

@@ -12,6 +12,21 @@ public interface ICareRelationshipSource
 {
     Task<IReadOnlyList<ActiveCareLink>> ActiveForPatientAsync(Guid patientUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The same links as <see cref="ActiveForPatientAsync"/> for each of the patients, in one list (each link names its patient). The default asks one patient at a time;
+    /// an implementation may read them together as long as exactly the same links come back.
+    /// </summary>
+    async Task<IReadOnlyList<ActiveCareLink>> ActiveForPatientsAsync(IReadOnlyCollection<Guid> patientUserIds, CancellationToken ct = default)
+    {
+        var all = new List<ActiveCareLink>();
+        foreach (var id in patientUserIds)
+        {
+            all.AddRange(await ActiveForPatientAsync(id, ct));
+        }
+
+        return all;
+    }
+
     Task<IReadOnlyList<ActiveCareLink>> ActiveForProviderAsync(Guid providerUserId, IReadOnlyCollection<Guid> organizationIds, CancellationToken ct = default);
 }
 
