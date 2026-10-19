@@ -163,7 +163,7 @@ describe("queue", () => {
   it("lists what the server returned, asks only for open statuses by default and offers no way to send anything outside", async () => {
     const calls = open((p) => p.includes("/queue") ? json(200, [summary({ category: "Unclassified" })]) : json(404), "/app/physician/adverse-events", "demo-physician");
     expect(await screen.findByText("Itchy rash on both arms")).toBeInTheDocument();
-    expect(calls[0]?.path).toBe("/adverse-events/queue?status=Submitted,InReview,InformationRequested");
+    expect(calls[0]?.path).toBe("/adverse-events/queue?status=Submitted,InReview,InformationRequested&limit=50");
     expect(screen.getByText("Not classified")).toBeInTheDocument();
     expect(screen.getByText("Adverse-event records to review")).toBeInTheDocument();
   });

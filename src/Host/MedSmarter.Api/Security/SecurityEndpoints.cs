@@ -225,7 +225,7 @@ public static class SecurityEndpoints
     private static void MapResources(IEndpointRouteBuilder app)
     {
         app.MapGet("/patients", async (HttpContext ctx, IUserIdentityService users) =>
-            Results.Ok(await users.ListRelatedPatientsAsync(Actor(ctx), ctx.RequestAborted)))
+            Results.Ok(await users.ListRelatedPatientsAsync(Actor(ctx), ct: ctx.RequestAborted)))
             .RequireAuthorization(Perm(Permissions.PatientProfileRead));
 
         foreach (var kind in PatientKinds)

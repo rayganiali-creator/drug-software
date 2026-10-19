@@ -1,6 +1,6 @@
 # Phase 17 — Patient, pharmacist and physician workflows (audit and first subset)
 
-Status: implemented, **uncommitted** until the owner approves. Only this subset is done; the rest is listed in §4. No new endpoint, permission, authorization rule, schema or migration; the only backend change is one response header on the existing reviewer queue (see §2.2). Synthetic data only.
+Status: implemented, committed (`f0fc7f1`) and pushed. **The queue limitation described in §2.2, §2.5 and §4 was removed in Phase 18 (`docs/phase18/README.md`): the queue is now limited to the readable patients before it is read and is paged by cursor; the header and the dashboard count work as described there.** The text below is the Phase 17 record as it was. Only this subset was done; the rest is listed in §4. No new endpoint, permission, authorization rule, schema or migration; the only backend change is one response header on the existing reviewer queue (see §2.2). Synthetic data only.
 
 ## 1. Screen-by-screen audit
 

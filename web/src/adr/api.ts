@@ -11,6 +11,11 @@ export type ApiFetch = (path: string, init?: RequestInit) => Promise<Response>;
 export type QueueCompleteness = "complete" | "truncated" | "unknown";
 export const queueCompleteness = (header: string | null): QueueCompleteness => (header === "true" ? "truncated" : header === "false" ? "complete" : "unknown");
 
+/** An exact count only when the server sent a plain non-negative integer; anything else is "no count" (never a number made up from the rows in hand). */
+export const queueTotal = (header: string | null): number | null => (header !== null && /^\d{1,9}$/.test(header) ? Number(header) : null);
+
+export interface QueuePage { rows: Summary[]; completeness: QueueCompleteness; complete: boolean; nextCursor: string | null; total: number | null }
+
 export class AdrApi {
   constructor(private readonly apiFetch: ApiFetch | undefined) {}
 
@@ -39,16 +44,18 @@ export class AdrApi {
   private r = (rid: string, rest = "") => `/adverse-events/${encodeURIComponent(rid)}${rest}`;
 
   definitions = (s?: AbortSignal) => this.call<Definitions>("GET", "/adverse-events/definitions", undefined, s);
-  queue = (statuses: ReviewStatus[], s?: AbortSignal) => this.call<Summary[]>("GET", `/adverse-events/queue?status=${statuses.join(",")}`, undefined, s);
   /**
-   * The queue together with whether the list is known to be complete. The server reads a bounded number of records before it filters them to the ones this reviewer may read,
-   * and says so in `X-Result-Truncated`. Only an explicit "false" counts as complete: a missing header (older server, proxy) is treated as "may be incomplete".
+   * One page of the reviewer's queue. The server decides which patients may be read and pages their records; this only reads what it says in the headers:
+   * `X-Result-Truncated` ("true" = more records can be fetched, "false" = this is the end, anything else = not known), `X-Next-Cursor` (opaque; only present when there is more),
+   * and `X-Total-Count` (first page only; a non-negative integer, anything else = no count). Only an exact "false" means complete.
    */
-  queueWithCompleteness = async (statuses: ReviewStatus[], s?: AbortSignal): Promise<{ rows: Summary[]; complete: boolean; completeness: QueueCompleteness }> => {
-    const res = await this.send("GET", `/adverse-events/queue?status=${statuses.join(",")}`, undefined, s);
+  queuePage = async (statuses: ReviewStatus[], opts: { cursor?: string | null; limit?: number } = {}, s?: AbortSignal): Promise<QueuePage> => {
+    const query = `status=${statuses.join(",")}${opts.limit === undefined ? "" : `&limit=${opts.limit}`}${opts.cursor ? `&cursor=${encodeURIComponent(opts.cursor)}` : ""}`;
+    const res = await this.send("GET", `/adverse-events/queue?${query}`, undefined, s);
     const rows = (await res.json()) as Summary[];
     const completeness = queueCompleteness(res.headers.get("X-Result-Truncated"));
-    return { rows, complete: completeness === "complete", completeness };
+    const cursor = completeness === "truncated" ? res.headers.get("X-Next-Cursor") : null;
+    return { rows, completeness, complete: completeness === "complete", nextCursor: cursor && cursor.length > 0 ? cursor : null, total: queueTotal(res.headers.get("X-Total-Count")) };
   };
   listFor = (subject: string, s?: AbortSignal) => this.call<Summary[]>("GET", `/patients/${encodeURIComponent(subject)}/adverse-events`, undefined, s);
   create = (subject: string, body: CreateInput) => this.call<Detail>("POST", `/patients/${encodeURIComponent(subject)}/adverse-events`, body);

@@ -216,11 +216,34 @@ public sealed class AdverseEventService(IDbContextFactory<AdrDbContext> factory,
         return AdrOutcome.Ok<IReadOnlyList<AdverseEventSummaryDto>>([.. rows.Select(r => Summary(r, IsProfessional(viewerRole)))]);
     }
 
-    public async Task<AdrOutcome<IReadOnlyList<AdverseEventSummaryDto>>> ListByStatusAsync(IReadOnlyCollection<ReviewStatus> statuses, int take, CancellationToken ct = default)
+    public async Task<AdrOutcome<AdrQueuePage>> ListQueueAsync(AdrQueueRequest request, CancellationToken ct = default)
     {
+        if (request.Limit is < 1 or > 100 || (request.AfterActivityAt is null) != (request.AfterId is null))
+        {
+            return AdrOutcome.Fail<AdrQueuePage>(AdrError.Validation, "queue.request_invalid");
+        }
+
+        if (request.SubjectIds.Count == 0 || request.Statuses.Count == 0)
+        {
+            return AdrOutcome.Ok(new AdrQueuePage([], false, request.WithTotal ? 0 : null));
+        }
+
+        var subjects = request.SubjectIds.Distinct().ToArray();
+        var statuses = request.Statuses.Distinct().ToArray();
         await using var db = await factory.CreateDbContextAsync(ct);
-        var rows = await db.Events.AsNoTracking().Where(x => statuses.Contains(x.Status)).OrderByDescending(x => x.LastActivityAt).Take(Math.Clamp(take, 1, 200)).ToListAsync(ct);
-        return AdrOutcome.Ok<IReadOnlyList<AdverseEventSummaryDto>>([.. rows.Select(r => Summary(r, true))]);
+        // The subject list is applied here, before counting, ordering or cutting: records of any other subject are never read.
+        var scoped = db.Events.AsNoTracking().Where(x => subjects.Contains(x.SubjectId) && statuses.Contains(x.Status));
+        int? total = request.WithTotal ? await scoped.CountAsync(ct) : null;
+        var q = scoped;
+        if (request.AfterActivityAt is { } at && request.AfterId is { } afterId)
+        {
+            // Strict total order (LastActivityAt, Id), both descending: the Id breaks ties between records with the same instant.
+            q = q.Where(x => x.LastActivityAt < at || (x.LastActivityAt == at && x.Id.CompareTo(afterId) < 0));
+        }
+
+        var rows = await q.OrderByDescending(x => x.LastActivityAt).ThenByDescending(x => x.Id).Take(request.Limit + 1).ToListAsync(ct);
+        var hasMore = rows.Count > request.Limit;
+        return AdrOutcome.Ok(new AdrQueuePage([.. rows.Take(request.Limit).Select(r => Summary(r, true))], hasMore, total));
     }
 
     public async Task<Guid?> SubjectOfAsync(Guid id, CancellationToken ct = default)

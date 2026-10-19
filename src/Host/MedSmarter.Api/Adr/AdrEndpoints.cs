@@ -22,8 +22,11 @@ public sealed record AdrStatusBody(ReviewStatus Status, string? Note, int Expect
 /// </summary>
 public static class AdrEndpoints
 {
-    public const int QueueReadCap = 200;
+    public const int QueueDefaultLimit = 50;
+    public const int QueueMaxLimit = 100;
     public const string QueueTruncatedHeader = "X-Result-Truncated";
+    public const string QueueNextCursorHeader = "X-Next-Cursor";
+    public const string QueueTotalCountHeader = "X-Total-Count";
 
     private static string Perm(string p) => PermissionPolicyProvider.Prefix + p;
     private static CurrentUser Actor(HttpContext ctx) => (CurrentUser)ctx.Items[BearerDefaults.CurrentUserItem]!;
@@ -138,40 +141,74 @@ public static class AdrEndpoints
             return call is null ? Problem.ForbiddenResult() : Map(await call.Svc.ListForSubjectAsync(call.Subject, call.Role, int.TryParse(ctx.Request.Query["take"], out var t) ? t : 50, call.Ct));
         }).RequireAuthorization(Perm(Permissions.PatientAdrRead));
 
-        // The reviewer's queue: records are filtered to the subjects this reviewer may read now (relationship + consent), so it never lists anyone else's.
+        // The reviewer's queue. Which patients the reviewer may read now (active care relationship + consent, organization) is decided FIRST, one patient at a time by the same
+        // authorizer as every other route, and only those patients' records are then read, counted and cut into pages. Nothing of any other patient is read.
         app.MapGet("/adverse-events/queue", async (HttpContext ctx) =>
         {
             var actor = Actor(ctx);
-            var svc = ctx.RequestServices.GetRequiredService<IAdverseEventService>();
-            var wanted = (ctx.Request.Query["status"].ToString()).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => Enum.TryParse<ReviewStatus>(s, true, out var v) ? (ReviewStatus?)v : null).Where(v => v is not null).Select(v => v!.Value).ToList();
+            ctx.Response.Headers.CacheControl = "no-store";
+            var wanted = (ctx.Request.Query["status"].ToString()).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => Enum.TryParse<ReviewStatus>(s, true, out var v) ? (ReviewStatus?)v : null).Where(v => v is not null).Select(v => v!.Value).Distinct().ToList();
             if (wanted.Count == 0)
             {
                 wanted = [ReviewStatus.Submitted, ReviewStatus.InReview, ReviewStatus.InformationRequested];
             }
 
-            var rows = await svc.ListByStatusAsync(wanted, QueueReadCap, ctx.RequestAborted);
-            // The service reads the newest QueueReadCap records of ALL patients and only then are they filtered to the ones this reviewer may read. When the read hit the cap, records that the
-            // reviewer may read can be missing from the list, and a count made from it would be wrong. Say so (the body is unchanged); clients must not show an exact count in that case.
-            ctx.Response.Headers[QueueTruncatedHeader] = rows.Value!.Count >= QueueReadCap ? "true" : "false";
-            var allowed = new Dictionary<Guid, bool>();
-            var result = new List<AdverseEventSummaryDto>();
-            foreach (var r in rows.Value!)
+            var limitText = ctx.Request.Query["limit"];
+            var limit = QueueDefaultLimit;
+            if (limitText.Count > 0 && (limitText.Count > 1 || !int.TryParse(limitText[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out limit) || limit is < 1 or > QueueMaxLimit))
             {
-                if (!allowed.TryGetValue(r.SubjectId, out var ok))
-                {
-                    ok = r.SubjectId != actor.UserId && RoleFor(actor, r.SubjectId) is not null
-                        && (await ctx.RequestServices.GetRequiredService<IAccessAuthorizer>().AuthorizeAsync(actor, Permissions.AdrReview, AccessResource.Patient(r.SubjectId, Scope), new RequestContext(SourceOf(ctx), ctx.TraceIdentifier), ctx.RequestAborted)).Allowed;
-                    allowed[r.SubjectId] = ok;
-                }
+                return Results.Problem(title: "Invalid request", statusCode: StatusCodes.Status400BadRequest, extensions: Codes("limit.invalid"));
+            }
 
-                if (ok)
+            var mask = QueueCursor.MaskOf(wanted);
+            var cursorText = ctx.Request.Query["cursor"];
+            QueueCursor.Position? after = null;
+            if (cursorText.Count > 0 && (cursorText.Count > 1 || (after = QueueCursor.Decode(cursorText[0], actor.UserId, mask)) is null))
+            {
+                return Results.Problem(title: "Invalid request", statusCode: StatusCodes.Status400BadRequest, extensions: Codes("cursor.invalid"));
+            }
+
+            var authz = ctx.RequestServices.GetRequiredService<IAccessAuthorizer>();
+            var authorized = new List<Guid>();
+            foreach (var p in await ctx.RequestServices.GetRequiredService<IUserIdentityService>().ListRelatedPatientsAsync(actor, includeDisabled: true, ct: ctx.RequestAborted))
+            {
+                // Same test as before for each patient the reviewer is related to; an account that is disabled is not a reason to drop an open report, so those patients stay candidates.
+                if (p.UserId != actor.UserId && RoleFor(actor, p.UserId) is not null
+                    && (await authz.AuthorizeAsync(actor, Permissions.AdrReview, AccessResource.Patient(p.UserId, Scope), new RequestContext(SourceOf(ctx), ctx.TraceIdentifier), ctx.RequestAborted)).Allowed)
                 {
-                    result.Add(r);
+                    authorized.Add(p.UserId);
                 }
             }
 
-            await ctx.RequestServices.GetRequiredService<IAuditWriter>().WriteAsync(new AuditEvent(AuditActions.AdrAccessed, AuditResult.Success, actor.UserId, "adverse-event", "queue", null, SourceOf(ctx), ctx.TraceIdentifier, null, new Dictionary<string, string> { ["count"] = result.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) }), ctx.RequestAborted);
-            return Results.Json(result, Web);
+            var outcome = await ctx.RequestServices.GetRequiredService<IAdverseEventService>().ListQueueAsync(new AdrQueueRequest(wanted, authorized, limit, after?.LastActivityAt, after?.Id, after is null), ctx.RequestAborted);
+            if (!outcome.Succeeded)
+            {
+                return Map(outcome);
+            }
+
+            var page = outcome.Value!;
+            var allowed = authorized.ToHashSet();
+            if (page.Items.Any(r => !allowed.Contains(r.SubjectId)))
+            {
+                // Cannot happen while the query is scoped; if it ever did, nothing is sent.
+                return Results.Problem(title: "Server error", statusCode: StatusCodes.Status500InternalServerError);
+            }
+
+            // "true" only when there is at least one more authorized record to fetch; the cursor is sent only then. The total is for the first page only.
+            ctx.Response.Headers[QueueTruncatedHeader] = page.HasMore ? "true" : "false";
+            if (page.HasMore)
+            {
+                var last = page.Items[^1];
+                ctx.Response.Headers[QueueNextCursorHeader] = QueueCursor.Encode(new QueueCursor.Position(last.LastActivityAt, last.Id), actor.UserId, mask);
+            }
+
+            if (page.Total is { } total)
+            {
+                ctx.Response.Headers[QueueTotalCountHeader] = total.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            await ctx.RequestServices.GetRequiredService<IAuditWriter>().WriteAsync(new AuditEvent(AuditActions.AdrAccessed, AuditResult.Success, actor.UserId, "adverse-event", "queue", null, SourceOf(ctx), ctx.TraceIdentifier, null, new Dictionary<string, string> { ["count"] = page.Items.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) }), ctx.RequestAborted);
+            return Results.Json(page.Items, Web);
         }).RequireAuthorization(Perm(Permissions.AdrReview));
 
         RecordRoute(app, "GET", "/adverse-events/{rid:guid}", Permissions.PatientAdrRead, Permissions.PatientAdrRead, true,

@@ -1,12 +1,12 @@
 # Roadmap — proposed Phases 16–20
 
-**Status: PROPOSED. Not approved by the project owner.** Only Phase 16 has been implemented (this session), and only its stated scope; it is uncommitted until approved. Phases 17–20 are planning categories, grounded in evidence from the repository, and must be re-scoped before work starts. The older plan in `docs/phase0/10-roadmap.md` is a different numbering (see its note); this file continues the *delivered* numbering (Phases 0–15 are complete).
+**Status: the plan below is a proposal; the owner has approved only what is stated per phase.** Phase 16 (stated scope), the first subset of Phase 17 and Phase 18 (owner-directed scope, `docs/phase18/README.md`) are implemented and recorded in the repository history. The other phases (19 monitoring and notifications, 20 reliability and privacy, 21 integrated demo; the owner moved monitoring to 19 and the two after it each one number down) are planning categories, grounded in evidence from the repository, and must be re-scoped before work starts. The older plan in `docs/phase0/10-roadmap.md` is a different numbering (see its note); this file continues the *delivered* numbering (Phases 0–15 are complete).
 
 Global rules for every phase: synthetic data only; no paid server, domain, API or AI service; no outbound network call in development or tests; mock/disabled adapters stay mock/disabled; no clinical rule becomes active without a named reviewer and a validated source; no claim of clinical validation, regulatory compliance, anonymity or production readiness without evidence.
 
 ---
 
-## Phase 16 — Clinical Safety and Evidence Management (implemented, uncommitted)
+## Phase 16 — Clinical Safety and Evidence Management (implemented)
 
 **Objective.** Make the evidence behind every assistant answer traceable and make weak or conflicting evidence impossible to hide, without any new clinical content.
 
@@ -26,7 +26,7 @@ Global rules for every phase: synthetic data only; no paid server, domain, API o
 
 ---
 
-## Phase 17 — Patient, Pharmacist and Physician workflows (first subset implemented, uncommitted; the rest still proposed)
+## Phase 17 — Patient, Pharmacist and Physician workflows (first subset implemented; the rest still proposed)
 
 See `docs/phase17/README.md` for the audit, the subset done and what remains.
 
@@ -44,7 +44,13 @@ See `docs/phase17/README.md` for the audit, the subset done and what remains.
 
 ---
 
-## Phase 18 — Medication monitoring and preventive notifications (proposed)
+## Phase 18 — Complete and safe access to the adverse-event queue (owner-directed; implemented)
+
+See `docs/phase18/README.md`. Scope was set by the owner after the Phase 17 assessment: the reviewer's queue is limited to the patients the reviewer may read BEFORE it is read, counted or cut into pages, and is paged with a cursor; web states, header contract, dashboard count, tests and a read-only review of stored patient workflows. Everything else is out of scope. The monitoring and notification work that was proposed here moved to Phase 19; the two phases after it each moved one number down (relocation only, nothing else in them changed).
+
+---
+
+## Phase 19 — Medication monitoring and preventive notifications (proposed; moved from Phase 18 by the owner's direction)
 
 **Objective.** Better rule-based monitoring behaviour and a clearer notification lifecycle.
 
@@ -60,7 +66,7 @@ See `docs/phase17/README.md` for the audit, the subset done and what remains.
 
 ---
 
-## Phase 19 — Reliability, synchronization, security and privacy (proposed)
+## Phase 20 — Reliability, synchronization, security and privacy (proposed; was Phase 19)
 
 **Objective.** Harden what is already built.
 
@@ -76,7 +82,7 @@ See `docs/phase17/README.md` for the audit, the subset done and what remains.
 
 ---
 
-## Phase 20 — Integrated demonstration and readiness assessment (proposed)
+## Phase 21 — Integrated demonstration and readiness assessment (proposed; was Phase 20)
 
 **Objective.** One coherent, honest synthetic-data demo with verified instructions and a readiness report.
 

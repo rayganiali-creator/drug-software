@@ -2,15 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using MedSmarter.Api.Adr;
 using MedSmarter.Modules.ADR.Contracts;
-using MedSmarter.Modules.ADR.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MedSmarter.Patients.Tests;
 
 /// <summary>
-/// Phase 17: the reviewer's queue reads a bounded number of records of ALL patients before it filters them to the ones the reviewer may read. When the read hit the bound the list
-/// can be incomplete, so the response says so (header), and nothing may present a count made from it as exact.
+/// Phase 17 introduced the completeness header on the reviewer's queue. Phase 18 replaced the capped global read behind it by a read limited to the patients the reviewer may read
+/// (see Phase18ApiTests); the test that pinned the old cap ("an authorized older record may be missing") was replaced there by its opposite.
 /// </summary>
 public class Phase17ApiTests(PatientsApiFactory factory) : IClassFixture<PatientsApiFactory>
 {
@@ -37,36 +34,5 @@ public class Phase17ApiTests(PatientsApiFactory factory) : IClassFixture<Patient
         var refused = await sara.Client.GetAsync("/adverse-events/queue");
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.False(refused.Headers.Contains(AdrEndpoints.QueueTruncatedHeader)); // the flag is not set for a caller who is refused
-    }
-
-    [Fact]
-    public async Task When_the_read_hits_the_cap_the_response_says_so_and_an_authorized_older_record_may_be_missing_from_the_list()
-    {
-        var sara = await As("demo-patient");
-        var saraRecord = await Create(sara, sara.UserId, "Phase 17 old record"); // the reviewer may read this one
-        await using (var db = await factory.Services.GetRequiredService<IDbContextFactory<AdrDbContext>>().CreateDbContextAsync())
-        {
-            var later = DateTimeOffset.UtcNow.AddHours(1);
-            for (var i = 0; i < AdrEndpoints.QueueReadCap; i++)
-            {
-                // newer open records of other, unrelated patients: they fill the read, then are filtered out
-                db.Events.Add(new AdverseEventRow
-                {
-                    Id = Guid.NewGuid(), SubjectId = Guid.NewGuid(), ReporterRole = ReporterRole.Patient, ReporterUserId = Guid.NewGuid(), Origin = ReportOrigin.PatientReported,
-                    ReportedAt = later, EventDescription = "Synthetic filler " + i, Status = ReviewStatus.Submitted, LastActivityAt = later.AddSeconds(i),
-                });
-            }
-
-            await db.SaveChangesAsync();
-        }
-
-        var doctor = await As("demo-physician");
-        var res = await doctor.Client.GetAsync("/adverse-events/queue");
-        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Equal("true", Truncated(res)); // the client is told the list may be incomplete
-        var ids = (await ClinicalApiTests.Json(res)).EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).ToList();
-        Assert.DoesNotContain(saraRecord, ids); // this is exactly why an exact-looking count would have been wrong: a record the reviewer may read is not in the list
-        // and the filler records of unrelated patients never appear
-        Assert.Empty(ids);
     }
 }

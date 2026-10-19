@@ -265,7 +265,7 @@ public static class PatientEndpoints
         {
             var actor = Actor(ctx);
             var allowed = new List<Guid>();
-            foreach (var p in await users.ListRelatedPatientsAsync(actor, ctx.RequestAborted))
+            foreach (var p in await users.ListRelatedPatientsAsync(actor, ct: ctx.RequestAborted))
             {
                 if ((await authz.AuthorizeAsync(actor, Permissions.ManufacturerReportReview, AccessResource.Patient(p.UserId, "manufacturer-reports"), new RequestContext(SourceOf(ctx), ctx.TraceIdentifier), ctx.RequestAborted)).Allowed
                     && (await patients.GetAsync(p.UserId, ctx.RequestAborted)) is { Succeeded: true, Value.Status: PatientStatus.Active })

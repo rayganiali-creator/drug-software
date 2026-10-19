@@ -160,8 +160,12 @@ public interface IUserIdentityService
     Task<UserSummary?> GetSummaryAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlyList<UserSummary>> ListUsersAsync(CancellationToken ct = default);
 
-    /// <summary>Patients the actor has an ACTIVE care relationship with (directly or through an organization). Says nothing about consent.</summary>
-    Task<IReadOnlyList<PatientRef>> ListRelatedPatientsAsync(CurrentUser actor, CancellationToken ct = default);
+    /// <summary>
+    /// Patients the actor has an ACTIVE care relationship with (directly or through an organization). Says nothing about consent.
+    /// By default a patient whose ACCOUNT is disabled is left out (care list). With <paramref name="includeDisabled"/> they are kept: the account state is not a relationship or a consent,
+    /// and the authorizer does not look at it either, so a caller that must not lose records of such patients (the reviewer's queue) asks for them and then authorizes each one.
+    /// </summary>
+    Task<IReadOnlyList<PatientRef>> ListRelatedPatientsAsync(CurrentUser actor, bool includeDisabled = false, CancellationToken ct = default);
 }
 
 public sealed record PatientRef(Guid UserId, string DisplayName);

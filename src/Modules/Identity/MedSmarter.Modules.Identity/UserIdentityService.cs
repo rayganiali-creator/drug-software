@@ -63,9 +63,10 @@ public sealed class UserIdentityService(IIdentityStore identity, ISessionService
         return [.. list.OrderBy(s => s.DisplayName, StringComparer.Ordinal)];
     }
 
-    public async Task<IReadOnlyList<PatientRef>> ListRelatedPatientsAsync(CurrentUser actor, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PatientRef>> ListRelatedPatientsAsync(CurrentUser actor, bool includeDisabled = false, CancellationToken ct = default)
     {
         var result = new List<PatientRef>();
+        var seen = new HashSet<Guid>();
         var dynamicPatients = new HashSet<Guid>();
         foreach (var source in _careSources)
         {
@@ -74,7 +75,7 @@ public sealed class UserIdentityService(IIdentityStore identity, ISessionService
 
         foreach (var u in await identity.AllUsersAsync(ct))
         {
-            if (u.Id == actor.UserId || u.Status != UserStatusValue.Active)
+            if (u.Id == actor.UserId || (!includeDisabled && u.Status != UserStatusValue.Active))
             {
                 continue;
             }
@@ -83,11 +84,21 @@ public sealed class UserIdentityService(IIdentityStore identity, ISessionService
                 .Any(r => r.IsActive && (r.ProviderUserId == actor.UserId || (r.ProviderOrganizationId is { } o && actor.OrganizationIds.Contains(o))));
             if (related)
             {
+                seen.Add(u.Id);
                 result.Add(new PatientRef(u.Id, (await identity.FindProfileAsync(u.Id, ct))?.DisplayName ?? "Patient"));
             }
         }
 
-        return [.. result.OrderBy(p => p.DisplayName, StringComparer.Ordinal)];
+        if (includeDisabled)
+        {
+            // The authorizer decides from the relationship alone, so a patient with an active relationship who has no identity row is still one it would authorize.
+            foreach (var id in dynamicPatients.Where(id => id != actor.UserId && seen.Add(id)))
+            {
+                result.Add(new PatientRef(id, "Patient"));
+            }
+        }
+
+        return [.. result.OrderBy(p => p.DisplayName, StringComparer.Ordinal).ThenBy(p => p.UserId)];
     }
 
     private async Task<HashSet<string>> ActiveRolesAsync(Guid userId, CancellationToken ct) =>

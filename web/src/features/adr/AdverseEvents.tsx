@@ -9,7 +9,7 @@ import type { PatientMedication } from "../../records/types";
 import { categories, reviewKinds, statuses, type Assistance, type CreateInput, type Definitions, type Detail, type Entry, type EventCategory, type ReviewStatus, type Summary, type SuspectedMedicationInput } from "../../adr/types";
 import { ActionError, Loaded } from "../records/shared";
 import type { QueueCompleteness } from "../../adr/api";
-import { useAdrApi, useAdrLoad } from "./hooks";
+import { useAdrApi, useAdrLoad, useAdrQueue, type QueueView } from "./hooks";
 import "./adr.css";
 
 /** Local calendar day (yyyy-mm-dd) to an instant: the start of that day. A date is all that is asked for; the time is never invented beyond that. */
@@ -146,11 +146,11 @@ export function PatientAdverseEvents() {
   );
 }
 
-/** Physician / pharmacist: the records they may read now (relationship and consent are checked by the server for each patient). */
+/** Physician / pharmacist: the records they may read now. The server picks the patients (relationship + consent, checked on every request) and sends them page by page. */
 export function ProAdverseEventQueue() {
   const { t } = useI18n();
   const [all, setAll] = useState(false);
-  const list = useAdrLoad((a, s) => a.queueWithCompleteness(all ? statuses : ["Submitted", "InReview", "InformationRequested"], s), [all]);
+  const list = useAdrQueue(all ? statuses : ["Submitted", "InReview", "InformationRequested"], all ? "all" : "open");
   return (
     <>
       <PageHeader title={t("adr.title.queue")} subtitle={t("adr.sub.queue")} />
@@ -161,10 +161,27 @@ export function ProAdverseEventQueue() {
           <>
             <QueueCompletenessNotice completeness={q.completeness} />
             <RecordList rows={q.rows} />
+            <QueueFooter q={q} refresh={list.reload} />
           </>
         )}</Loaded>
       </div>
     </>
+  );
+}
+
+/** Where the list stands: more to load, the end (as of a time, because reports change while someone reads), and what went wrong with the last page. */
+function QueueFooter({ q, refresh }: { q: QueueView; refresh(): void }) {
+  const { t, fmt } = useI18n();
+  const time = fmt.time(`${String(q.loadedAt.getHours()).padStart(2, "0")}:${String(q.loadedAt.getMinutes()).padStart(2, "0")}`);
+  return (
+    <div className="adr-page" data-testid="queue-footer">
+      {q.moreError && <div role="alert"><AlertCard tone="danger" title={t("rec.err.title")}>{t(q.moreError === "expired" ? "adr.queue.expired" : "adr.queue.moreError")}</AlertCard></div>}
+      <p className="ms-muted">{t(q.completeness === "complete" ? "adr.queue.end" : "adr.queue.asOf", { time })}</p>
+      <div className="adr-row">
+        {q.nextCursor && q.moreError !== "expired" && <Button variant="secondary" disabled={q.busy} onClick={q.loadMore}>{t(q.busy ? "adr.queue.loadingMore" : q.moreError ? "common.retry" : "adr.queue.more")}</Button>}
+        <Button variant="ghost" iconStart="refresh" disabled={q.busy} onClick={refresh}>{t("adr.queue.refresh")}</Button>
+      </div>
+    </div>
   );
 }
 

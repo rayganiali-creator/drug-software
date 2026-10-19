@@ -52,7 +52,7 @@ try
         .WithOrigins(origins)
         .WithMethods("GET", "POST", "PUT", "DELETE")
         .WithHeaders("Accept", "Authorization", "Content-Type", "If-Match", "X-Client", CorrelationIdMiddleware.HeaderName)
-        .WithExposedHeaders(CorrelationIdMiddleware.HeaderName, MedSmarter.Api.Adr.AdrEndpoints.QueueTruncatedHeader)));
+        .WithExposedHeaders(CorrelationIdMiddleware.HeaderName, MedSmarter.Api.Adr.AdrEndpoints.QueueTruncatedHeader, MedSmarter.Api.Adr.AdrEndpoints.QueueNextCursorHeader, MedSmarter.Api.Adr.AdrEndpoints.QueueTotalCountHeader)));
     builder.Services.AddPlatformInfrastructure(builder.Configuration);
     foreach (var module in ModuleCatalog.All)
     {

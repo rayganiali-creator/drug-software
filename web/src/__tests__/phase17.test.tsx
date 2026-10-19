@@ -11,7 +11,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 beforeEach(() => { Object.defineProperty(window, "innerWidth", { value: 1200, configurable: true }); });
 
 const json = (status: number, body: unknown = {}, extra: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...extra } });
-const queue = (rows: unknown[], truncated: string | null = "false") => json(200, rows, truncated === null ? {} : { "X-Result-Truncated": truncated });
+const queue = (rows: unknown[], truncated: string | null = "false", extra: Record<string, string> = {}) => json(200, rows, { ...(truncated === null ? {} : { "X-Result-Truncated": truncated }), ...extra });
 const row = (id: string) => ({ id, subjectId: "p1", reporterRole: "Patient", origin: "PatientReported", reportedAt: "2026-10-10T08:00:00Z", category: null, status: "Submitted", lastActivityAt: "2026-10-10T08:00:00Z", excerpt: "Rash on both arms" });
 
 function open(path: string, account: string, reply?: (p: string) => Response | Promise<Response>) {
@@ -68,7 +68,7 @@ describe("one adverse-event queue per professional, backed by the server", () =>
 
 describe("dashboard adverse-event tile shows the server's number or says it has none", () => {
   it.each([["/app/physician", "demo-physician", "Open adverse-event records"], ["/app/pharmacist", "demo-pharmacist", "Open adverse-event records"]])("%s: real count", async (path, account, label) => {
-    open(path, account, (p) => p.startsWith("/adverse-events/queue") ? queue([row("a"), row("b"), row("c")]) : json(200, []));
+    open(path, account, (p) => p.startsWith("/adverse-events/queue") ? queue([row("a")], "true", { "X-Total-Count": "3", "X-Next-Cursor": "c1" }) : json(200, []));
     const tile = (await screen.findByText(label)).closest(".ms-stat") as HTMLElement;
     await waitFor(() => expect(tile.querySelector(".ms-stat__value")?.textContent).toBe("3"));
     expect(tile.textContent).toContain("Only records of patients you may read");
@@ -92,10 +92,10 @@ describe("a possibly incomplete queue never produces an exact-looking count", ()
   const tileOf = async (label = "Open adverse-event records") => (await screen.findByText(label)).closest(".ms-stat") as HTMLElement;
   const rows200 = Array.from({ length: 200 }, (_, i) => row("x" + i));
 
-  it.each([["/app/physician", "demo-physician"], ["/app/pharmacist", "demo-pharmacist"]])("%s: the server says the read was capped → a dash and an explanation, not 200 and not any number", async (path, account) => {
+  it.each([["/app/physician", "demo-physician"], ["/app/pharmacist", "demo-pharmacist"]])("%s: no count from the server (even with more rows than a page) → a dash and an explanation, not 200 and not any number", async (path, account) => {
     open(path, account, (p) => p.startsWith("/adverse-events/queue") ? queue(rows200, "true") : json(200, []));
     const tile = await tileOf();
-    await waitFor(() => expect(tile.textContent).toContain("Too many records to count here"));
+    await waitFor(() => expect(tile.textContent).toContain("The exact count is not available here"));
     expect(tile.querySelector(".ms-stat__value")?.textContent).toBe("—");
     expect(tile.textContent).not.toContain("200");
   });
@@ -113,10 +113,23 @@ describe("a possibly incomplete queue never produces an exact-looking count", ()
     await waitFor(() => expect(tile.querySelector(".ms-stat__value")?.textContent).toBe("—"));
   });
 
-  it("only an explicit complete answer shows the number", async () => {
-    open("/app/physician", "demo-physician", (p) => p.startsWith("/adverse-events/queue") ? queue([row("a"), row("b")], "false") : json(200, []));
+  it("only a count stated by the server is shown, whatever the rows say", async () => {
+    open("/app/physician", "demo-physician", (p) => p.startsWith("/adverse-events/queue") ? queue([row("a"), row("b")], "false", { "X-Total-Count": "2" }) : json(200, []));
     const tile = await tileOf();
     await waitFor(() => expect(tile.querySelector(".ms-stat__value")?.textContent).toBe("2"));
+  });
+
+  it("the number is the server's even when it differs from the rows in hand, and rows alone never make a number", async () => {
+    open("/app/physician", "demo-physician", (p) => p.startsWith("/adverse-events/queue") ? queue([row("a")], "true", { "X-Total-Count": "137", "X-Next-Cursor": "c" }) : json(200, []));
+    const tile = await tileOf();
+    await waitFor(() => expect(tile.querySelector(".ms-stat__value")?.textContent).toBe("137"));
+  });
+
+  it.each([["-1"], ["1.5"], ["abc"], [""], ["12345678901"], ["+3"]])("a malformed count %j is no count at all", async (bad) => {
+    open("/app/physician", "demo-physician", (p) => p.startsWith("/adverse-events/queue") ? queue([row("a"), row("b"), row("c")], "false", { "X-Total-Count": bad }) : json(200, []));
+    const tile = await tileOf();
+    await waitFor(() => expect(tile.textContent).toContain("The exact count is not available here"));
+    expect(tile.querySelector(".ms-stat__value")?.textContent).toBe("—");
   });
 });
 

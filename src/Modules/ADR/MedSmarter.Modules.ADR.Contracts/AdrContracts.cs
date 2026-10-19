@@ -266,6 +266,19 @@ public static class AdrNotices
     public const string ExternalNotSubmitted = "NotSubmitted";
 }
 
+/// <param name="Statuses">Review states to list.</param>
+/// <param name="SubjectIds">The only subjects whose records may be read. Empty means an empty page; there is no "all".</param>
+/// <param name="Limit">Page size, 1..100 (validated by the service as well).</param>
+/// <param name="AfterActivityAt">Position of the last record of the previous page (null = first page): records strictly after it in (LastActivityAt, Id) descending order are returned.</param>
+/// <param name="AfterId">Tie-breaker of that position.</param>
+/// <param name="WithTotal">Also count the records matching the same statuses and subjects (only meaningful for a first page).</param>
+public sealed record AdrQueueRequest(IReadOnlyCollection<ReviewStatus> Statuses, IReadOnlyCollection<Guid> SubjectIds, int Limit, DateTimeOffset? AfterActivityAt, Guid? AfterId, bool WithTotal);
+
+/// <param name="Items">At most Limit records, newest activity first, ties by Id descending.</param>
+/// <param name="HasMore">True when at least one more record matches after the last returned one.</param>
+/// <param name="Total">Number of matching records when requested; null otherwise.</param>
+public sealed record AdrQueuePage(IReadOnlyList<AdverseEventSummaryDto> Items, bool HasMore, int? Total);
+
 /// <summary>Management of internal adverse-event records. Authorization (role, relationship, consent) is enforced by the caller; the service enforces who may do what.</summary>
 public interface IAdverseEventService
 {
@@ -273,8 +286,11 @@ public interface IAdverseEventService
 
     Task<AdrOutcome<IReadOnlyList<AdverseEventSummaryDto>>> ListForSubjectAsync(Guid subjectId, ReporterRole viewerRole, int take, CancellationToken ct = default);
 
-    /// <summary>Open records across subjects, for a reviewer's queue. The caller MUST filter the result to the subjects the reviewer may read.</summary>
-    Task<AdrOutcome<IReadOnlyList<AdverseEventSummaryDto>>> ListByStatusAsync(IReadOnlyCollection<ReviewStatus> statuses, int take, CancellationToken ct = default);
+    /// <summary>
+    /// One page of a reviewer's queue. The caller has ALREADY decided which subjects the reviewer may read (relationship, consent, organization) and passes exactly those; the query is
+    /// limited to them before anything is counted, ordered or cut, so a record of any other subject is never read. There is deliberately no overload without a subject list.
+    /// </summary>
+    Task<AdrOutcome<AdrQueuePage>> ListQueueAsync(AdrQueueRequest request, CancellationToken ct = default);
 
     /// <summary>The subject a record belongs to, so the caller can authorize against that subject before reading it. Null when there is no such record.</summary>
     Task<Guid?> SubjectOfAsync(Guid id, CancellationToken ct = default);
