@@ -158,32 +158,38 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
     {
         var o = options.Value;
         var now = clock.UtcNow;
-        int recovered = 0, claimed = 0, reassessed = 0, unchanged = 0, skipped = 0, failed = 0, exhausted = 0;
+        int recovered = 0, claimed = 0, reassessed = 0, unchanged = 0, skipped = 0, failed = 0, exhausted = 0, discarded = 0;
 
         // 1) recovery: a claim whose lease ran out was interrupted. Its outcome is unknown, so it is counted as a failed attempt; it is never assumed to have succeeded.
+        // Each row is recovered and saved on its own, and only a row whose save succeeded is counted and audited: a row another pass recovered or finished first is theirs.
+        List<Guid> stuck;
         await using (var db = await factory.CreateDbContextAsync(ct))
         {
-            var stuck = await db.MonitoringJobs.Where(j => j.State == MonitoringJobState.Running && j.LeaseUntil != null && j.LeaseUntil < now).Take(Math.Clamp(o.BatchSize, 1, 200)).ToListAsync(ct);
-            foreach (var j in stuck)
+            stuck = await db.MonitoringJobs.AsNoTracking().Where(j => j.State == MonitoringJobState.Running && j.LeaseUntil != null && j.LeaseUntil < now).Select(j => j.PatientId).Take(Math.Clamp(o.BatchSize, 1, 200)).ToListAsync(ct);
+        }
+
+        foreach (var id in stuck)
+        {
+            await using var db = await factory.CreateDbContextAsync(ct);
+            var j = await db.MonitoringJobs.FirstOrDefaultAsync(x => x.PatientId == id && x.State == MonitoringJobState.Running && x.LeaseUntil != null && x.LeaseUntil < now, ct);
+            if (j is null)
             {
-                recovered++;
-                Fail(j, "interrupted", "interrupted", now, o);
-                j.RowVersion++;
+                continue; // recovered or finished by someone else since the list was read
             }
 
+            Fail(j, "interrupted", "interrupted", clock.UtcNow, o);
+            j.RowVersion++;
             try
             {
                 await db.SaveChangesAsync(ct);
             }
             catch (DbUpdateConcurrencyException)
             {
-                // another pass recovered or finished them first
+                continue; // another pass recovered or finished it first: nothing recovered here, nothing audited here
             }
 
-            foreach (var j in stuck)
-            {
-                await audit.WriteAsync(new AuditEvent(AuditActions.MonitoringFailed, AuditResult.Failure, null, "monitoring-job", j.PatientId.ToString(), j.SubjectId, "worker", null, "interrupted"), ct);
-            }
+            recovered++;
+            await audit.WriteAsync(new AuditEvent(AuditActions.MonitoringFailed, AuditResult.Failure, null, "monitoring-job", j.PatientId.ToString(), j.SubjectId, "worker", null, "interrupted"), ct);
         }
 
         // 2) claim a bounded batch, one row at a time (optimistic concurrency decides the winner)
@@ -194,39 +200,68 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         }
 
         var claims = new List<MonitoringJobRow>();
-        foreach (var id in candidates)
+        try
         {
-            await using var db = await factory.CreateDbContextAsync(ct);
-            var row = await db.MonitoringJobs.FirstOrDefaultAsync(j => j.PatientId == id && j.State == MonitoringJobState.Idle, ct);
-            if (row is null)
+            foreach (var id in candidates)
             {
-                continue;
+                ct.ThrowIfCancellationRequested();
+                await using var db = await factory.CreateDbContextAsync(ct);
+                var row = await db.MonitoringJobs.FirstOrDefaultAsync(j => j.PatientId == id && j.State == MonitoringJobState.Idle, ct);
+                if (row is null)
+                {
+                    continue;
+                }
+
+                var claimedAt = clock.UtcNow; // per claim, so a slow batch does not hand later jobs a lease that is already mostly spent
+                row.State = MonitoringJobState.Running;
+                row.LeaseUntil = claimedAt.AddSeconds(o.LeaseSeconds);
+                row.LastAttemptAt = claimedAt;
+                row.RowVersion++;
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                    claims.Add(row);
+                    claimed++;
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // someone else claimed it
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutdown while claiming: hand back what this pass already claimed instead of leaving it "Running" until the lease expires.
+            foreach (var c in claims)
+            {
+                await ReleaseAsync(c);
             }
 
-            row.State = MonitoringJobState.Running;
-            row.LeaseUntil = now.AddSeconds(o.LeaseSeconds);
-            row.LastAttemptAt = now;
-            row.RowVersion++;
-            try
-            {
-                await db.SaveChangesAsync(ct);
-                claims.Add(row);
-                claimed++;
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                // someone else claimed it
-            }
+            throw;
         }
 
         // 3) check each claimed job with bounded concurrency
         using var gate = new SemaphoreSlim(Math.Clamp(o.MaxConcurrency, 1, 8));
         var results = await Task.WhenAll(claims.Select(async job =>
         {
-            await gate.WaitAsync(ct);
+            try
+            {
+                await gate.WaitAsync(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                await ReleaseAsync(job); // claimed but never started: hand it back now (no failure counted)
+                throw;
+            }
+
             try
             {
                 return await ProcessAsync(job, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                await ReleaseAsync(job); // a no-op if the pass had already written its result (the ownership check fails)
+                throw;
             }
             finally
             {
@@ -241,11 +276,12 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
                 case "unchanged": unchanged++; break;
                 case "skipped.no_consent": skipped++; break;
                 case "exhausted": exhausted++; failed++; break;
+                case "discarded": discarded++; break;
                 default: failed++; break;
             }
         }
 
-        return new MonitoringRunResult(recovered, claimed, reassessed, unchanged, skipped, failed, exhausted);
+        return new MonitoringRunResult(recovered, claimed, reassessed, unchanged, skipped, failed, exhausted, discarded);
     }
 
     private async Task<string> ProcessAsync(MonitoringJobRow claim, CancellationToken ct)
@@ -287,9 +323,7 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Graceful shutdown: hand the job back at once, without counting a failure.
-            await FinishAsync(claim, row => { row.State = MonitoringJobState.Idle; row.LeaseUntil = null; row.NextCheckAt = clock.UtcNow; row.LastOutcome = "cancelled"; }, CancellationToken.None);
-            throw;
+            throw; // graceful shutdown: the caller hands the job back (ReleaseAsync) without counting a failure
         }
 #pragma warning disable CA1031 // any unexpected failure is a failed attempt with a code, never a crash of the pass
         catch (Exception)
@@ -301,7 +335,7 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
 
         var now = clock.UtcNow;
         var final = outcome;
-        await FinishAsync(claim, row =>
+        var applied = await FinishAsync(claim, row =>
         {
             row.LastOutcome = outcome;
             if (assessmentId is not null)
@@ -334,14 +368,33 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
             row.LeaseUntil = null;
         }, ct);
 
+        if (!applied)
+        {
+            // The job row was not updated: the withdrawal, recovery or new claim that won stands. The assessment itself may have run (it is a separate, idempotent write),
+            // so this is neither "reassessed" nor "recovered": the computed outcome is recorded as what it was, and the job result as not applied.
+            await audit.WriteAsync(new AuditEvent(AuditActions.MonitoringResultDiscarded, AuditResult.Failure, null, "monitoring-job", claim.PatientId.ToString(), claim.SubjectId, "worker", null, "ownership_lost",
+                new Dictionary<string, string>
+                {
+                    ["job_result"] = "not_applied",
+                    ["computed_outcome"] = outcome,
+                    ["assessment_status"] = outcome == "skipped.no_consent" ? "not_run" : "may_have_run",
+                    ["assessment_id"] = assessmentId?.ToString() ?? "none",
+                    ["error"] = error ?? "none",
+                }), ct);
+            return "discarded";
+        }
+
         var action = outcome is "reassessed" or "unchanged" ? AuditActions.MonitoringReassessed : outcome == "skipped.no_consent" ? AuditActions.MonitoringSkipped : AuditActions.MonitoringFailed;
         await audit.WriteAsync(new AuditEvent(action, action == AuditActions.MonitoringFailed ? AuditResult.Failure : AuditResult.Success, null, "monitoring-job", claim.PatientId.ToString(), claim.SubjectId, "worker", null, outcome,
-            new Dictionary<string, string> { ["error"] = error ?? "none", ["assessment"] = assessmentId?.ToString() ?? "none" }), ct);
+            new Dictionary<string, string> { ["error"] = error ?? "none", ["assessment"] = assessmentId?.ToString() ?? "none", ["job_result"] = "applied" }), ct);
         return final;
     }
 
-    /// <summary>Writes the job result only if this pass still owns the row (same claim version); a withdrawal, a recovery or a new claim in between wins.</summary>
-    private async Task FinishAsync(MonitoringJobRow claim, Action<MonitoringJobRow> apply, CancellationToken ct)
+    /// <summary>
+    /// Writes the job result only if this pass still owns the row (same claim version); a withdrawal, a recovery or a new claim in between wins.
+    /// Returns whether the result was applied. False means the job row was not changed by this call.
+    /// </summary>
+    private async Task<bool> FinishAsync(MonitoringJobRow claim, Action<MonitoringJobRow> apply, CancellationToken ct)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var row = await db.MonitoringJobs.FirstOrDefaultAsync(j => j.PatientId == claim.PatientId, ct);
@@ -349,7 +402,7 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         // recovered and re-claimed the job meanwhile, the state is Running again but the version differs, and this late result must not overwrite the new owner's.
         if (row is null || row.State != MonitoringJobState.Running || row.RowVersion != claim.RowVersion)
         {
-            return;
+            return false;
         }
 
         apply(row);
@@ -357,10 +410,25 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         try
         {
             await db.SaveChangesAsync(ct);
+            return true;
         }
         catch (DbUpdateConcurrencyException)
         {
-            // withdrawn or recovered concurrently: that decision stands
+            return false; // withdrawn or recovered concurrently: that decision stands
+        }
+    }
+
+    /// <summary>Hands a claimed job back to Idle, due now, without counting a failure. Ownership-checked; best effort: if it cannot be written, the lease expiry and recovery still apply.</summary>
+    private async Task ReleaseAsync(MonitoringJobRow claim)
+    {
+        try
+        {
+            await FinishAsync(claim, row => { row.State = MonitoringJobState.Idle; row.LeaseUntil = null; row.NextCheckAt = clock.UtcNow; row.LastOutcome = "cancelled"; }, CancellationToken.None);
+        }
+#pragma warning disable CA1031 // releasing is an optimisation of shutdown; the lease is the safety net
+        catch (Exception)
+#pragma warning restore CA1031
+        {
         }
     }
 

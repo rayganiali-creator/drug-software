@@ -8,11 +8,16 @@ import { ActionError, DemoFlag, Loaded } from "./shared";
 
 const tone = { Information: "info", FollowUp: "info", ReviewSoon: "warning", Urgent: "warning" } as const;
 
+/** Delivery ended before any attempt because the message was already resolved or the patient record was not found: nothing was sent, and nothing failed. */
+const NOT_SENT: Record<string, string> = { "message.resolved": "rec.deliv.skippedResolved", "patient.missing": "rec.deliv.skippedNoPatient" };
+
 /** How a notification for this message is going, in words that never turn "scheduled" or "simulated" into "delivered". */
 export function DeliveryLine({ m }: { m: GuidanceMessage }) {
   const { t, fmt } = useI18n();
   const d = m.delivery;
+  const notSent = d?.state === "Failed" && d.errorCode ? NOT_SENT[d.errorCode] : undefined;
   const text = !d ? t("rec.deliv.none")
+    : notSent ? t(notSent)
     : d.state === "Scheduled" ? t("rec.deliv.scheduled")
     : d.state === "Attempted" ? t("rec.deliv.attempted")
     : d.state === "Failed" ? t("rec.deliv.failed")
@@ -21,7 +26,7 @@ export function DeliveryLine({ m }: { m: GuidanceMessage }) {
     <div className="rec-badges">
       {m.provenance === "AutomatedAssessment" && <Badge tone="info" icon="sparkles">{t("rec.prov.automated")}</Badge>}
       <Badge tone={m.clinicianReviewed ? "success" : "neutral"} icon={m.clinicianReviewed ? "check" : "minus"}>{m.clinicianReviewed ? t("rec.prov.reviewed") : t("rec.prov.notReviewed")}</Badge>
-      <Badge tone={d?.state === "Failed" ? "warning" : "neutral"} icon={d?.mode === "Simulated" ? "alertTriangle" : "info"}>{text}</Badge>
+      <Badge tone={d?.state === "Failed" && !notSent ? "warning" : "neutral"} icon={d?.mode === "Simulated" ? "alertTriangle" : "info"}>{text}</Badge>
       {d?.confirmedAt && <span className="ms-muted">{fmt.date(new Date(d.confirmedAt), "short")}</span>}
     </div>
   );

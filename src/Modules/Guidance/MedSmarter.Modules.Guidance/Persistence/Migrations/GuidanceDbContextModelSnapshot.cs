@@ -272,6 +272,10 @@ namespace MedSmarter.Modules.Guidance.Persistence.Migrations
                     b.HasIndex("PatientId", "OriginFindingKey")
                         .HasDatabaseName("ix_guidance_message_patient_id_origin_finding_key");
 
+                    b.HasIndex(new[] { "PatientId", "OriginFindingKey" }, "ux_guidance_message_open_finding")
+                        .IsUnique()
+                        .HasFilter("origin_finding_key IS NOT NULL AND status <> 'Resolved'");
+
                     b.ToTable("guidance_message", "guidance");
                 });
 

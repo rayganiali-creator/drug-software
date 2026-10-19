@@ -252,7 +252,8 @@ public sealed record MonitoringStatusDto(
     bool WorkerEnabled,
     string Notice);
 
-public sealed record MonitoringRunResult(int Recovered, int Claimed, int Reassessed, int Unchanged, int Skipped, int Failed, int Exhausted);
+/// <summary><paramref name="Discarded"/>: jobs whose computed result was not stored because this pass no longer owned the job row (not counted in the other outcomes).</summary>
+public sealed record MonitoringRunResult(int Recovered, int Claimed, int Reassessed, int Unchanged, int Skipped, int Failed, int Exhausted, int Discarded = 0);
 
 public enum ReassessmentKind
 {

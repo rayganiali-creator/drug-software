@@ -132,6 +132,17 @@ describe("delivery and provenance labels", () => {
   it("scheduled is not sent", async () => { await shows({ delivery: d("Scheduled") }, "A notification is scheduled. It has not been sent yet."); });
   it("attempted is not delivered", async () => { await shows({ delivery: d("Attempted", "Simulated", { attempts: 1 }) }, "A notification attempt started and its result is not known."); });
   it("failed keeps the message", async () => { await shows({ delivery: d("Failed", "Simulated", { attempts: 3, errorCode: "channel.transient_exhausted" }) }, "The notification could not be delivered. The message is still here."); });
+  it("ended before any attempt because the message was resolved: nothing was sent, and it is not called a failure", async () => {
+    await shows({ delivery: d("Failed", "Simulated", { attempts: 0, errorCode: "message.resolved" }) }, "No notification was sent because this message was already resolved.");
+    expect(screen.queryByText(/could not be delivered/)).not.toBeInTheDocument();
+  });
+  it("ended before any attempt because no patient record was found: nothing was sent, and it is not called a failure", async () => {
+    await shows({ delivery: d("Failed", "Simulated", { attempts: 0, errorCode: "patient.missing" }) }, "No notification was sent because no patient record was found.");
+    expect(screen.queryByText(/could not be delivered/)).not.toBeInTheDocument();
+  });
+  it.each(["channel.refused", "channel.unavailable", "channel.transient_exhausted", "interrupted", null])("every other failure keeps the failed wording (code: %s)", async (errorCode) => {
+    await shows({ delivery: d("Failed", "Simulated", { attempts: 1, errorCode }) }, "The notification could not be delivered. The message is still here.");
+  });
   it("a simulated confirmation never reads as delivered", async () => {
     await shows({ delivery: d("Confirmed", "Simulated", { confirmedAt: "2026-10-10T08:01:00Z", attempts: 1 }) }, "Simulated notification: nothing real was sent to any device.");
     expect(screen.queryByText(/Delivered through/)).not.toBeInTheDocument();

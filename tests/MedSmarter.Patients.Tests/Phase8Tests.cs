@@ -572,7 +572,7 @@ public class Phase8Tests
         var run = await Delivery(env, channel).RunDueAsync(10, CancellationToken.None);
         Assert.Equal(1, run.Failed);
         Assert.Equal("channel.refused", (await env.Guidance.ListForPatientAsync(env.UserId("demo-patient-2"))).Value![0].Delivery!.ErrorCode);
-        Assert.Equal(typeof(DeliveryRequest).GetProperties().Select(p => p.Name).Order().ToArray(), new[] { "Level", "Locale", "MessageId", "PatientId" }); // no text, no names, no health data
+        Assert.Equal(typeof(DeliveryRequest).GetProperties().Select(p => p.Name).Order().ToArray(), new[] { "IdempotencyKey", "Level", "Locale", "MessageId", "PatientId" }); // ids and a delivery id only: no text, no names, no health data
         Assert.NotNull(channel.Last);
     }
 

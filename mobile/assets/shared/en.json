@@ -1572,6 +1572,8 @@
   "rec.deliv.scheduled": "A notification is scheduled. It has not been sent yet.",
   "rec.deliv.attempted": "A notification attempt started and its result is not known.",
   "rec.deliv.failed": "The notification could not be delivered. The message is still here.",
+  "rec.deliv.skippedResolved": "No notification was sent because this message was already resolved.",
+  "rec.deliv.skippedNoPatient": "No notification was sent because no patient record was found.",
   "rec.deliv.simulated": "Simulated notification: nothing real was sent to any device.",
   "rec.deliv.confirmed": "Delivered through {channel}.",
   "rec.prov.automated": "Automated check",

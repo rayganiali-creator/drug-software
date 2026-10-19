@@ -124,10 +124,15 @@ public sealed record GuidanceDeliveryDto(
     int Attempts,
     string? ErrorCode);
 
-public sealed record DeliveryRunResult(int Considered, int Confirmed, int Retrying, int Failed, int Recovered);
+/// <summary><paramref name="Skipped"/>: deliveries not sent because the patient or message was no longer eligible (deferred or ended). <paramref name="Unrecorded"/>: the channel was called but this pass could not record the outcome; the row stays "attempted" and recovery handles it (at-least-once).</summary>
+public sealed record DeliveryRunResult(int Considered, int Confirmed, int Retrying, int Failed, int Recovered, int Skipped = 0, int Unrecorded = 0);
 
-/// <summary>What a channel gets: ids only. Message text and health details never travel to a channel in Phase 8.</summary>
-public sealed record DeliveryRequest(Guid MessageId, Guid PatientId, GuidanceLevel Level, string Locale);
+/// <summary>
+/// What a channel gets: ids only. Message text and health details never travel to a channel in Phase 8.
+/// <paramref name="IdempotencyKey"/> is the delivery row id: the same for every attempt of one (message, channel) delivery, so a channel that supports
+/// idempotency can drop a repeat. Delivery is at-least-once; without channel-side support a retry after an unrecorded outcome can reach the channel twice.
+/// </summary>
+public sealed record DeliveryRequest(Guid MessageId, Guid PatientId, GuidanceLevel Level, string Locale, string? IdempotencyKey = null);
 
 public enum ChannelOutcome
 {

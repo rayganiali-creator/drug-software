@@ -7,6 +7,7 @@ using MedSmarter.Modules.Guidance.Persistence;
 using MedSmarter.Modules.Patients.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace MedSmarter.Modules.Guidance;
 
@@ -107,7 +108,21 @@ public sealed class GuidanceService(IDbContextFactory<GuidanceDbContext> factory
             db.Deliveries.Add(delivery);
         }
 
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (origin is not null && ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: GuidanceDbContext.OpenFindingIndex })
+        {
+            // Another request raised the same finding for this patient first. The message and its delivery were saved together, so nothing of ours was stored: no second message,
+            // no second delivery, and (the audit line is written only after a successful save) no "scheduled" event for something that does not exist. Return the one that won.
+            await using var again = await factory.CreateDbContextAsync(ct);
+            var winner = await again.Messages.AsNoTracking().Where(m => m.PatientId == patient.PatientId && m.OriginFindingKey == origin.FindingKey && m.Status != GuidanceStatus.Resolved).OrderByDescending(m => m.CreatedAt).FirstOrDefaultAsync(ct);
+            return winner is null
+                ? GuidanceOutcome.Fail<GuidanceCreated>(GuidanceError.Conflict, "message.conflict") // the winner was resolved in between: a retry decides again
+                : GuidanceOutcome.Ok(new GuidanceCreated(ToDto(winner, includeProfessional: false, ToDelivery(await DeliveryOfAsync(again, winner.Id, ct))), true));
+        }
+
         if (delivery is not null)
         {
             await audit.WriteAsync(new AuditEvent(AuditActions.GuidanceDeliveryScheduled, AuditResult.Success, null, "guidance-delivery", row.Id.ToString(), subjectId, "system", null, delivery.Mode.ToString()), ct);

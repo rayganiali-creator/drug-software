@@ -70,6 +70,9 @@ public sealed class GuidanceEventRow
 /// <summary>PostgreSQL model of stored patient messages and their life cycle (schema <c>guidance</c>).</summary>
 public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> options) : DbContext(options)
 {
+    /// <summary>Partial unique index: at most one open (not Resolved) message per (patient, finding).</summary>
+    public const string OpenFindingIndex = "ux_guidance_message_open_finding";
+
     public const string Schema = "guidance";
 
     public DbSet<GuidanceMessageRow> Messages => Set<GuidanceMessageRow>();
@@ -98,7 +101,9 @@ public sealed class GuidanceDbContext(DbContextOptions<GuidanceDbContext> option
             e.Property(x => x.OriginRuleId).HasMaxLength(64);
             e.Property(x => x.OriginFindingKey).HasMaxLength(64);
             e.Property(x => x.OriginSubjectsFingerprint).HasMaxLength(64);
-            e.HasIndex(x => new { x.PatientId, x.OriginFindingKey });
+            e.HasIndex(x => new { x.PatientId, x.OriginFindingKey }).HasDatabaseName("ix_guidance_message_patient_id_origin_finding_key"); // lookup of every message of a finding, resolved or not
+            // At most one OPEN message per finding of a patient (a resolved one may be followed by a new one when the data changed). Status is stored as its name (string conversion above).
+            e.HasIndex(["PatientId", "OriginFindingKey"], OpenFindingIndex).IsUnique().HasFilter("origin_finding_key IS NOT NULL AND status <> 'Resolved'");
         });
         modelBuilder.Entity<GuidanceEventRow>(e =>
         {

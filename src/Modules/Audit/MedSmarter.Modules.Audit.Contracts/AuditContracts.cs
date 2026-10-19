@@ -90,12 +90,16 @@ public static class AuditActions
     public const string GuidanceDeliveryConfirmed = "GUIDANCE_DELIVERY_CONFIRMED";
     public const string GuidanceDeliveryFailed = "GUIDANCE_DELIVERY_FAILED";
     public const string GuidanceDeliveryRecovered = "GUIDANCE_DELIVERY_RECOVERED";
+    /// <summary>A delivery was not sent because the patient or message was no longer eligible at send time (deferred or ended; reason code only, nothing was sent).</summary>
+    public const string GuidanceDeliverySkipped = "GUIDANCE_DELIVERY_SKIPPED";
     /// <summary>A scheduled reassessment pass: patient subject, outcome code, counts (never findings or names).</summary>
     public const string MonitoringReassessed = "MONITORING_REASSESSED";
     public const string MonitoringSkipped = "MONITORING_SKIPPED";
     public const string MonitoringFailed = "MONITORING_FAILED";
     public const string MonitoringEnrolled = "MONITORING_ENROLLED";
     public const string MonitoringWithdrawn = "MONITORING_WITHDRAWN";
+    /// <summary>A pass computed a result but no longer owned the job row, so the job row was NOT updated. The assessment itself may have run. Codes only.</summary>
+    public const string MonitoringResultDiscarded = "MONITORING_RESULT_DISCARDED";
     public const string ClinicalRuleDraftUpdated = "CLINICAL_RULE_DRAFT_UPDATED";
 }
 

@@ -54,7 +54,7 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
         var o = options.Value;
         var now = clock.UtcNow;
         var take = Math.Clamp(batchSize, 1, 100);
-        int considered = 0, confirmed = 0, retrying = 0, failed = 0, recovered = 0;
+        int considered = 0, confirmed = 0, retrying = 0, failed = 0, recovered = 0, skipped = 0, unrecorded = 0;
 
         // 1) recovery: an attempt whose lease ran out has an unknown outcome. It is never promoted to Confirmed.
         await using (var db = await factory.CreateDbContextAsync(ct))
@@ -132,6 +132,54 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
                 continue;
             }
 
+            // Send-time eligibility, from facts the system already holds (not a consent rule: no notification consent exists, and none is invented here).
+            // Message resolved: it can never be reopened (no allowed move leaves Resolved), so the delivery ends. Patient record missing: ends too.
+            // Patient inactive: this can be undone (status moves both ways), so the delivery is deferred, not ended; it is neither attempted nor counted as an attempt.
+            var ineligible = message.Status == GuidanceStatus.Resolved ? "message.resolved" : null;
+            PatientRecordRef? patient = null;
+            if (ineligible is null)
+            {
+                patient = await patients.FindByPatientIdAsync(row.PatientId, ct);
+                ineligible = patient is null ? "patient.missing" : patient.Status != PatientStatus.Active ? "patient.inactive" : null;
+            }
+
+            if (ineligible is not null)
+            {
+                var deferral = ineligible == "patient.inactive";
+                var firstTime = row.ErrorCode != ineligible; // one audit line per reason, not one per pass
+                if (deferral)
+                {
+                    row.NextAttemptAt = clock.UtcNow.AddSeconds(o.BackoffSeconds);
+                }
+                else
+                {
+                    row.State = DeliveryState.Failed;
+                    row.FailedAt = clock.UtcNow;
+                    failed++;
+                }
+
+                row.ErrorCode = ineligible;
+                row.Version++;
+                if (!await TrySaveAsync(db, ct))
+                {
+                    if (!deferral)
+                    {
+                        failed--;
+                    }
+
+                    continue;
+                }
+
+                skipped++;
+                if (firstTime)
+                {
+                    await audit.WriteAsync(new AuditEvent(AuditActions.GuidanceDeliverySkipped, AuditResult.Success, null, "guidance-delivery", row.MessageId.ToString(), patient?.SubjectId, "worker", null, ineligible,
+                        new Dictionary<string, string> { ["channel"] = row.Channel, ["mode"] = row.Mode.ToString(), ["outcome"] = deferral ? "deferred" : "ended", ["sent"] = "false" }), ct);
+                }
+
+                continue;
+            }
+
             // Record the attempt first. If the process dies now, the row says "attempted", not "delivered".
             row.State = DeliveryState.Attempted;
             row.Attempts++;
@@ -146,7 +194,7 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
             ChannelOutcome outcome;
             try
             {
-                outcome = await channel.DeliverAsync(new DeliveryRequest(message.Id, message.PatientId, message.Level, message.Locale), ct);
+                outcome = await channel.DeliverAsync(new DeliveryRequest(message.Id, message.PatientId, message.Level, message.Locale, row.Id.ToString("N", CultureInfo.InvariantCulture)), ct);
             }
             catch (OperationCanceledException)
             {
@@ -181,9 +229,12 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
                     break;
             }
 
-            if (!await TrySaveAsync(db, ct))
+            if (!await TrySaveOutcomeAsync(db, ct))
             {
-                continue; // the lease ran out during a slow call and recovery handed the row on; whoever holds it now records its outcome
+                // The channel was called but the outcome could not be stored (the lease ran out and recovery handed the row on, or the save failed). The row stays "attempted";
+                // recovery makes it due again and the channel gets the same idempotency key. Nothing is audited as delivered. This is why delivery is at-least-once.
+                unrecorded++;
+                continue;
             }
 
             switch (row.State)
@@ -203,10 +254,14 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
             }
         }
 
-        return new DeliveryRunResult(considered, confirmed, retrying, failed, recovered);
+        return new DeliveryRunResult(considered, confirmed, retrying, failed, recovered, skipped, unrecorded);
     }
 
-    /// <summary>Saves, and reports false (instead of throwing) when another instance changed the row first.</summary>
+    /// <summary>
+    /// Claim, skip and terminal-state writes happen BEFORE the channel is called. Saves, and reports false only when another instance changed the row first (optimistic
+    /// concurrency: the row is theirs). Any other database failure is not hidden: it propagates out of the pass (the worker logs it), the row is unchanged, nothing was sent
+    /// and nothing was audited.
+    /// </summary>
     private static async Task<bool> TrySaveAsync(GuidanceDbContext db, CancellationToken ct)
     {
         try
@@ -215,6 +270,23 @@ public sealed class GuidanceDeliveryService(IDbContextFactory<GuidanceDbContext>
             return true;
         }
         catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The write of the channel's outcome happens AFTER the channel was called, so the pass cannot undo the call. Reports false for a concurrency conflict and for a rejected
+    /// write alike: the row stays "attempted", the caller counts it as unrecorded, nothing is audited as delivered, and recovery makes it due again (at-least-once).
+    /// </summary>
+    private static async Task<bool> TrySaveOutcomeAsync(GuidanceDbContext db, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException) // includes DbUpdateConcurrencyException
         {
             return false;
         }
