@@ -6,6 +6,8 @@ using MedSmarter.Modules.ClinicalRules.Persistence;
 using MedSmarter.Modules.Consent.Contracts;
 using MedSmarter.Modules.Patients.Contracts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace MedSmarter.Modules.ClinicalRules;
@@ -42,8 +44,10 @@ public sealed class MonitoringOptions
 /// Transaction boundaries: job claim, assessment (+ guidance), job result are three separate writes. A crash between them leaves the job "Running" with an
 /// expiring lease; recovery marks it interrupted and retries, and every step is idempotent (equal inputs create no second assessment, a finding has one open message).
 /// </summary>
-public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> factory, IClock clock, IAuditWriter audit, IPatientDirectory directory, IClinicalSafetyService safety, IPurposeConsentEvaluator consent, IOptions<MonitoringOptions> options) : IMonitoringService
+public sealed partial class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> factory, IClock clock, IAuditWriter audit, IPatientDirectory directory, IClinicalSafetyService safety, IPurposeConsentEvaluator consent, IOptions<MonitoringOptions> options, ILogger<MonitoringService>? logger = null) : IMonitoringService
 {
+    private readonly ILogger log = logger ?? NullLogger<MonitoringService>.Instance;
+
     private static readonly string[] Categories = ["medications", "allergies", "symptoms", "profile"];
 
     public const string Notice = "Checks run on a local schedule only while the system is running and only on information that has been entered. This is not continuous or real-time monitoring and it does not predict anything.";
@@ -154,11 +158,67 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         return SafetyResult.Ok(ToDto(await db.MonitoringJobs.AsNoTracking().FirstOrDefaultAsync(j => j.PatientId == patient.PatientId, ct)));
     }
 
+    private sealed class PassCounters
+    {
+        public int Recovered, Claimed, Reassessed, Unchanged, Skipped, Failed, Exhausted, Discarded;
+
+        private readonly Lock _gate = new();
+
+        public MonitoringRunResult ToResult() => new(Recovered, Claimed, Reassessed, Unchanged, Skipped, Failed, Exhausted, Discarded);
+
+        /// <summary>Counts one finished job as soon as it finishes (jobs run concurrently), so a pass that stops part-way still reports what was done and what failed.</summary>
+        public void Tally(string result)
+        {
+            lock (_gate)
+            {
+                switch (result)
+                {
+                    case "reassessed": Reassessed++; break;
+                    case "unchanged": Unchanged++; break;
+                    case "skipped.no_consent": Skipped++; break;
+                    case "exhausted": Exhausted++; Failed++; break;
+                    case "discarded": Discarded++; break;
+                    default: Failed++; break;
+                }
+            }
+        }
+    }
+
+    [LoggerMessage(EventId = 7111, Message = "Monitoring pass {Outcome}: recovered={Recovered} claimed={Claimed} reassessed={Reassessed} unchanged={Unchanged} skipped={Skipped} failed={Failed} exhausted={Exhausted} discarded={Discarded}")]
+    private static partial void LogPass(ILogger logger, LogLevel level, string outcome, int recovered, int claimed, int reassessed, int unchanged, int skipped, int failed, int exhausted, int discarded);
+
+    [LoggerMessage(EventId = 7112, Level = LogLevel.Error, Message = "Monitoring pass failed part-way ({ErrorType}): recovered={Recovered} claimed={Claimed} reassessed={Reassessed} unchanged={Unchanged} skipped={Skipped} failed={Failed} exhausted={Exhausted} discarded={Discarded}")]
+    private static partial void LogPassFailed(ILogger logger, string errorType, int recovered, int claimed, int reassessed, int unchanged, int skipped, int failed, int exhausted, int discarded);
+
     public async Task<MonitoringRunResult> RunOnceAsync(CancellationToken ct)
+    {
+        var c = new PassCounters();
+        try
+        {
+            await RunPassAsync(c, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Counts only what was finished before the stop; jobs that were claimed but not finished are handed back and are not counted as done.
+            LogPass(log, LogLevel.Information, "cancelled", c.Recovered, c.Claimed, c.Reassessed, c.Unchanged, c.Skipped, c.Failed, c.Exhausted, c.Discarded);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // The pass stopped part-way: the counters are what had been tallied, the outcome says it failed. Only the exception type is logged, never its message.
+            LogPassFailed(log, ex.GetType().Name, c.Recovered, c.Claimed, c.Reassessed, c.Unchanged, c.Skipped, c.Failed, c.Exhausted, c.Discarded);
+            throw;
+        }
+
+        var clean = c.Failed == 0 && c.Discarded == 0;
+        LogPass(log, clean ? LogLevel.Information : LogLevel.Warning, clean ? "completed" : "completed_with_errors", c.Recovered, c.Claimed, c.Reassessed, c.Unchanged, c.Skipped, c.Failed, c.Exhausted, c.Discarded);
+        return c.ToResult();
+    }
+
+    private async Task RunPassAsync(PassCounters c, CancellationToken ct)
     {
         var o = options.Value;
         var now = clock.UtcNow;
-        int recovered = 0, claimed = 0, reassessed = 0, unchanged = 0, skipped = 0, failed = 0, exhausted = 0, discarded = 0;
 
         // 1) recovery: a claim whose lease ran out was interrupted. Its outcome is unknown, so it is counted as a failed attempt; it is never assumed to have succeeded.
         // Each row is recovered and saved on its own, and only a row whose save succeeded is counted and audited: a row another pass recovered or finished first is theirs.
@@ -188,7 +248,7 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
                 continue; // another pass recovered or finished it first: nothing recovered here, nothing audited here
             }
 
-            recovered++;
+            c.Recovered++;
             await audit.WriteAsync(new AuditEvent(AuditActions.MonitoringFailed, AuditResult.Failure, null, "monitoring-job", j.PatientId.ToString(), j.SubjectId, "worker", null, "interrupted"), ct);
         }
 
@@ -221,7 +281,7 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
                 {
                     await db.SaveChangesAsync(ct);
                     claims.Add(row);
-                    claimed++;
+                    c.Claimed++;
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -232,9 +292,9 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             // Shutdown while claiming: hand back what this pass already claimed instead of leaving it "Running" until the lease expires.
-            foreach (var c in claims)
+            foreach (var claimed in claims)
             {
-                await ReleaseAsync(c);
+                await ReleaseAsync(claimed);
             }
 
             throw;
@@ -242,7 +302,7 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
 
         // 3) check each claimed job with bounded concurrency
         using var gate = new SemaphoreSlim(Math.Clamp(o.MaxConcurrency, 1, 8));
-        var results = await Task.WhenAll(claims.Select(async job =>
+        await Task.WhenAll(claims.Select(async job =>
         {
             try
             {
@@ -256,11 +316,18 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
 
             try
             {
-                return await ProcessAsync(job, ct);
+                var result = await ProcessAsync(job, ct);
+                c.Tally(result);
+                return result;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 await ReleaseAsync(job); // a no-op if the pass had already written its result (the ownership check fails)
+                throw;
+            }
+            catch (Exception)
+            {
+                c.Tally("failed.exception"); // this job did not finish cleanly: it is counted as failed, not lost, before the pass stops
                 throw;
             }
             finally
@@ -268,20 +335,6 @@ public sealed class MonitoringService(IDbContextFactory<ClinicalRulesDbContext> 
                 gate.Release();
             }
         }));
-        foreach (var r in results)
-        {
-            switch (r)
-            {
-                case "reassessed": reassessed++; break;
-                case "unchanged": unchanged++; break;
-                case "skipped.no_consent": skipped++; break;
-                case "exhausted": exhausted++; failed++; break;
-                case "discarded": discarded++; break;
-                default: failed++; break;
-            }
-        }
-
-        return new MonitoringRunResult(recovered, claimed, reassessed, unchanged, skipped, failed, exhausted, discarded);
     }
 
     private async Task<string> ProcessAsync(MonitoringJobRow claim, CancellationToken ct)

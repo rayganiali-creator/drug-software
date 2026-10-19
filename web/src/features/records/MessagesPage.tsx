@@ -8,8 +8,16 @@ import { ActionError, DemoFlag, Loaded } from "./shared";
 
 const tone = { Information: "info", FollowUp: "info", ReviewSoon: "warning", Urgent: "warning" } as const;
 
-/** Delivery ended before any attempt because the message was already resolved or the patient record was not found: nothing was sent, and nothing failed. */
-const NOT_SENT: Record<string, string> = { "message.resolved": "rec.deliv.skippedResolved", "patient.missing": "rec.deliv.skippedNoPatient" };
+/**
+ * Failed deliveries that are not delivery failures: nothing was attempted because the message no longer needs sending or the sending side was not available.
+ * They get a neutral, specific wording; a real failure of an attempt keeps "could not be delivered".
+ */
+const NOT_SENT: Record<string, string> = {
+  "message.resolved": "rec.deliv.notSent.messageResolved",
+  "patient.missing": "rec.deliv.notSent.patientMissing",
+  "channel.unavailable": "rec.deliv.notSent.channelUnavailable",
+  "message.missing": "rec.deliv.notSent.messageMissing",
+};
 
 /** How a notification for this message is going, in words that never turn "scheduled" or "simulated" into "delivered". */
 export function DeliveryLine({ m }: { m: GuidanceMessage }) {

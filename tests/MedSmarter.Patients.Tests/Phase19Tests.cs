@@ -459,11 +459,12 @@ public class Phase19Tests
         Assert.DoesNotContain(h.Audit.Events, e => e.Action is AuditActions.GuidanceDeliveryConfirmed or AuditActions.GuidanceDeliveryFailed or AuditActions.GuidanceDeliverySkipped);
 
     [Fact]
-    public async Task A_rejected_claim_write_is_surfaced_not_swallowed_and_nothing_is_sent_or_audited()
+    public async Task A_rejected_claim_write_is_counted_as_an_error_not_hidden_and_nothing_is_sent_or_audited()
     {
         var h = new Harness(new FailNthSave(2));
         var channel = new RecordingChannel();
-        await Assert.ThrowsAsync<DbUpdateException>(() => h.Service(channel).RunDueAsync(10, CancellationToken.None));
+        var r = await h.Service(channel).RunDueAsync(10, CancellationToken.None); // Phase 20: the pass goes on; the rejection is counted and logged (see Phase20Tests)
+        Assert.Equal(1, r.Errors);
         Assert.Empty(channel.Requests); // the attempt was never recorded, so the channel was never called
         var d = h.Delivery();
         Assert.Equal(DeliveryState.Scheduled, d.State);
@@ -484,11 +485,13 @@ public class Phase19Tests
     }
 
     [Fact]
-    public async Task A_rejected_write_that_would_end_a_delivery_is_surfaced_and_the_delivery_is_not_ended_or_audited()
+    public async Task A_rejected_write_that_would_end_a_delivery_is_counted_and_the_delivery_is_not_ended_or_audited()
     {
         var h = new Harness(new FailNthSave(2), GuidanceStatus.Resolved);
         var channel = new RecordingChannel();
-        await Assert.ThrowsAsync<DbUpdateException>(() => h.Service(channel).RunDueAsync(10, CancellationToken.None));
+        var r = await h.Service(channel).RunDueAsync(10, CancellationToken.None);
+        Assert.Equal(1, r.Errors);
+        Assert.Equal(0, r.Failed + r.Skipped);
         var d = h.Delivery();
         Assert.Equal(DeliveryState.Scheduled, d.State); // not ended: the write failed, so it is tried again on the next pass
         Assert.Null(d.ErrorCode);
@@ -497,12 +500,14 @@ public class Phase19Tests
     }
 
     [Fact]
-    public async Task A_rejected_write_that_would_defer_an_inactive_patient_is_surfaced_and_not_audited()
+    public async Task A_rejected_write_that_would_defer_an_inactive_patient_is_counted_and_not_audited()
     {
         var h = new Harness(new FailNthSave(2));
         h.Directory.Status = PatientStatus.Inactive;
         var channel = new RecordingChannel();
-        await Assert.ThrowsAsync<DbUpdateException>(() => h.Service(channel).RunDueAsync(10, CancellationToken.None));
+        var r = await h.Service(channel).RunDueAsync(10, CancellationToken.None);
+        Assert.Equal(1, r.Errors);
+        Assert.Equal(0, r.Skipped + r.Deferred);
         Assert.Null(h.Delivery().ErrorCode);
         Assert.Empty(channel.Requests);
         AssertNothingReportedAsDelivered(h);
@@ -519,10 +524,12 @@ public class Phase19Tests
     }
 
     [Fact]
-    public async Task A_rejected_write_of_the_no_channel_failure_is_surfaced_and_not_audited()
+    public async Task A_rejected_write_of_the_no_channel_failure_is_counted_and_not_audited()
     {
         var h = new Harness(new FailNthSave(2));
-        await Assert.ThrowsAsync<DbUpdateException>(() => h.Service(new OtherChannel()).RunDueAsync(10, CancellationToken.None)); // the row names a channel this service does not have
+        var r = await h.Service(new OtherChannel()).RunDueAsync(10, CancellationToken.None); // the row names a channel this service does not have
+        Assert.Equal(1, r.Errors);
+        Assert.Equal(0, r.Failed);
         Assert.Equal(DeliveryState.Scheduled, h.Delivery().State);
         AssertNothingReportedAsDelivered(h);
     }

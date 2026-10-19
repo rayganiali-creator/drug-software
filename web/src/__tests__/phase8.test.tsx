@@ -132,15 +132,29 @@ describe("delivery and provenance labels", () => {
   it("scheduled is not sent", async () => { await shows({ delivery: d("Scheduled") }, "A notification is scheduled. It has not been sent yet."); });
   it("attempted is not delivered", async () => { await shows({ delivery: d("Attempted", "Simulated", { attempts: 1 }) }, "A notification attempt started and its result is not known."); });
   it("failed keeps the message", async () => { await shows({ delivery: d("Failed", "Simulated", { attempts: 3, errorCode: "channel.transient_exhausted" }) }, "The notification could not be delivered. The message is still here."); });
-  it("ended before any attempt because the message was resolved: nothing was sent, and it is not called a failure", async () => {
-    await shows({ delivery: d("Failed", "Simulated", { attempts: 0, errorCode: "message.resolved" }) }, "No notification was sent because this message was already resolved.");
+  it.each([
+    ["message.resolved", "This message no longer needs to be sent."],
+    ["patient.missing", "Not sent: patient information is unavailable."],
+    ["channel.unavailable", "Not sent: the sending service is unavailable."],
+    ["message.missing", "Not sent: the message is unavailable."],
+  ])("nothing was attempted (%s): a neutral message, not a delivery failure", async (errorCode, text) => {
+    await shows({ delivery: d("Failed", "Simulated", { attempts: 0, errorCode }) }, text);
     expect(screen.queryByText(/could not be delivered/)).not.toBeInTheDocument();
   });
-  it("ended before any attempt because no patient record was found: nothing was sent, and it is not called a failure", async () => {
-    await shows({ delivery: d("Failed", "Simulated", { attempts: 0, errorCode: "patient.missing" }) }, "No notification was sent because no patient record was found.");
-    expect(screen.queryByText(/could not be delivered/)).not.toBeInTheDocument();
+  it.each([
+    ["message.resolved", "این پیام دیگر نیاز به ارسال ندارد."],
+    ["patient.missing", "ارسال انجام نشد؛ اطلاعات بیمار در دسترس نیست."],
+    ["channel.unavailable", "ارسال انجام نشد؛ سرویس ارسال در دسترس نیست."],
+    ["message.missing", "ارسال انجام نشد؛ پیام موردنظر در دسترس نیست."],
+  ])("the approved Persian wording is shown for %s", async (errorCode, text) => {
+    open((p) => p.startsWith("/guidance/messages") ? json(200, [msg({ delivery: d("Failed", "Simulated", { attempts: 0, errorCode }) })]) : json(404), "/app/patient/messages", "demo-patient", "fa");
+    expect(await screen.findByText(text)).toBeInTheDocument();
+    expect(screen.queryByText("اعلان تحویل داده نشد. پیام همچنان اینجاست.")).not.toBeInTheDocument();
   });
-  it.each(["channel.refused", "channel.unavailable", "channel.transient_exhausted", "interrupted", null])("every other failure keeps the failed wording (code: %s)", async (errorCode) => {
+  it("a non-failed state never uses a not-sent message even if a stale code is present", async () => {
+    await shows({ delivery: d("Scheduled", "Simulated", { errorCode: "message.resolved" }) }, "A notification is scheduled. It has not been sent yet.");
+  });
+  it.each(["channel.refused", "channel.transient_exhausted", "interrupted", null])("every other failure keeps the failed wording (code: %s)", async (errorCode) => {
     await shows({ delivery: d("Failed", "Simulated", { attempts: 1, errorCode }) }, "The notification could not be delivered. The message is still here.");
   });
   it("a simulated confirmation never reads as delivered", async () => {

@@ -124,8 +124,8 @@ public sealed record GuidanceDeliveryDto(
     int Attempts,
     string? ErrorCode);
 
-/// <summary><paramref name="Skipped"/>: deliveries not sent because the patient or message was no longer eligible (deferred or ended). <paramref name="Unrecorded"/>: the channel was called but this pass could not record the outcome; the row stays "attempted" and recovery handles it (at-least-once).</summary>
-public sealed record DeliveryRunResult(int Considered, int Confirmed, int Retrying, int Failed, int Recovered, int Skipped = 0, int Unrecorded = 0);
+/// <summary><paramref name="Skipped"/>: deliveries not sent because the patient or message was no longer eligible (deferred or ended). <paramref name="Unrecorded"/>: the channel was called but this pass could not record the outcome; the row stays "attempted" and recovery handles it (at-least-once). <paramref name="Errors"/>: rows whose database write or patient lookup was rejected before any send; each is left unchanged and retryable. <paramref name="Deferred"/>: deliveries put back because the patient is inactive (a subset of <paramref name="Skipped"/>).</summary>
+public sealed record DeliveryRunResult(int Considered, int Confirmed, int Retrying, int Failed, int Recovered, int Skipped = 0, int Unrecorded = 0, int Errors = 0, int Deferred = 0);
 
 /// <summary>
 /// What a channel gets: ids only. Message text and health details never travel to a channel in Phase 8.

@@ -1,6 +1,6 @@
 # Roadmap — proposed Phases 16–20
 
-**Status: the plan below is a proposal; the owner has approved only what is stated per phase.** Phase 16 (stated scope), the first subset of Phase 17 and Phase 18 (owner-directed scope, `docs/phase18/README.md`) are implemented and recorded in the repository history. The other phases (19 monitoring and notifications, 20 reliability and privacy, 21 integrated demo; the owner moved monitoring to 19 and the two after it each one number down) are planning categories, grounded in evidence from the repository, and must be re-scoped before work starts. The older plan in `docs/phase0/10-roadmap.md` is a different numbering (see its note); this file continues the *delivered* numbering (Phases 0–15 are complete).
+**Status: the plan below is a proposal; the owner has approved only what is stated per phase.** Phase 16 (stated scope), the first subset of Phase 17, Phase 18 (owner-directed scope, `docs/phase18/README.md`), the **reliability part of Phase 19** (`docs/phase19/README.md`) and **Phase 20, delivery and monitoring operability and fairness** (`docs/phase20/README.md`) are implemented and recorded in the repository history. What the original Phase 19 and 20 text listed beyond that (alert prioritisation, deduplication across rule sets, per-category freshness, emergency delivery, retention, offline-queue encryption and the like) is **not done** and is marked below. Phase 21 (integrated demo) is a planning category, grounded in evidence from the repository, and must be re-scoped before work starts. The older plan in `docs/phase0/10-roadmap.md` is a different numbering (see its note); this file continues the *delivered* numbering (Phases 0–15 are complete).
 
 Global rules for every phase: synthetic data only; no paid server, domain, API or AI service; no outbound network call in development or tests; mock/disabled adapters stay mock/disabled; no clinical rule becomes active without a named reviewer and a validated source; no claim of clinical validation, regulatory compliance, anonymity or production readiness without evidence.
 
@@ -50,9 +50,13 @@ See `docs/phase18/README.md`. Scope was set by the owner after the Phase 17 asse
 
 ---
 
-## Phase 19 — Medication monitoring and preventive notifications (proposed; moved from Phase 18 by the owner's direction)
+## Phase 19 — Medication monitoring and preventive notifications (reliability part implemented; the rest still proposed)
 
-**Objective.** Better rule-based monitoring behaviour and a clearer notification lifecycle.
+**Delivered (see `docs/phase19/README.md`; verified by the Phase 19 tests: 25, of which 4 need PostgreSQL).** Monitoring ownership/cancellation/lease/audit correctness (`MONITORING_RESULT_DISCARDED`); send-time eligibility from existing facts (resolved message or missing patient ends a delivery, inactive patient defers it); an idempotency key and explicit handling of a failed outcome write; at most one open message per finding (partial unique index, migration `AddOpenFindingUniqueness`). Delivery stays **at-least-once**; the only channel is simulated.
+
+**Still proposed / deferred (not implemented):** alert prioritisation across findings, deduplication across rule sets, per-category freshness thresholds, any real channel, **consent-gated delivery (deferred by explicit decision, option c)**, an emergency path (blocked on authoritative criteria), operator endpoints and worker heartbeat.
+
+**Original objective.** Better rule-based monitoring behaviour and a clearer notification lifecycle.
 
 **Reusable.** Scheduled reassessment job with lease/ownership (`MonitoringService`), guidance delivery state machine and optimistic claim (Phase 8/14), freshness handling per input category (`docs/phase7/04`), reactivation by record version.
 
@@ -66,7 +70,13 @@ See `docs/phase18/README.md`. Scope was set by the owner after the Phase 17 asse
 
 ---
 
-## Phase 20 — Reliability, synchronization, security and privacy (proposed; was Phase 19)
+## Phase 20 — Delivery and monitoring operability and fairness (implemented)
+
+See `docs/phase20/README.md`. Owner-approved scope after the post-Phase-19 review: counts-only pass summary logs for both workers; a rejected pre-send database write no longer aborts a delivery pass; inactive-patient deferral grows progressively to at most 24 hours with a fair per-pass quota; stale `patient.inactive` code cleared when an attempt starts; neutral web and mobile wording for deliveries that were never attempted (`message.resolved`, `patient.missing`, `channel.unavailable`, `message.missing`); CI migration-drift check extended to all ten database contexts; a guard test for the open-finding index predicate. No migration, no new endpoint, no real channel, no consent change. **Not done / deferred:** operator endpoints and heartbeat, transactional audit (audit is still written after commit), terminal retry cap, anything below.
+
+---
+
+## Reliability, synchronization, security and privacy (still proposed; this was labelled "Phase 20" in the earlier plan, and the delivered Phase 20 above is a different, smaller scope)
 
 **Objective.** Harden what is already built.
 

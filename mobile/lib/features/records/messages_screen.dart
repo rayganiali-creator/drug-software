@@ -139,6 +139,15 @@ class _MessageState extends State<_Message> with ActionRunner {
   }
 }
 
+/// Failed deliveries that are not delivery failures: nothing was attempted because the message no longer needs sending or the sending side was not available.
+/// They get a neutral, specific wording; a real failure of an attempt keeps "could not be delivered". Same codes and keys as the web.
+const _notSent = {
+  'message.resolved': 'rec.deliv.notSent.messageResolved',
+  'patient.missing': 'rec.deliv.notSent.patientMissing',
+  'channel.unavailable': 'rec.deliv.notSent.channelUnavailable',
+  'message.missing': 'rec.deliv.notSent.messageMissing',
+};
+
 /// Where a message came from and how its notification is going, in words that never turn "scheduled" or "simulated" into "delivered".
 class _DeliveryLine extends StatelessWidget {
   const _DeliveryLine({required this.m});
@@ -148,8 +157,11 @@ class _DeliveryLine extends StatelessWidget {
     final d = m['delivery'] as Json?;
     final state = d?['state'] as String?;
     final simulated = d?['mode'] == 'Simulated';
+    final notSent = state == 'Failed' ? _notSent[d?['errorCode']] : null;
     final text = d == null
         ? context.t('rec.deliv.none')
+        : notSent != null
+        ? context.t(notSent)
         : switch (state) {
             'Scheduled' => context.t('rec.deliv.scheduled'),
             'Attempted' => context.t('rec.deliv.attempted'),
@@ -174,7 +186,9 @@ class _DeliveryLine extends StatelessWidget {
           ),
           AppBadge(
             text: text,
-            tone: state == 'Failed' ? Tone.warning : Tone.neutral,
+            tone: state == 'Failed' && notSent == null
+                ? Tone.warning
+                : Tone.neutral,
             icon: simulated ? 'alertTriangle' : 'info',
           ),
         ],

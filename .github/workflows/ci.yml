@@ -46,6 +46,15 @@ jobs:
           dotnet ef migrations has-pending-model-changes \
             -p src/Modules/Guidance/MedSmarter.Modules.Guidance \
             -s src/Host/MedSmarter.Api -c GuidanceDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/ClinicalRules/MedSmarter.Modules.ClinicalRules \
+            -s src/Host/MedSmarter.Api -c ClinicalRulesDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/ADR/MedSmarter.Modules.ADR \
+            -s src/Host/MedSmarter.Api -c AdrDbContext
+          dotnet ef migrations has-pending-model-changes \
+            -p src/Modules/Pharmacies/MedSmarter.Modules.Pharmacies \
+            -s src/Host/MedSmarter.Api -c PharmacyDbContext
 
   integration:
     runs-on: ubuntu-latest

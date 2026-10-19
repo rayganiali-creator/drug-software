@@ -75,7 +75,14 @@ Map<String, dynamic> delivery(
   String state, {
   String mode = 'Simulated',
   String channel = 'local-simulated',
-}) => {'state': state, 'mode': mode, 'channel': channel, 'attempts': 0};
+  String? errorCode,
+}) => {
+  'state': state,
+  'mode': mode,
+  'channel': channel,
+  'attempts': 0,
+  'errorCode': errorCode,
+};
 
 Map<String, dynamic> monitoring({
   bool enrolled = false,
@@ -249,12 +256,14 @@ void main() {
       WidgetTester tester,
       Map<String, dynamic>? d, {
       bool reviewed = false,
+      Locale locale = const Locale('en'),
     }) => open(
       tester,
       '/profile/messages',
       (r) => r.url.path.endsWith('/guidance/messages')
           ? json(200, [message(d, reviewed: reviewed)])
           : json(200, <Object>[]),
+      locale: locale,
     );
 
     testWidgets('no delivery means in the app only', (tester) async {
@@ -304,6 +313,70 @@ void main() {
         delivery('Confirmed', mode: 'Real', channel: 'push-x'),
       );
       expect(find.text('Delivered through push-x.'), findsOneWidget);
+    });
+
+    const notSentEn = {
+      'message.resolved': 'This message no longer needs to be sent.',
+      'patient.missing': 'Not sent: patient information is unavailable.',
+      'channel.unavailable': 'Not sent: the sending service is unavailable.',
+      'message.missing': 'Not sent: the message is unavailable.',
+    };
+    const notSentFa = {
+      'message.resolved': 'این پیام دیگر نیاز به ارسال ندارد.',
+      'patient.missing': 'ارسال انجام نشد؛ اطلاعات بیمار در دسترس نیست.',
+      'channel.unavailable': 'ارسال انجام نشد؛ سرویس ارسال در دسترس نیست.',
+      'message.missing': 'ارسال انجام نشد؛ پیام موردنظر در دسترس نیست.',
+    };
+    for (final code in notSentEn.keys) {
+      testWidgets(
+        'nothing was attempted ($code): neutral wording, not a failure',
+        (tester) async {
+          await show(tester, delivery('Failed', errorCode: code));
+          expect(find.text(notSentEn[code]!), findsOneWidget);
+          expect(find.textContaining('could not be delivered'), findsNothing);
+        },
+      );
+
+      testWidgets('approved Persian wording for $code', (tester) async {
+        await show(
+          tester,
+          delivery('Failed', errorCode: code),
+          locale: const Locale('fa'),
+        );
+        expect(find.text(notSentFa[code]!), findsOneWidget);
+        expect(
+          find.text('اعلان تحویل داده نشد. پیام همچنان اینجاست.'),
+          findsNothing,
+        );
+      });
+    }
+
+    for (final code in [
+      'channel.refused',
+      'channel.transient_exhausted',
+      'interrupted',
+    ]) {
+      testWidgets('a real failure ($code) keeps the failed wording', (
+        tester,
+      ) async {
+        await show(tester, delivery('Failed', errorCode: code));
+        expect(
+          find.text(
+            'The notification could not be delivered. The message is still here.',
+          ),
+          findsOneWidget,
+        );
+      });
+    }
+
+    testWidgets('a not-failed state ignores a stale not-sent code', (
+      tester,
+    ) async {
+      await show(tester, delivery('Scheduled', errorCode: 'message.resolved'));
+      expect(
+        find.text('A notification is scheduled. It has not been sent yet.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
