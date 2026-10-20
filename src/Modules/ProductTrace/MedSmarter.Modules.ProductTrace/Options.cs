@@ -1,3 +1,5 @@
+using MedSmarter.BuildingBlocks;
+
 namespace MedSmarter.Modules.ProductTrace;
 
 public sealed class ManufacturerReportsOptions
@@ -33,8 +35,7 @@ public static class ManufacturerReportsGuard
 {
     public static void EnsureSafe(string environmentName, ManufacturerReportsOptions options)
     {
-        var devLike = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        var devLike = EnvironmentRules.AllowsDemoFeatures(environmentName); // Development, Testing and the dedicated Demo environment
         if (!devLike && string.Equals(options.Provider, "Mock", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"ManufacturerReports:Provider=Mock is only allowed in Development/Testing (environment is '{environmentName}'). Refusing to start.");

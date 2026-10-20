@@ -11,7 +11,8 @@ export interface AuthUser {
   subjectKey?: string;
 }
 
-export type SignInError = "invalid" | "disabled" | "noRole" | "throttled" | "network";
+export type SignInError = "invalid" | "disabled" | "noRole" | "throttled" | "network" | "code";
+export type UnlockResult = "ok" | "invalid" | "throttled" | "network";
 export type SignInResult = { ok: true; user: AuthUser } | { ok: false; error: SignInError };
 
 export interface DemoAccount {
@@ -48,6 +49,11 @@ export interface AuthBackend {
   readonly kind: "local-mock" | "api";
   /** True when fictional demo accounts are offered (development builds only). */
   readonly demo: boolean;
+  /** The public demo asks for a shared access code before listing or signing in accounts. Absent otherwise. */
+  readonly needsDemoCode?: boolean;
+  hasDemoCode?(): boolean;
+  /** Checks the access code with the server and, when accepted, keeps it for this browser tab only. */
+  unlockDemo?(code: string): Promise<UnlockResult>;
   restore(): Promise<AuthUser | null>;
   signIn(accountId: string): Promise<SignInResult>;
   signOut(): Promise<void>;

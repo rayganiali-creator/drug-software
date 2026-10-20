@@ -123,4 +123,53 @@ describe("ApiBackend", () => {
     expect((await be.demoAccounts())[0]).toMatchObject({ id: "a", disabled: true });
     expect(await be.adminVerifyAudit()).toBe(false);
   });
+
+  describe("demo access code", () => {
+    const gated = (handler: (url: string, init: RequestInit) => Response) => {
+      const session = mem();
+      const calls: { url: string; init: RequestInit }[] = [];
+      const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => { calls.push({ url: String(url), init: init ?? {} }); return handler(String(url), init ?? {}); }) as unknown as typeof fetch;
+      return { be: new ApiBackend({ baseUrl: "http://api.test", fetchImpl, storage: session.storage, demoGate: true }), session, calls };
+    };
+    const header = (c: { init: RequestInit }) => new Headers(c.init.headers).get("X-Demo-Code");
+
+    it("is not required unless the build says the server is gated", () => {
+      expect(make(() => json(200, {})).be.needsDemoCode).toBe(false);
+      expect(make(() => json(200, {})).be.hasDemoCode()).toBe(true);
+    });
+
+    it("accepts a correct code, keeps it tab-scoped, and sends it only to the gated anonymous endpoints", async () => {
+      const { be, session, calls } = gated((url, init) => {
+        const ok = new Headers(init.headers).get("X-Demo-Code") === "right-code-123";
+        if (url.endsWith("/auth/demo-accounts")) return ok ? json(200, { accounts: [] }) : json(401, { code: "demo_code_invalid" });
+        if (url.endsWith("/auth/login")) return ok ? json(200, authBody()) : json(401, { code: "demo_code_required" });
+        return json(404, {});
+      });
+      expect(be.hasDemoCode()).toBe(false);
+      expect(await be.unlockDemo("wrong")).toBe("invalid");
+      expect(be.hasDemoCode()).toBe(false);
+      expect(await be.unlockDemo("right-code-123")).toBe("ok");
+      expect(session.store.get("ms.demo.code")).toBe("right-code-123");
+      expect((await be.signIn("demo-patient")).ok).toBe(true);
+      expect(header(calls.at(-1)!)).toBe("right-code-123");
+      expect(calls.at(-1)!.url).toBe("http://api.test/auth/login");
+      await be.sessions();
+      expect(header(calls.at(-1)!)).toBeNull(); // authenticated calls carry the bearer token, not the code
+    });
+
+    it("forgets a code the server rejects and reports it as a code error; maps throttling and network failures", async () => {
+      const { be, session } = gated(() => json(401, { code: "demo_code_invalid" }));
+      session.store.set("ms.demo.code", "stale");
+      const stored = new ApiBackend({ baseUrl: "http://api.test", fetchImpl: (() => Promise.resolve(json(401, { code: "demo_code_invalid" }))) as unknown as typeof fetch, storage: session.storage, demoGate: true });
+      expect(stored.hasDemoCode()).toBe(true);
+      expect(await stored.signIn("demo-patient")).toEqual({ ok: false, error: "code" });
+      expect(stored.hasDemoCode()).toBe(false);
+      expect(session.store.has("ms.demo.code")).toBe(false);
+      const limited = new ApiBackend({ baseUrl: "http://api.test", fetchImpl: (() => Promise.resolve(json(429, { code: "demo_code_throttled" }))) as unknown as typeof fetch, storage: mem().storage, demoGate: true });
+      expect(await limited.unlockDemo("x")).toBe("throttled");
+      expect(await be.unlockDemo("x")).toBe("invalid");
+      const down = new ApiBackend({ baseUrl: "http://api.test", fetchImpl: (() => Promise.reject(new TypeError("fail"))) as unknown as typeof fetch, storage: mem().storage, demoGate: true });
+      expect(await down.unlockDemo("x")).toBe("network");
+    });
+  });
 });

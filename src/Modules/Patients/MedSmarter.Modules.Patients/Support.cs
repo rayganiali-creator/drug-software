@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MedSmarter.BuildingBlocks;
 using MedSmarter.Modules.Audit.Contracts;
 using MedSmarter.Modules.Patients.Contracts;
 using MedSmarter.Modules.Patients.Persistence;
@@ -29,8 +30,7 @@ public static class PatientsGuard
 {
     public static void EnsureSafe(string environmentName, PatientsOptions options)
     {
-        var devLike = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        var devLike = EnvironmentRules.AllowsDemoFeatures(environmentName); // Development, Testing and the dedicated Demo environment
         if (options.SeedDemoData && !devLike)
         {
             throw new InvalidOperationException($"Patients:SeedDemoData is only allowed in Development/Testing (environment is '{environmentName}'). Refusing to start.");

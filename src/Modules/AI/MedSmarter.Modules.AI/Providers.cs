@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MedSmarter.BuildingBlocks;
 using MedSmarter.Modules.AI.Contracts;
 using MedSmarter.Modules.Medications.Contracts;
 using Microsoft.Extensions.Logging;
@@ -53,8 +54,7 @@ public static class AiGuard
     /// </summary>
     public static string? EnsureSafe(string environmentName, AiOptions options)
     {
-        var devLike = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        var devLike = EnvironmentRules.AllowsDemoFeatures(environmentName); // Development, Testing and the dedicated Demo environment
         var production = string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
         if (options.AllowMockInProduction && production)
         {

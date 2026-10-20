@@ -2,11 +2,13 @@ import { apiBaseUrl } from "../api";
 import type { DataScope, RoleName } from "./access.g";
 import { catalog, orgById, subjectByKey } from "./catalog";
 import type {
-  AccessLogView, AdminUserView, AuditView, AuthBackend, AuthUser, ConsentView, DemoAccount, SessionView, SignInError, SignInResult,
+  AccessLogView, AdminUserView, AuditView, AuthBackend, AuthUser, ConsentView, DemoAccount, SessionView, SignInError, SignInResult, UnlockResult,
 } from "./types";
 
 const REFRESH_KEY = "ms.auth.refresh";
 const DEVICE_KEY = "ms.auth.device";
+const DEMO_CODE_KEY = "ms.demo.code";
+const DEMO_CODE_HEADER = "X-Demo-Code";
 
 interface ApiUser { id: string; displayName: string; email?: string | null; roles: RoleName[]; permissions: string[]; organizationIds: string[] }
 interface ApiAuth { tokens: { accessToken: string; refreshToken: string }; user: ApiUser }
@@ -22,6 +24,8 @@ export interface ApiBackendOptions {
   /** Offer the fictional demo accounts (server exposes them only in DevelopmentMock mode). */
   demo?: boolean;
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
+  /** Public demo: the server wants a shared access code (X-Demo-Code) on its anonymous endpoints. Defaults to VITE_DEMO_GATE=1. A flag, never the code. */
+  demoGate?: boolean;
 }
 
 /**
@@ -32,6 +36,8 @@ export interface ApiBackendOptions {
 export class ApiBackend implements AuthBackend {
   readonly kind = "api" as const;
   readonly demo: boolean;
+  readonly needsDemoCode: boolean;
+  private demoCode: string | null = null;
   private readonly base: string;
   private readonly doFetch: typeof fetch;
   private readonly session: NonNullable<ApiBackendOptions["storage"]> | null;
@@ -45,8 +51,33 @@ export class ApiBackend implements AuthBackend {
     this.base = opts.baseUrl ?? apiBaseUrl;
     this.doFetch = opts.fetchImpl ?? ((...a) => fetch(...a));
     this.demo = opts.demo ?? true;
+    this.needsDemoCode = opts.demoGate ?? import.meta.env.VITE_DEMO_GATE === "1";
     this.session = opts.storage === undefined ? pick("sessionStorage") : opts.storage;
     this.local = opts.storage === undefined ? pick("localStorage") : opts.storage;
+    try { this.demoCode = this.session?.getItem(DEMO_CODE_KEY) ?? null; } catch { /* memory only */ }
+  }
+
+  hasDemoCode(): boolean { return !this.needsDemoCode || this.demoCode !== null; }
+
+  /** Headers for the anonymous endpoints the server gates with the shared code. The code is tab-scoped (sessionStorage) and never logged. */
+  private gateHeaders(): Record<string, string> { return this.needsDemoCode && this.demoCode ? { [DEMO_CODE_HEADER]: this.demoCode } : {}; }
+
+  private forgetDemoCode() {
+    this.demoCode = null;
+    try { this.session?.removeItem(DEMO_CODE_KEY); } catch { /* ignore */ }
+  }
+
+  async unlockDemo(code: string): Promise<UnlockResult> {
+    let res: Response;
+    try {
+      res = await this.doFetch(`${this.base}/auth/demo-accounts`, { headers: { Accept: "application/json", [DEMO_CODE_HEADER]: code }, credentials: "omit" });
+    } catch { return "network"; }
+    if (res.ok) {
+      this.demoCode = code;
+      try { this.session?.setItem(DEMO_CODE_KEY, code); } catch { /* memory only */ }
+      return "ok";
+    }
+    return res.status === 429 ? "throttled" : "invalid";
   }
 
   private deviceId(): string | undefined {
@@ -95,7 +126,7 @@ export class ApiBackend implements AuthBackend {
       try {
         const token = this.session?.getItem(REFRESH_KEY);
         if (!token) return false;
-        const res = await this.doFetch(`${this.base}/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ refreshToken: token }), credentials: "omit" });
+        const res = await this.doFetch(`${this.base}/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", ...this.gateHeaders() }, body: JSON.stringify({ refreshToken: token }), credentials: "omit" });
         if (!res.ok) return false;
         this.store((await res.json()) as ApiAuth);
         return true;
@@ -120,13 +151,14 @@ export class ApiBackend implements AuthBackend {
     try {
       res = await this.doFetch(`${this.base}/auth/login`, {
         method: "POST", credentials: "omit",
-        headers: { "Content-Type": "application/json", Accept: "application/json", "X-Client": "web" },
+        headers: { "Content-Type": "application/json", Accept: "application/json", "X-Client": "web", ...this.gateHeaders() },
         body: JSON.stringify({ provider: "mock", credentials: { accountId }, device: { deviceId: this.deviceId(), platform: "web", appVersion: "0.1.0", deviceName: browserName() } }),
       });
     } catch { return { ok: false, error: "network" }; }
     if (res.ok) return { ok: true, user: this.store((await res.json()) as ApiAuth) };
     const code = ((await res.json().catch(() => ({}))) as { code?: string }).code;
-    const error: SignInError = code === "account_disabled" ? "disabled" : code === "no_active_role" ? "noRole" : res.status === 429 ? "throttled" : "invalid";
+    if (code === "demo_code_required" || code === "demo_code_invalid") this.forgetDemoCode();
+    const error: SignInError = code === "demo_code_required" || code === "demo_code_invalid" ? "code" : code === "account_disabled" ? "disabled" : code === "no_active_role" ? "noRole" : res.status === 429 ? "throttled" : "invalid";
     return { ok: false, error };
   }
 
@@ -136,7 +168,7 @@ export class ApiBackend implements AuthBackend {
   }
 
   async demoAccounts(): Promise<DemoAccount[]> {
-    const res = await this.doFetch(`${this.base}/auth/demo-accounts`, { headers: { Accept: "application/json" }, credentials: "omit" });
+    const res = await this.doFetch(`${this.base}/auth/demo-accounts`, { headers: { Accept: "application/json", ...this.gateHeaders() }, credentials: "omit" });
     if (!res.ok) return [];
     const body = (await res.json()) as { accounts: { id: string; displayName: DemoAccount["displayName"]; description: DemoAccount["description"]; roles: RoleName[]; primary: boolean; status: string }[] };
     return body.accounts.map((a) => ({ ...a, disabled: a.status === "Disabled" }));

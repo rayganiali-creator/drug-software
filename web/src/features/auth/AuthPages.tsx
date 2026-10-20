@@ -11,7 +11,7 @@ import "../../layouts/shell.css";
 import "./auth.css";
 
 const errorKey: Record<SignInError, string> = {
-  invalid: "auth.errInvalid", disabled: "auth.errDisabled", noRole: "auth.errNoRole", throttled: "auth.errThrottled", network: "auth.errNetwork",
+  invalid: "auth.errInvalid", code: "auth.errCode", disabled: "auth.errDisabled", noRole: "auth.errNoRole", throttled: "auth.errThrottled", network: "auth.errNetwork",
 };
 
 /** Sign-in screen. In this phase it lists FICTIONAL demo accounts (no passwords); a real identity provider replaces it later. */
@@ -25,12 +25,26 @@ export function LoginPage() {
   const [accounts, setAccounts] = useState<DemoAccount[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<SignInError | null>(null);
+  const [unlocked, setUnlocked] = useState(() => backend.hasDemoCode?.() ?? true);
+  const [code, setCode] = useState("");
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy("code");
+    setError(null);
+    const r = await backend.unlockDemo?.(code.trim());
+    setBusy(null);
+    setCode("");
+    if (r === "ok") setUnlocked(true);
+    else setError(r === "throttled" ? "throttled" : r === "network" ? "network" : "code");
+  }
 
   useEffect(() => {
+    if (!unlocked) return;
     let live = true;
     void backend.demoAccounts().then((a) => { if (live) setAccounts(a); }, () => { if (live) setAccounts([]); });
     return () => { live = false; };
-  }, [backend]);
+  }, [backend, unlocked]);
 
   if (status === "authenticated" && user) return <Navigate to={next && appAllows(next, user) ? next : homeFor(user)} replace />;
 
@@ -39,8 +53,10 @@ export function LoginPage() {
     setError(null);
     const r = await signIn(a.id);
     setBusy(null);
-    if (!r.ok) setError(r.error);
-    else nav(next && appAllows(next, r.user) ? next : homeFor(r.user), { replace: true });
+    if (!r.ok) {
+      setError(r.error);
+      if (r.error === "code") { setUnlocked(false); setAccounts(null); } // the server no longer accepts the code
+    } else nav(next && appAllows(next, r.user) ? next : homeFor(r.user), { replace: true });
   }
 
   const display = (a: DemoAccount) => a.displayName[locale] ?? a.displayName.en;
@@ -67,7 +83,17 @@ export function LoginPage() {
 
         <AlertCard tone="info" icon="shield" title={t("auth.demoEnv")}>{t("auth.demoHow")}</AlertCard>
 
-        <section aria-labelledby="accounts-title" className="auth-accounts">
+        {!unlocked && (
+          <form className="auth-accounts" onSubmit={(e) => void unlock(e)} aria-labelledby="code-title">
+            <h2 id="code-title">{t("auth.codeTitle")}</h2>
+            <p className="ms-muted">{t("auth.codeHelp")}</p>
+            <label htmlFor="demo-code">{t("auth.codeLabel")}</label>
+            <input id="demo-code" type="password" autoComplete="off" spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)} required />
+            <Button type="submit" disabled={busy !== null || code.trim() === ""}>{busy === "code" ? t("auth.signingIn") : t("auth.codeSubmit")}</Button>
+          </form>
+        )}
+
+        {unlocked && <section aria-labelledby="accounts-title" className="auth-accounts">
           <h2 id="accounts-title">{t("auth.chooseAccount")}</h2>
           {accounts === null ? <LoadingState label={t("common.loading")} rows={2} /> : accounts.length === 0 ? (
             <EmptyState icon="shield" title={t("auth.errNetwork")} />
@@ -87,7 +113,7 @@ export function LoginPage() {
               ))}
             </ul>
           )}
-        </section>
+        </section>}
       </main>
     </div>
   );

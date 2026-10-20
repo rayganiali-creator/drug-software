@@ -30,8 +30,7 @@ public static class PersistenceSettings
     public static bool MigrateOnStartup(IConfiguration configuration) => configuration.GetValue<bool>($"{Section}:MigrateOnStartup");
 
     public static bool IsDevLike(string environmentName) =>
-        string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        EnvironmentRules.IsDevelopmentOrTesting(environmentName);
 
     /// <summary>Refuses to start with volatile storage or startup migrations outside Development/Testing.</summary>
     public static void EnsureSafe(string environmentName, IConfiguration configuration)
@@ -41,7 +40,7 @@ public static class PersistenceSettings
             return;
         }
 
-        if (ProviderOf(configuration) == PersistenceProvider.InMemory)
+        if (ProviderOf(configuration) == PersistenceProvider.InMemory && !EnvironmentRules.IsDemo(environmentName))
         {
             throw new InvalidOperationException($"Persistence:Provider=InMemory is only allowed in Development/Testing (environment is '{environmentName}'). Refusing to start: patient data, consents and audit must be stored durably.");
         }

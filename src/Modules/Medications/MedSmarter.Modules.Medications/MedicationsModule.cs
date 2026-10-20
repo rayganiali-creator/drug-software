@@ -20,8 +20,7 @@ public static class MedicationsGuard
 {
     public static void EnsureSafe(string environmentName, MedicationsOptions options)
     {
-        var devLike = string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase);
+        var devLike = EnvironmentRules.AllowsDemoFeatures(environmentName); // Development, Testing and the dedicated Demo environment
         if (options.SeedDemoData && !devLike)
         {
             throw new InvalidOperationException($"Medications:SeedDemoData is only allowed in Development/Testing (environment is '{environmentName}'). Refusing to start.");

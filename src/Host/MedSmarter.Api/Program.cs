@@ -1,4 +1,5 @@
 using MedSmarter.Api;
+using MedSmarter.Api.Demo;
 using MedSmarter.BuildingBlocks;
 using MedSmarter.Api.Adr;
 using MedSmarter.Api.Http;
@@ -46,12 +47,15 @@ try
     builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(o => o.ThrowOnBadRequest = false);
     builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
+    var demo = EnvironmentRules.IsDemo(builder.Environment.EnvironmentName); // the dedicated public-demo environment (see docs/ONLINE_DEMO.md)
+    string[] CorsHeaders = ["Accept", "Authorization", "Content-Type", "If-Match", "X-Client", CorrelationIdMiddleware.HeaderName];
+
     // CORS is deny-all unless origins are configured (Cors__AllowedOrigins__0=...). Read-only for now.
     var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
     builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
         .WithOrigins(origins)
         .WithMethods("GET", "POST", "PUT", "DELETE")
-        .WithHeaders("Accept", "Authorization", "Content-Type", "If-Match", "X-Client", CorrelationIdMiddleware.HeaderName)
+        .WithHeaders(demo ? [.. CorsHeaders, DemoAccessGate.HeaderName] : CorsHeaders)
         .WithExposedHeaders(CorrelationIdMiddleware.HeaderName, MedSmarter.Api.Adr.AdrEndpoints.QueueTruncatedHeader, MedSmarter.Api.Adr.AdrEndpoints.QueueNextCursorHeader, MedSmarter.Api.Adr.AdrEndpoints.QueueTotalCountHeader)));
     builder.Services.AddPlatformInfrastructure(builder.Configuration);
     foreach (var module in ModuleCatalog.All)
@@ -63,6 +67,7 @@ try
     var authOptions = builder.Configuration.GetSection(AuthOptions.Section).Get<AuthOptions>() ?? new AuthOptions();
     if (!args.Contains("--migrate-and-exit"))
     {
+        DemoGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration); // Demo only: access code, in-memory storage, exact https origins, no external AI
         PersistenceSettings.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration); // volatile storage can never run outside Development/Testing
         AuthGuard.EnsureSafe(builder.Environment.EnvironmentName, authOptions); // DevelopmentMock can never start in production
         MedicationsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(MedicationsOptions.Section).Get<MedicationsOptions>() ?? new MedicationsOptions());
@@ -73,14 +78,14 @@ try
 
         PatientsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(PatientsOptions.Section).Get<PatientsOptions>() ?? new PatientsOptions());
         ManufacturerReportsGuard.EnsureSafe(builder.Environment.EnvironmentName, builder.Configuration.GetSection(ManufacturerReportsOptions.Section).Get<ManufacturerReportsOptions>() ?? new ManufacturerReportsOptions());
-        if (!PersistenceSettings.IsDevLike(builder.Environment.EnvironmentName) && (builder.Configuration.GetSection("ClinicalRules").GetValue<bool>("AllowDemonstrationRules") || builder.Configuration.GetSection("ClinicalRules").GetValue<bool>("SeedDemoRules")))
+        if (!EnvironmentRules.AllowsDemoFeatures(builder.Environment.EnvironmentName) && (builder.Configuration.GetSection("ClinicalRules").GetValue<bool>("AllowDemonstrationRules") || builder.Configuration.GetSection("ClinicalRules").GetValue<bool>("SeedDemoRules")))
         {
-            throw new InvalidOperationException("ClinicalRules:AllowDemonstrationRules and ClinicalRules:SeedDemoRules are only allowed in Development/Testing. Refusing to start.");
+            throw new InvalidOperationException("ClinicalRules:AllowDemonstrationRules and ClinicalRules:SeedDemoRules are only allowed in Development/Testing/Demo. Refusing to start.");
         }
 
-        if (!PersistenceSettings.IsDevLike(builder.Environment.EnvironmentName) && builder.Configuration.GetSection("Guidance").GetValue<bool>("SeedDemoData"))
+        if (!EnvironmentRules.AllowsDemoFeatures(builder.Environment.EnvironmentName) && builder.Configuration.GetSection("Guidance").GetValue<bool>("SeedDemoData"))
         {
-            throw new InvalidOperationException("Guidance:SeedDemoData is only allowed in Development/Testing. Refusing to start.");
+            throw new InvalidOperationException("Guidance:SeedDemoData is only allowed in Development/Testing/Demo. Refusing to start.");
         }
     }
 
@@ -93,6 +98,13 @@ try
         o.AddPolicy(KnowledgeEndpoints.AiLimiter, c => RateLimitPartition.GetFixedWindowLimiter(CallerKey(c), _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimits:AiPerMinute", 20), Window = TimeSpan.FromMinutes(1) }));
         o.AddPolicy(KnowledgeEndpoints.WriteLimiter, c => RateLimitPartition.GetFixedWindowLimiter(CallerKey(c), _ => new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimits:WritePerMinute", 60), Window = TimeSpan.FromMinutes(1) }));
     });
+
+    if (demo)
+    {
+        builder.Services.Configure<DemoOptions>(builder.Configuration.GetSection(DemoOptions.Section));
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<DemoAccessThrottle>();
+    }
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddAuthentication(BearerDefaults.Scheme).AddScheme<AuthenticationSchemeOptions, BearerAuthenticationHandler>(BearerDefaults.Scheme, null);
@@ -131,6 +143,11 @@ try
         Log.Warning("DEV DATA: migrations were applied at startup (Persistence:MigrateOnStartup).");
     }
 
+    if (demo)
+    {
+        Log.Warning("DEMO ENVIRONMENT: fictional data only, in-memory storage, Mock AI, shared access code. Not real user authentication; never use real patient data.");
+    }
+
     app.UseExceptionHandler();
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseCors();
@@ -141,6 +158,11 @@ try
         ctx.Response.Headers["X-Frame-Options"] = "DENY";
         await next();
     });
+    if (demo)
+    {
+        app.UseMiddleware<DemoAccessGate>(); // before authentication: guards every anonymous endpoint
+    }
+
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseRateLimiter();
