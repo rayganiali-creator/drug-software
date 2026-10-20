@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   pull_request:
 
 permissions:
@@ -159,7 +159,7 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - name: Linux desktop build (Windows and macOS builds need their own runners: not run here)
+      - name: "Linux desktop build (Windows and macOS builds need their own runners: not run here)"
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
