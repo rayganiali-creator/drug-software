@@ -1,0 +1,40 @@
+name: Publish MedSmarter API Image
+
+on:
+  push:
+    branches:
+      - claude/amazing-darwin-kfj6sv
+    paths:
+      - 'src/Host/MedSmarter.Api/**'
+      - 'src/**'
+      - 'Directory.*'
+      - '*.props'
+      - '*.sln'
+      - '.github/workflows/publish-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Host/MedSmarter.Api/Dockerfile
+          push: true
+          tags: ghcr.io/rayganiali-creator/medsmarter-api:latest
